@@ -15,6 +15,9 @@ import Canteen from '../models/canteen';
 import Item from '../models/item';
 import axios from 'axios';
 import { PaymentLink } from '../common/utils';
+import Wallet from '../models/wallet';
+import moment from 'moment-timezone'; // Import moment-timezone
+moment.tz('Asia/Kolkata')
 
 dotenv.config();
 
@@ -172,7 +175,7 @@ export const listOrders = async (req: Request, res: Response): Promise<Response>
             {
               model: Item,
               as: 'menuItemItem', // Ensure this matches the alias in the OrderItem -> Item association
-              attributes: ['id', 'name', 'description', 'image'], // Fetch necessary item fields
+              attributes: ['id', 'name', 'description'], // Fetch necessary item fields
             },
           ],
         },
@@ -671,6 +674,8 @@ export const createCashfreePaymentLink = async (req: Request, res: Response): Pr
 };
 
 export const CashfreePaymentLinkDetails = async (req: Request, res: Response): Promise<Response> => {
+  const transaction = await sequelize.transaction(); // Start a transaction
+
   try {
     const { linkId } = req.body; // Extract linkId from the request body
 
@@ -688,14 +693,15 @@ export const CashfreePaymentLinkDetails = async (req: Request, res: Response): P
       });
     }
 
-    console.log('Extracted numeric part:', numericPart); // For debugging
 
     // Fetch the payment record from the database using the numericPart
     const payment = await Payment.findOne({
       where: { id: numericPart }, // Assuming `id` is the primary key in the Payment table
+      transaction, // Use the transaction
     });
 
     if (!payment) {
+      await transaction.rollback(); // Rollback the transaction if no payment is found
       return res.status(404).json({
         message: `No payment record found for numericPart: ${numericPart}`,
       });
@@ -723,7 +729,17 @@ export const CashfreePaymentLinkDetails = async (req: Request, res: Response): P
       // Update the payment record in the database
       payment.status = paymentDetails.link_status === 'PAID' ? 'success' : 'pending';
       payment.transactionId = paymentDetails.transaction_id || payment.transactionId;
-      await payment.update({ updatedAt: new Date() }); // Update the timestamp
+      await payment.update(
+        {
+          status: paymentDetails.link_status === 'PAID' ? 'success' : 'pending',
+          transactionId: paymentDetails.transaction_id || payment.transactionId,
+          updatedAt: new Date(),
+        },
+        { transaction }
+      ); // Update the status, transactionId, and timestamp within the transaction
+
+      // Commit the transaction
+      await transaction.commit();
 
       // Return the updated payment details as a response
       return res.status(200).json({
@@ -734,16 +750,190 @@ export const CashfreePaymentLinkDetails = async (req: Request, res: Response): P
         },
       });
     } else {
-      // Handle cases where the API call fails
+      // Rollback the transaction if the API call fails
+      await transaction.rollback();
       return res.status(400).json({
         message: 'Failed to fetch payment details from Cashfree.',
         error: response.data,
       });
     }
   } catch (error: unknown) {
+    await transaction.rollback(); // Rollback the transaction in case of any error
     console.error('Error fetching or updating payment details from Cashfree:', error);
     return res.status(500).json({
       message: 'An error occurred while fetching or updating payment details from Cashfree.',
+    });
+  }
+};
+
+export const cancelOrder = async (req: Request, res: Response): Promise<Response> => {
+  const transaction = await sequelize.transaction(); // Start a transaction
+
+  try {
+    const { orderId } = req.body; // Extract orderId from the request body
+
+
+    if (!orderId) {
+      return res.status(400).json({
+        message: 'Order ID is required to cancel the order.',
+      });
+    }
+
+    // Fetch the order by ID
+    const order: any = await Order.findOne({
+      where: { id: orderId, status: 'placed' }, // Ensure the order is in 'placed' status
+      include: [
+        {
+          model: Payment,
+          as: 'payment', // Ensure this matches the alias in the Order -> Payment association
+          where: { status: 'success' }, // Ensure the payment status is 'success'
+        },
+      ],
+      transaction, // Use the transaction
+    });
+
+    if (!order) {
+      await transaction.rollback(); // Rollback the transaction if no valid order is found
+      return res.status(404).json({
+        message: 'No valid order found with the provided ID, or the payment status is not "success".',
+      });
+    }
+
+    // Update the order status to 'canceled'
+    order.status = 'canceled';
+    await order.save({ transaction });
+
+    // Update the payment status to 'refunded' (if applicable)
+    const payment = order.payment;
+    if (payment) {
+      payment.status = 'refunded';
+      await payment.save({ transaction });
+    }
+
+    // Add the refunded amount to the Wallet table
+    const userId = order.userId; // Assuming `userId` is available in the order
+    const refundAmount = payment.totalAmount; // Use the total amount from the payment
+
+    // Create a wallet entry for the refund
+    await Wallet.create(
+      {
+        userId,
+        referenceId: orderId, // Use the orderId as the referenceId
+        type: 'credit', // Indicate this is a credit transaction
+        amount: refundAmount,
+        createdAt: Math.floor(Date.now() / 1000), // Store as Unix timestamp
+        updatedAt: Math.floor(Date.now() / 1000), // Store as Unix timestamp
+      },
+      { transaction }
+    );
+
+    // Commit the transaction
+    await transaction.commit();
+
+    return res.status(200).json({
+      message: 'Order canceled successfully. Refund added to wallet.',
+      data: {
+        orderId: order.id,
+        orderStatus: order.status,
+        paymentStatus: payment ? payment.status : null,
+        refundAmount,
+      },
+    });
+  } catch (error: unknown) {
+    await transaction.rollback(); // Rollback the transaction in case of any error
+    console.error('Error canceling order:', error);
+    return res.status(500).json({
+      message: 'An error occurred while canceling the order.',
+    });
+  }
+};
+
+export const getWalletTransactions = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { userId } = req.user as unknown as { userId: string }; // Extract userId from the request
+
+    if (!userId) {
+      return res.status(400).json({
+        message: 'User ID is required to fetch wallet transactions.',
+      });
+    }
+
+    // Ensure userId is a string
+    const userIdString = String(userId);
+
+    // Fetch wallet transactions for the user
+    const transactions = await Wallet.findAll({
+      where: { userId: userIdString }, // Ensure the type matches the database column
+      order: [['createdAt', 'DESC']], // Sort by most recent transactions
+    });
+
+    if (!transactions || transactions.length === 0) {
+      return res.status(404).json({
+        message: 'No wallet transactions found for this user.',
+      });
+    }
+
+    // Calculate the wallet balance for the user
+    const creditSum = await Wallet.sum('amount', {
+      where: { userId: userIdString, type: 'credit' },
+    });
+
+    const debitSum = await Wallet.sum('amount', {
+      where: { userId: userIdString, type: 'debit' },
+    });
+
+    const walletBalance = (creditSum || 0) - (debitSum || 0); // Calculate the balance
+
+    return res.status(200).json({
+      message: 'Wallet transactions fetched successfully.',
+      data: {
+        transactions,
+        walletBalance, // Include the available balance in the response
+      },
+    });
+  } catch (error: unknown) {
+    console.error('Error fetching wallet transactions:', error);
+    return res.status(500).json({
+      message: 'An error occurred while fetching wallet transactions.',
+    });
+  }
+};
+
+export const getWalletBalance = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { userId } = req.user as unknown as { userId: string }; // Extract userId from the request
+
+    if (!userId) {
+      return res.status(400).json({
+        message: 'User ID is required to fetch wallet balance.',
+      });
+    }
+
+    // Ensure userId is a string
+    const userIdString = String(userId);
+
+    // Calculate the wallet balance for the user
+    const creditSum = await Wallet.sum('amount', {
+      where: { userId: userIdString, type: 'credit' },
+    });
+
+    const debitSum = await Wallet.sum('amount', {
+      where: { userId: userIdString, type: 'debit' },
+    });
+
+    const walletBalance = (creditSum || 0) - (debitSum || 0); // Calculate the balance
+
+    return res.status(200).json({
+      message: 'Wallet balance fetched successfully.',
+      data: {
+        userId: userIdString,
+        walletBalance,
+      },
+    });
+  } catch (error: unknown) {
+    console.error('Error fetching wallet balance:', error);
+    return res.status(500).json({
+      message: 'An error occurred while fetching wallet balance.',
     });
   }
 };
