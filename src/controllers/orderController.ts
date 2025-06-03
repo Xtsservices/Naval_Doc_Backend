@@ -26,7 +26,6 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
 
   try {
     const { userId } = req.user as unknown as { userId: string };
-
     const { paymentMethod, transactionId, currency = 'INR' } = req.body;
 
     if (!userId || !paymentMethod) {
@@ -36,8 +35,11 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
       });
     }
 
+    // Ensure userId is a string
+    const userIdString = String(userId);
+
     const cart: any = await Cart.findOne({
-      where: { userId, status: 'active' },
+      where: { userId: userIdString, status: 'active' },
       include: [{ model: CartItem, as: 'cartItems' }],
       transaction,
     });
@@ -57,20 +59,20 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
     // Create the order
     const order = await Order.create(
       {
-        userId,
+        userId: userIdString,
         totalAmount: cart.totalAmount,
         status: 'placed',
         canteenId: cart.canteenId,
         menuConfigurationId: cart.menuConfigurationId,
-        createdById: userId, // Set createdById to the userId from the request
+        createdById: userIdString,
         orderDate: cart.orderDate,
       },
       { transaction }
     );
 
     // Generate QR Code
-    const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`; // Example: URL to fetch order details
-    const qrCode = await QRCode.toDataURL(qrCodeData); // Generate QR code as a data URL
+    const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
+    const qrCode = await QRCode.toDataURL(qrCodeData);
 
     // Update the order with the QR code
     order.qrCode = qrCode;
@@ -83,42 +85,98 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
       quantity: cartItem.quantity,
       price: cartItem.price,
       total: cartItem.total,
-      createdById: userId, // Set createdById to the userId from the request
+      createdById: userIdString,
     }));
     await OrderItem.bulkCreate(orderItems, { transaction });
 
-    // Store payment details
-    let status = 'success';
-    if (paymentMethod === 'cash') {
-      status = 'success';
-    } else {
-      status = 'pending';
-    }
+    // Handle wallet payment
+    let walletPaymentAmount = 0;
+    let remainingAmount = totalAmount;
+    if (paymentMethod.includes('wallet')) {
+      const creditSum = await Wallet.sum('amount', {
+        where: { userId: userIdString, type: 'credit' },
+        transaction,
+      });
 
-    const payment = await Payment.create(
-      {
-        orderId: order.id,
-        userId,
-        paymentMethod,
-        transactionId: transactionId || null,
-        amount,
-        gatewayPercentage,
-        gatewayCharges,
-        totalAmount,
-        currency,
-        status: status,
-        createdById: userId, // Set createdById to the userId from the request
-        updatedById: userId, // Set createdById to the userId from the request
-      },
-      { transaction }
-    );
-    let linkresonse;
-    if (paymentMethod === 'cash') {
-    } else {
-      linkresonse = await PaymentLink(order, payment, req.user);
-    }
+      const debitSum = await Wallet.sum('amount', {
+        where: { userId: userIdString, type: 'debit' },
+        transaction,
+      });
 
-    // Update the cart status to 'completed'
+      const walletBalance = (creditSum || 0) - (debitSum || 0);
+
+      if (walletBalance > 0) {
+        walletPaymentAmount = Math.min(walletBalance, totalAmount);
+        remainingAmount = totalAmount - walletPaymentAmount;
+
+        // Create a wallet debit transaction
+        await Wallet.create(
+          {
+            userId: userIdString,
+            referenceId: order.id,
+            type: 'debit',
+            amount: walletPaymentAmount,
+            createdAt: Math.floor(Date.now() / 1000),
+            updatedAt: Math.floor(Date.now() / 1000),
+          },
+          { transaction }
+        );
+
+        // Create a payment record for the wallet
+        await Payment.create(
+          {
+            orderId: order.id,
+            userId: userIdString,
+            paymentMethod: 'wallet',
+            transactionId: null,
+            amount: walletPaymentAmount,
+            gatewayPercentage,
+            gatewayCharges: 0,
+            totalAmount: walletPaymentAmount,
+            currency,
+            status: 'success',
+            createdById: userIdString,
+            updatedById: userIdString,
+          },
+          { transaction }
+        );
+      }
+    }
+    let linkResponse = null;
+    // Handle remaining payment
+    if (remainingAmount > 0) {
+      let status = 'success';
+     
+
+
+    let newpayment =  await Payment.create(
+        {
+          orderId: order.id,
+          userId: userIdString,
+          paymentMethod: paymentMethod.includes('online') ? 'online' : 'cash',
+          transactionId: transactionId || null,
+          amount: remainingAmount,
+          gatewayPercentage,
+          gatewayCharges,
+          totalAmount: remainingAmount,
+          currency,
+          status: status,
+          createdById: userIdString,
+          updatedById: userIdString,
+        },
+        { transaction }
+      );
+      if (paymentMethod.includes('cash')) {
+        status = 'success';
+      } else if (paymentMethod.includes('online')) {
+        status = 'pending';
+        
+        linkResponse = await PaymentLink(order, newpayment, req.user);
+      }
+
+      // Create a payment record for the remaining amount
+   
+    }
 
     // Clear the cart
     await CartItem.destroy({ where: { cartId: cart.id }, transaction });
@@ -131,17 +189,12 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
       message: getMessage('order.placed'),
       data: {
         order,
-        payment: {
-          paymentMethod,
-          transactionId,
-          amount,
-          gatewayPercentage,
-          gatewayCharges,
-          totalAmount,
-          currency,
+        payments: {
+          walletPaymentAmount,
+          remainingAmount,
         },
-        qrCode, // Include the QR code in the response
-        paymentlink: linkresonse,
+        qrCode,
+        paymentlink:linkResponse
       },
     });
   } catch (error: unknown) {

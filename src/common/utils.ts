@@ -190,7 +190,7 @@ export const PaymentLink = async (order:any,payment:any,user:any): Promise<Respo
 
 
 
-    let linkId = "testcash_praNav_";
+    let linkId = "testcash_pra1Nav_";
     linkId=linkId.concat(payment.id);
     const payload = {
       link_id: linkId,

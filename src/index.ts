@@ -197,9 +197,9 @@ OrderItem.belongsTo(Order, { foreignKey: 'orderId', as: 'order' }); // Reverse a
 
 
 // Order and Payment associations
-Order.hasOne(Payment, { foreignKey: 'orderId', as: 'payment' }); // Alias for Order -> Payment
+// Order.hasOne(Payment, { foreignKey: 'orderId', as: 'payment' }); // Alias for Order -> Payment
 Payment.belongsTo(Order, { foreignKey: 'orderId', as: 'order' }); // Reverse association
-
+Order.hasMany(Payment, { as: 'payment', foreignKey: 'orderId' });
 // OrderItem and Item associations
 OrderItem.belongsTo(Item, { foreignKey: 'itemId', as: 'menuItemItem' }); // Alias for OrderItem -> Item
 Item.hasMany(OrderItem, { foreignKey: 'itemId', as: 'itemOrderItems' }); // Reverse association
