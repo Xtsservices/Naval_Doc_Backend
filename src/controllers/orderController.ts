@@ -825,7 +825,6 @@ export const cancelOrder = async (req: Request, res: Response): Promise<Response
   try {
     const { orderId } = req.body; // Extract orderId from the request body
 
-
     if (!orderId) {
       return res.status(400).json({
         message: 'Order ID is required to cancel the order.',
@@ -839,7 +838,6 @@ export const cancelOrder = async (req: Request, res: Response): Promise<Response
         {
           model: Payment,
           as: 'payment', // Ensure this matches the alias in the Order -> Payment association
-          where: { status: 'success' }, // Ensure the payment status is 'success'
         },
       ],
       transaction, // Use the transaction
@@ -848,7 +846,7 @@ export const cancelOrder = async (req: Request, res: Response): Promise<Response
     if (!order) {
       await transaction.rollback(); // Rollback the transaction if no valid order is found
       return res.status(404).json({
-        message: 'No valid order found with the provided ID, or the payment status is not "success".',
+        message: 'No valid order found with the provided ID.',
       });
     }
 
@@ -856,40 +854,46 @@ export const cancelOrder = async (req: Request, res: Response): Promise<Response
     order.status = 'canceled';
     await order.save({ transaction });
 
-    // Update the payment status to 'refunded' (if applicable)
-    const payment = order.payment;
-    if (payment) {
-      payment.status = 'refunded';
-      await payment.save({ transaction });
-    }
+    // Process all associated payments using map
+    const payments = order.payment; // Fetch all payments associated with the order
+    let totalRefundAmount = 0;
 
-    // Add the refunded amount to the Wallet table
-    const userId = order.userId; // Assuming `userId` is available in the order
-    const refundAmount = payment.totalAmount; // Use the total amount from the payment
+    await Promise.all(
+      payments.map(async (payment: any) => {
+        if (payment.status === 'success') {
+          totalRefundAmount += payment.amount;
 
-    // Create a wallet entry for the refund
-    await Wallet.create(
-      {
-        userId,
-        referenceId: orderId, // Use the orderId as the referenceId
-        type: 'credit', // Indicate this is a credit transaction
-        amount: refundAmount,
-        createdAt: Math.floor(Date.now() / 1000), // Store as Unix timestamp
-        updatedAt: Math.floor(Date.now() / 1000), // Store as Unix timestamp
-      },
-      { transaction }
+          // Handle wallet payment refund
+          if (payment.paymentMethod === 'wallet' || payment.paymentMethod === 'online') {
+            await Wallet.create(
+              {
+                userId: order.userId, // Assuming `userId` is available in the order
+                referenceId: orderId, // Use the orderId as the referenceId
+                type: 'credit', // Indicate this is a credit transaction
+                amount: payment.amount, // Refund the payment amount
+                createdAt: Math.floor(Date.now() / 1000), // Store as Unix timestamp
+                updatedAt: Math.floor(Date.now() / 1000), // Store as Unix timestamp
+              },
+              { transaction }
+            );
+          }
+
+          // Update the payment status to 'refunded'
+          payment.status = 'refunded';
+          await payment.save({ transaction });
+        }
+      })
     );
 
     // Commit the transaction
     await transaction.commit();
 
     return res.status(200).json({
-      message: 'Order canceled successfully. Refund added to wallet.',
+      message: 'Order canceled successfully. Refund processed for all payments.',
       data: {
         orderId: order.id,
         orderStatus: order.status,
-        paymentStatus: payment ? payment.status : null,
-        refundAmount,
+        totalRefundAmount,
       },
     });
   } catch (error: unknown) {
