@@ -495,6 +495,38 @@ const processSpecialRecipient = async (body: any) => {
       reply = `❓ Invalid selection. Please select a valid menu number:\n${session.menus.map((menu: { name: string }, index: number) => `${index + 1}) ${menu.name}`).join('\n')}`;
     }
   }
+  else if (!session.selectedItems) {
+    interface SelectedItem {
+      item: { id: number; name: string; price: number };
+      quantity: number;
+    }
+
+    const selectedItems: SelectedItem[] = text.split(',').map((item: string) => {
+      const [itemIndex, quantity] = item.split('-').map(Number);
+      if (
+      itemIndex >= 1 &&
+      itemIndex <= session.items.length &&
+      quantity > 0
+      ) {
+      return {
+        item: session.items[itemIndex - 1],
+        quantity,
+      };
+      }
+      return null;
+    }).filter(Boolean) as SelectedItem[];
+
+    if (selectedItems.length > 0) {
+      session.selectedItems = selectedItems;
+      reply = `You selected:\n${selectedItems.map(
+        ({ item, quantity }) => `${item.name} - Quantity: ${quantity}`
+      ).join('\n')}\n\nIf you want to add more items, reply with the format 'itemIndex-quantity' (e.g., '2-1').\nConfirm your selection by replying 'Yes'.`;
+    } else {
+      reply = `❓ Invalid selection. Please select items in the format 'itemIndex-quantity' separated by commas (e.g., '1-2,3-1').\nAvailable items:\n${session.items.map(
+        (item: { name: any; price: any; }, index: number) => `${index + 1}) ${item.name} - ₹${item.price}`
+      ).join('\n')}`;
+    }
+  }
   else {
     reply = `❓ I didn't understand that. Please select a valid menu number or restart by typing 'Hi'.`;
   }
