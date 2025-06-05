@@ -396,7 +396,7 @@ const processSpecialRecipient = async (body: any) => {
     .then(response => {
       if (response.data.data && Array.isArray(response.data.data)) {
         console.log('Canteens fetched successfully:', response.data);
-        return response.data.map((canteen: { canteenName: string }) => canteen.canteenName);
+        return response.data.data.map((canteen: { canteenName: string }) => canteen.canteenName);
       }
       console.warn('Unexpected response format:', response.data);
       return [];
