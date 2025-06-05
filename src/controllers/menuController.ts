@@ -360,6 +360,42 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
   }
 };
 
+export const getMenusByCanteen = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { canteenId } = req.query; // Optional filter by canteenId
+
+    // Validate if canteenId is provided
+    if (!canteenId) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: 'Canteen ID is required.',
+      });
+    }
+
+    // Fetch menus filtered by canteenId and select id and name fields
+    const menus = await Menu.findAll({
+      where: { canteenId },
+      attributes: ['id', 'name'], // Select id and name fields
+      order: [['startTime', 'ASC']], // Order by startTime
+    });
+
+    if (menus.length === 0) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: 'No menus found for the specified canteen.',
+      });
+    }
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: 'Menus fetched successfully.',
+      data: menus, // Return the filtered menus
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching menus by canteen: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Internal server error.',
+    });
+  }
+};
+
 export const getMenuById = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { id } = req.query; // Get menu ID from query parameters
