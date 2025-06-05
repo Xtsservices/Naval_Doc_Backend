@@ -391,8 +391,9 @@ const processSpecialRecipient = async (body: any) => {
   const text = messageParameters.text.body.trim().toLowerCase();
 
   // List of canteens
+  console.log(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
   const CANTEENS = await axios.get(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
-    .then(response => response.data.map((canteen: any) => canteen.name))
+    .then(response => Array.isArray(response.data) ? response.data.map((canteen: any) => canteen.name) : [])
     .catch(error => {
       console.error('Error fetching canteen list:', error.message);
       return [];
