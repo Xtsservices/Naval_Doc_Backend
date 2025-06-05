@@ -396,7 +396,7 @@ const processSpecialRecipient = async (body: any) => {
   const session: any = sessions[from];
   let reply = '';
 
-  console.log(session)
+  console.log("session",session);
 
   // Step 1: Send list of canteens on "hi"
   if (!session.canteen) {
@@ -469,7 +469,7 @@ const processSpecialRecipient = async (body: any) => {
   // Send reply via Airtel API
   try {
     await sendWhatsAppMessage(from, reply, "918686078782");
-    console.log(`📤 Reply sent to ${from}: ${reply}`);
+    // console.log(`📤 Reply sent to ${from}: ${reply}`);
   } catch (error: any) {
     console.error('❌ Error sending reply:', error.message);
   }
@@ -502,7 +502,7 @@ const sendWhatsAppMessage = async (to: string, reply: string, fromNumber: string
       },
     });
 
-    console.log('Message sent successfully:', response.data);
+    // console.log('Message sent successfully:', response.data);
   } catch (error: any) {
     console.error('Error sending message:', error.response?.data || error.message);
     throw error;
