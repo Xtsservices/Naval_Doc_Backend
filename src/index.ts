@@ -391,12 +391,17 @@ const processSpecialRecipient = async (body: any) => {
   const text = messageParameters.text.body.trim().toLowerCase();
 
   // List of canteens
-  const CANTEENS = ['Canteen A', 'Canteen B', 'Canteen C'];
+  const CANTEENS = await axios.get('http://localhost:3002/api/canteen/getAllCanteensforwhatsapp')
+    .then(response => response.data.map((canteen: any) => canteen.name))
+    .catch(error => {
+      console.error('Error fetching canteen list:', error.message);
+      return [];
+    });
 
   let reply = '';
 
   if (text === 'hi') {
-    reply = `👋 Welcome! Here is the list of available canteens:\n${CANTEENS.map((canteen, index) => `${index + 1}) ${canteen}`).join('\n')}`;
+    reply = `👋 Welcome! Here is the list of available canteens:\n${CANTEENS.map((canteen: any, index: number) => `${index + 1}) ${canteen}`).join('\n')}`;
   } else {
     reply = `❓ I didn't understand that. Please type 'Hi' to get the list of canteens.`;
   }

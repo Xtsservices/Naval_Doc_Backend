@@ -8,5 +8,6 @@ const router = Router();
 // Route to create a canteen with image upload and token authentication
 router.post('/createCanteen', authenticateToken, upload.single('canteenImage'), createCanteen);
 router.get('/getAllCanteens', authenticateToken, getAllCanteens);
+router.get('/getAllCanteensforwhatsapp', getAllCanteens);
 
 export default router;
