@@ -385,6 +385,7 @@ const processSpecialRecipient = async (body: any) => {
     console.error('Invalid payload for special recipient:', body);
     return;
   }
+  console.log(body);
 
   const text = messageParameters.text.body.trim().toLowerCase();
 
@@ -395,9 +396,9 @@ const processSpecialRecipient = async (body: any) => {
 
   const session:any = sessions[from];
   let reply = '';
-  console.log('Current session:', session);
-  console.log('session.canteen:', session.canteen);
-  console.log('session.selectedCanteen:', session.selectedCanteen);
+  // console.log('Current session:', session);
+  // console.log('session.canteen:', session.canteen);
+  // console.log('session.selectedCanteen:', session.selectedCanteen);
 
 
   // Step 1: Send list of canteens on "hi"
