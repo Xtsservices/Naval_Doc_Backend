@@ -366,7 +366,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
 
   // Send reply via Airtel API
   try {
-    await sendWhatsAppMessage(from, reply);
+    await sendWhatsAppMessage(from, reply, FROM_NUMBER.toString());
     console.log(`📤 Reply sent to ${from}: ${reply}`);
   } catch (error: any) {
     console.error('❌ Error sending reply:', error.message);
@@ -403,7 +403,7 @@ const processSpecialRecipient = async (body: any) => {
 
   // Send reply via Airtel API
   try {
-    await sendWhatsAppMessage(from, reply);
+    await sendWhatsAppMessage(from, reply, "918686078782");
     console.log(`📤 Reply sent to ${from}: ${reply}`);
   } catch (error: any) {
     console.error('❌ Error sending reply:', error.message);
@@ -413,7 +413,7 @@ const processSpecialRecipient = async (body: any) => {
 /**
  * Function to send a WhatsApp message via Airtel API
  */
-const sendWhatsAppMessage = async (from: string, reply: string) => {
+const sendWhatsAppMessage = async (to: string, reply: string, fromNumber: string) => {
   const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
   const username = 'world_tek';
   const password = 'T7W9&w3396Y"'; // Replace with actual password
@@ -422,8 +422,8 @@ const sendWhatsAppMessage = async (from: string, reply: string) => {
 
   const payload = {
     sessionId: generateUuid(),
-    to: from,
-    from: '917337068888', // Your Airtel-registered business number
+    to, // Recipient number
+    from: fromNumber, // Dynamically set the sender number
     message: {
       text: reply,
     },
