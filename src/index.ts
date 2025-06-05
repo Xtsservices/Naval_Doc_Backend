@@ -385,7 +385,6 @@ const processSpecialRecipient = async (body: any) => {
     console.error('Invalid payload for special recipient:', body);
     return;
   }
-  console.log(body);
 
   const text = messageParameters.text.body.trim().toLowerCase();
 
@@ -394,12 +393,10 @@ const processSpecialRecipient = async (body: any) => {
     sessions[from] = {};
   }
 
-  const session:any = sessions[from];
+  const session: any = sessions[from];
   let reply = '';
-  // console.log('Current session:', session);
-  // console.log('session.canteen:', session.canteen);
-  // console.log('session.selectedCanteen:', session.selectedCanteen);
 
+  console.log(session)
 
   // Step 1: Send list of canteens on "hi"
   if (!session.canteen) {
@@ -408,13 +405,11 @@ const processSpecialRecipient = async (body: any) => {
         .get(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
         .then(response => {
           if (response.data.data && Array.isArray(response.data.data)) {
-            console.log('Canteens fetched successfully:', response.data);
             return response.data.data.map((canteen: { id: number; canteenName: string }) => ({
               id: canteen.id,
               name: canteen.canteenName,
             }));
           }
-          console.warn('Unexpected response format:', response.data);
           return [];
         })
         .catch(error => {
@@ -424,7 +419,7 @@ const processSpecialRecipient = async (body: any) => {
 
       if (CANTEENS.length > 0) {
         session.canteens = CANTEENS; // Store canteens in the session
-        reply = `👋 Welcome! Here is the list of available canteens:\n${CANTEENS.map((canteen: { name: any; }, index: number) => `${index + 1}) ${canteen.name}`).join('\n')}`;
+        reply = `👋 Welcome! Here is the list of available canteens:\n${CANTEENS.map((canteen: { name: string }, index: number) => `${index + 1}) ${canteen.name}`).join('\n')}`;
       } else {
         reply = `❌ No canteens available at the moment. Please try again later.`;
       }
@@ -444,13 +439,11 @@ const processSpecialRecipient = async (body: any) => {
         .get(`${process.env.BASE_URL}/api/menu/getMenusByCanteen?canteenId=${selectedCanteen.id}`)
         .then(response => {
           if (response.data.data && Array.isArray(response.data.data)) {
-            console.log('Menus fetched successfully:', response.data);
             return response.data.data.map((menu: { id: number; name: string }) => ({
               id: menu.id,
               name: menu.name,
             }));
           }
-          console.warn('Unexpected response format:', response.data);
           return [];
         })
         .catch(error => {
@@ -460,12 +453,12 @@ const processSpecialRecipient = async (body: any) => {
 
       if (MENUS.length > 0) {
         session.menus = MENUS; // Store menus in the session
-        reply = `You selected ${selectedCanteen.name}. Here are the available menus:\n${MENUS.map((menu: { name: any; }, index: number) => `${index + 1}) ${menu.name}`).join('\n')}`;
+        reply = `You selected ${selectedCanteen.name}. Here are the available menus:\n${MENUS.map((menu: { name: string }, index: number) => `${index + 1}) ${menu.name}`).join('\n')}`;
       } else {
         reply = `❌ No menus available for ${selectedCanteen.name}. Please try again later.`;
       }
     } else {
-      reply = `❓ Invalid selection. Please select a valid canteen number:\n${session.canteens.map((canteen: { name: any; }, index: number) => `${index + 1}) ${canteen.name}`).join('\n')}`;
+      reply = `❓ Invalid selection. Please select a valid canteen number:\n${session.canteens.map((canteen: { name: string }, index: number) => `${index + 1}) ${canteen.name}`).join('\n')}`;
     }
   }
   // Step 3: Handle menu selection (optional for further implementation)
