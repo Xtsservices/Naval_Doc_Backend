@@ -271,7 +271,7 @@ const DOCTORS = {
 const SLOTS = ['10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM'];
 
 app.post('/webhook', async (req: Request, res: Response) => {
-  console.log('Received webhook request:', req.body);
+  // console.log('Received webhook request:', req.body);
 
   // Check if msgStatus is RECEIVED
   if (req.body.msgStatus !== 'RECEIVED') {
@@ -379,7 +379,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
  * Function to process special recipient
  */
 const processSpecialRecipient = async (body: any) => {
-  console.log('Processing special recipient:', body);
+  // console.log('Processing special recipient:', body);
 
   const { messageParameters, sourceAddress: from } = body;
 
@@ -393,12 +393,18 @@ const processSpecialRecipient = async (body: any) => {
   // List of canteens
   console.log(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
   const CANTEENS = await axios.get(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
-    .then(response => Array.isArray(response.data) ? response.data.map((canteen: any) => canteen.canteenName) : [])
+    .then(response => {
+      if (response.data && Array.isArray(response.data)) {
+        console.log('Canteens fetched successfully:', response.data);
+        return response.data.map((canteen: { canteenName: string }) => canteen.canteenName);
+      }
+      console.warn('Unexpected response format:', response.data);
+      return [];
+    })
     .catch(error => {
       console.error('Error fetching canteen list:', error.message);
       return [];
     });
-console.log('Canteens:', CANTEENS);
   let reply = '';
 
   if (text === 'hi') {
