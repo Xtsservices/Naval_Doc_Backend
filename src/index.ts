@@ -394,7 +394,7 @@ const processSpecialRecipient = async (body: any) => {
   console.log(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
   const CANTEENS = await axios.get(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
     .then(response => {
-      if (response.data && Array.isArray(response.data)) {
+      if (response.data.data && Array.isArray(response.data.data)) {
         console.log('Canteens fetched successfully:', response.data);
         return response.data.map((canteen: { canteenName: string }) => canteen.canteenName);
       }
