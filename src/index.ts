@@ -386,6 +386,8 @@ const processSpecialRecipient = async (body: any) => {
   }
 
   const text = messageParameters.text.body.trim().toLowerCase();
+
+  console.log(text)
   console.log(sessions);
   // Initialize session for the user if not already present
   if (!sessions[from]) {
