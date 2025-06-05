@@ -461,6 +461,40 @@ const processSpecialRecipient = async (body: any) => {
     }
   }
   // Step 3: Handle menu selection (optional for further implementation)
+  else if (!session.selectedMenu) {
+    const selectedIndex = Number(text) - 1;
+    if (session.menus && selectedIndex >= 0 && selectedIndex < session.menus.length) {
+      const selectedMenu = session.menus[selectedIndex];
+      session.selectedMenu = selectedMenu;
+
+      // Fetch items for the selected menu
+      const ITEMS = await axios
+        .get(`${process.env.BASE_URL}/api/menu/getMenuByIdforwhatsapp?menuId=${selectedMenu.id}`)
+        .then(response => {
+          if (response.data.data && Array.isArray(response.data.data)) {
+        return response.data.data.map((item: { id: number; name: string; price: number }) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+        }));
+          }
+          return [];
+        })
+        .catch(error => {
+          console.error('Error fetching item list:', error.message);
+          return [];
+        });
+
+      if (ITEMS.length > 0) {
+        session.items = ITEMS; // Store items in the session
+        reply = `You selected ${selectedMenu.name}. Here are the available items:\n${ITEMS.map((item: { name: string, price: number }, index: number) => `${index + 1}) ${item.name} - ₹${item.price}`).join('\n')}`;
+      } else {
+        reply = `❌ No items available for ${selectedMenu.name}. Please try again later.`;
+      }
+    } else {
+      reply = `❓ Invalid selection. Please select a valid menu number:\n${session.menus.map((menu: { name: string }, index: number) => `${index + 1}) ${menu.name}`).join('\n')}`;
+    }
+  }
   else {
     reply = `❓ I didn't understand that. Please select a valid menu number or restart by typing 'Hi'.`;
   }

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createMenuWithItems,getAllMenus,getMenusForNextTwoDaysGroupedByDateAndConfiguration,getMenuById,getMenusByCanteen } from '../controllers/menuController';
+import { createMenuWithItems,getAllMenus,getMenusForNextTwoDaysGroupedByDateAndConfiguration,getMenuById,getMenusByCanteen, getMenuByIdforwhatsapp } from '../controllers/menuController';
 import authenticateToken from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -12,6 +12,9 @@ router.get('/getAllMenus', authenticateToken, getAllMenus);
 router.get('/getMenusForNextTwoDaysGroupedByDateAndConfiguration', authenticateToken, getMenusForNextTwoDaysGroupedByDateAndConfiguration);
 
 router.get('/getMenuById', authenticateToken, getMenuById);
+
+router.get('/getMenuByIdforwhatsapp',  getMenuByIdforwhatsapp);
+
 
 router.get('/getMenusByCanteen',  getMenusByCanteen);
 
