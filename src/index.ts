@@ -398,7 +398,7 @@ const processSpecialRecipient = async (body: any) => {
   let reply = '';
 
   // Step 1: Send list of canteens on "hi"
-  if (!session.canteen) {
+  if (!session.canteens) {
     if (text === 'hi') {
       const CANTEENS = await axios
         .get(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
