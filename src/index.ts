@@ -273,9 +273,17 @@ const SLOTS = ['10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM'];
 app.post('/webhook', async (req: Request, res: Response) => {
   console.log('Received webhook request:', req.body);
 
+  // Check if msgStatus is RECEIVED
   if (req.body.msgStatus !== 'RECEIVED') {
     console.log('Ignoring webhook request as msgStatus is not RECEIVED.');
     return res.status(200).json({ message: 'Webhook ignored.' });
+  }
+
+  // Check if recipientAddress matches the specific number
+  if (req.body.recipientAddress === '918686078782') {
+    console.log('Navigating to another function for processing recipientAddress:', req.body.recipientAddress);
+    await processSpecialRecipient(req.body); // Navigate to another function
+    return res.status(200).json({ message: 'Special recipient processed.' });
   }
 
   const { sourceAddress: from, messageParameters } = req.body;
@@ -295,6 +303,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
   const session = sessions[from];
   let reply = '';
 
+  // Handle session logic
   if (!session.city) {
     if (text.toLowerCase() === 'hi') {
       reply = `👋 Welcome to Vydhyo! Please select your city:\n${CITIES.map((city, index) => `${index + 1}) ${city}`).join('\n')}`;
@@ -365,6 +374,41 @@ app.post('/webhook', async (req: Request, res: Response) => {
 
   res.status(200).json({ message: 'Webhook processed successfully.' });
 });
+
+/**
+ * Function to process special recipient
+ */
+const processSpecialRecipient = async (body: any) => {
+  console.log('Processing special recipient:', body);
+
+  const { messageParameters, sourceAddress: from } = body;
+
+  if (!messageParameters?.text?.body || !from) {
+    console.error('Invalid payload for special recipient:', body);
+    return;
+  }
+
+  const text = messageParameters.text.body.trim().toLowerCase();
+
+  // List of canteens
+  const CANTEENS = ['Canteen A', 'Canteen B', 'Canteen C'];
+
+  let reply = '';
+
+  if (text === 'hi') {
+    reply = `👋 Welcome! Here is the list of available canteens:\n${CANTEENS.map((canteen, index) => `${index + 1}) ${canteen}`).join('\n')}`;
+  } else {
+    reply = `❓ I didn't understand that. Please type 'Hi' to get the list of canteens.`;
+  }
+
+  // Send reply via Airtel API
+  try {
+    await sendWhatsAppMessage(from, reply);
+    console.log(`📤 Reply sent to ${from}: ${reply}`);
+  } catch (error: any) {
+    console.error('❌ Error sending reply:', error.message);
+  }
+};
 
 /**
  * Function to send a WhatsApp message via Airtel API
