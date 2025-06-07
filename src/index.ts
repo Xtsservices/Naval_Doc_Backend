@@ -574,6 +574,7 @@ const processSpecialRecipient = async (body: any) => {
             itemId: item.itemId,
             quantity: item.quantity,
             price: item.price,
+            total: item.price * item.quantity,
             createdById: user.id,
             });
 
