@@ -584,9 +584,14 @@ const processSpecialRecipient = async (body: any) => {
         // Store payment details in the Payment table
         await Payment.create({
           orderId: order.id,
+          userId: user.id,
+          createdById: user.id, // Assuming the user is the creator
           amount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
           status: 'Pending', // Default payment status
-          method: 'cash', // Example payment method
+          paymentMethod:"UPI", // Assuming UPI as the payment method
+          gatewayCharges: 0, // Assuming no gateway charges for simplicity
+          gatewayPercentage: 0, // Assuming no gateway percentage for simplicity
+          currency: 'INR', // Assuming INR as the currency
         });
 
         reply = `✅ Order placed successfully with Order ID: ${order.id}. Thank you!`;
