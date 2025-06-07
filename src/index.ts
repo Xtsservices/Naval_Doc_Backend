@@ -44,6 +44,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import crypto from 'crypto';
 import { getTotalAmount } from './controllers/adminDashboardController';
+import { PaymentLink } from './common/utils';
 
 const AIRTEL_USERNAME = 'your_username'; // Replace with your HMAC username
 const AIRTEL_SECRET = 'your_secret';     // Replace with your HMAC secret key
@@ -595,6 +596,18 @@ const processSpecialRecipient = async (body: any) => {
           gatewayPercentage: 0, // Assuming no gateway percentage for simplicity
           currency: 'INR', // Assuming INR as the currency
         });
+
+        // Generate payment link using the PaymentLink function from utils
+        const paymentLink = PaymentLink(
+          order,
+          Payment,
+          user
+        );
+
+        // Send payment link to the user
+        reply += `\n\n💳 Complete your payment using the following link:\n${paymentLink}`;
+
+        
 
         reply = `✅ Order placed successfully with Order ID: ${order.id}. Thank you!`;
       } catch (error:any) {
