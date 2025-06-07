@@ -563,7 +563,7 @@ const processSpecialRecipient = async (body: any) => {
           canteenId: session.selectedCanteen.id,
           menuConfigurationId: session.selectedMenu.id, // Add menuConfigurationId from session.selectedMenu
           totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
-          status: 'Pending', // Default status
+          status: 'placed', // Default status
           orderDate : Math.floor(new Date().getTime() / 1000), // Current date in UNIX format
 
         });
