@@ -406,7 +406,7 @@ const processSpecialRecipient = async (body: any) => {
   console.log('body', msg);
 
   // Step 1: Menu Selection
-  if (msg === 'hi' || session.stage === 'menu_selection') {
+  if (msg === 'hi' ) {
     session.stage = 'menu_selection';
     const canteens = await axios
       .get(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
