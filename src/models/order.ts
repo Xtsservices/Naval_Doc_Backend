@@ -15,6 +15,7 @@ class Order extends Model {
   public readonly createdAt!: number; // Store as Unix timestamp
   public readonly updatedAt!: number; // Store as Unix timestamp
   public qrCode!: string; // Field to store the QR code
+  orderDate: number;
 }
 
 Order.init(

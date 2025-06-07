@@ -536,7 +536,59 @@ const processSpecialRecipient = async (body: any) => {
       console.log('session', session.cart);
 
     
-      reply = '✅ Order placed successfully. Thank you!';
+      try {
+        // Save order in the database
+        // Remove country code from mobile number
+        const mobileNumber = userId.startsWith('91') ? userId.slice(2) : userId;
+
+        // Check if user exists in the database
+        let user = await User.findOne({ where: { mobile: mobileNumber } });
+
+        // If user does not exist, create a new user
+        if (!user) {
+          user = await User.create({
+            mobile: mobileNumber,
+            firstName: 'Guest', // Default values for new user
+            lastName: 'User',
+            email: null,
+          });
+        }
+
+        // Create the order
+        const order = await Order.create({
+          userId: user.id, // Use the user's ID from the database
+          canteenId: session.selectedCanteen.id,
+          totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
+          status: 'Pending', // Default status
+        });
+
+        // Save order items in the database
+        for (const item of session.cart ?? []) {
+            await OrderItem.create({
+            orderId: order.id,
+            itemId: item.itemId,
+            quantity: item.quantity,
+            price: item.price,
+            });
+
+            // Store order date in UNIX format
+            order.orderDate = Math.floor(new Date().getTime() / 1000); // Current date in UNIX format
+            await order.save();
+        }
+
+        // Store payment details in the Payment table
+        await Payment.create({
+          orderId: order.id,
+          amount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
+          status: 'Pending', // Default payment status
+          method: 'cash', // Example payment method
+        });
+
+        reply = `✅ Order placed successfully with Order ID: ${order.id}. Thank you!`;
+      } catch (error:any) {
+        console.error('Error placing order:', error.message);
+        reply = '❌ Failed to place the order. Please try again later.';
+      }
       await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
       return;
     }
