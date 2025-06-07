@@ -533,7 +533,7 @@ const processSpecialRecipient = async (body: any) => {
   if (session.stage === 'cart_review') {
     if (msg === '✅' || msg === '1' || msg === 'confirm') {
       delete sessions[userId]; // Clear session
-      console.log('session', session.cart);
+      console.log('session', session);
 
     
       try {
