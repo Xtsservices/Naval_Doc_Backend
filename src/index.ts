@@ -558,6 +558,7 @@ const processSpecialRecipient = async (body: any) => {
         const order = await Order.create({
           // Use the user's ID from the database
           userId: user.id,
+          createdById: user.id, // Assuming the user is the creator
           canteenId: session.selectedCanteen.id,
           menuConfigurationId: session.selectedMenu.id, // Add menuConfigurationId from session.selectedMenu
           totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
@@ -573,6 +574,7 @@ const processSpecialRecipient = async (body: any) => {
             itemId: item.itemId,
             quantity: item.quantity,
             price: item.price,
+            createdById: user.id,
             });
 
             // Store order date in UNIX format
