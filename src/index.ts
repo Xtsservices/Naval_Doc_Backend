@@ -43,6 +43,7 @@ import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
 import crypto from 'crypto';
+import { getTotalAmount } from './controllers/adminDashboardController';
 
 const AIRTEL_USERNAME = 'your_username'; // Replace with your HMAC username
 const AIRTEL_SECRET = 'your_secret';     // Replace with your HMAC secret key
@@ -587,6 +588,7 @@ const processSpecialRecipient = async (body: any) => {
           userId: user.id,
           createdById: user.id, // Assuming the user is the creator
           amount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
+          totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
           status: 'Pending', // Default payment status
           paymentMethod:"UPI", // Assuming UPI as the payment method
           gatewayCharges: 0, // Assuming no gateway charges for simplicity
