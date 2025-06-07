@@ -598,14 +598,14 @@ const processSpecialRecipient = async (body: any) => {
         // Commit the transaction
         await transaction.commit();
 
-        console.log('Order placed successfully:', payment);
 
         // Generate payment link using the PaymentLink function from utils
         const paymentLink = await PaymentLink(order, payment, user);
+        console.log('Payment link generated:', paymentLink);
 
         // Send payment link to the user
-        reply += `\n\n💳 Complete your payment using the following link:\n${paymentLink}`;
-        reply = `✅ Order placed successfully with Order ID: ${order.id}. Thank you!`;
+        reply = `💳 Complete your payment using the following link:\n${paymentLink}`;
+      //  reply = `✅ Order placed successfully with Order ID: ${order.id}. Thank you!`;
       } catch (error: any) {
         // Rollback the transaction in case of an error
         await transaction.rollback();
