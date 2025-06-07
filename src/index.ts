@@ -597,6 +597,7 @@ const processSpecialRecipient = async (body: any) => {
           currency: 'INR', // Assuming INR as the currency
         });
 
+        console.log('Order placed successfully:', Payment)
         // Generate payment link using the PaymentLink function from utils
         const paymentLink = PaymentLink(
           order,
