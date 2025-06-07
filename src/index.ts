@@ -253,10 +253,17 @@ const AIRTEL_TOKEN = 'T7W9&w3396Y"';
 interface UserSession {
   items: string[];
   confirmed: boolean;
+  menus?: { id: number; name: string }[]; // Add menus property
 }
 
 // 🔄 Webhook to receive incoming messages from Airtel
-const sessions: Record<string, { city?: string; service?: string; specialization?: string; doctor?: string; date?: string; slot?: string }> = {};
+const sessions: Record<string, {
+  items: any;
+  selectedMenu: any;
+  menus: any;
+  selectedCanteen: any;
+  canteens: any; city?: string; service?: string; specialization?: string; doctor?: string; date?: string; slot?: string; stage?: string; cart?: { itemId: number; name: string; price: number; quantity: number }[] 
+}> = {};
 
 const CITIES = ['Warangal', 'Karimnagar', 'Nizamabad'];
 const SERVICES = ['Doctor Appointments', 'Pharmacy', 'Diagnostics', 'Blood Banks'];
@@ -296,7 +303,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
   console.log(`📥 Incoming message from ${from}: ${text}`);
 
   if (!sessions[from]) {
-    sessions[from] = {};
+    sessions[from] = { items: [], selectedCanteen: null, canteens: [], menus: null, selectedMenu: null };
   }
 
   const session = sessions[from];
@@ -378,167 +385,169 @@ app.post('/webhook', async (req: Request, res: Response) => {
  * Function to process special recipient
  */
 const processSpecialRecipient = async (body: any) => {
-  const { messageParameters, sourceAddress: from } = body;
+  const { messageParameters, sourceAddress: userId } = body;
 
-  if (!messageParameters?.text?.body || !from) {
+  if (!messageParameters?.text?.body || !userId) {
     console.error('Invalid payload for special recipient:', body);
     return;
   }
 
-  const text = messageParameters.text.body.trim().toLowerCase();
+  const msg = messageParameters.text.body.trim().toLowerCase();
 
-  console.log(text)
-  console.log(sessions);
   // Initialize session for the user if not already present
-  if (!sessions[from]) {
-    sessions[from] = {};
+  if (!sessions[userId]) {
+    sessions[userId] = { stage: 'menu_selection', items: [], cart: [], canteens: [], menus: null, selectedCanteen: null, selectedMenu: null };
   }
 
-  const session: any = sessions[from];
+  const session = sessions[userId];
   let reply = '';
+  let FROM_NUMBER="918686078782"
 
-  // Step 1: Send list of canteens on "hi"
-  if (!session.canteens) {
-    if (text === 'hi') {
-      const CANTEENS = await axios
-        .get(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
-        .then(response => {
-          if (response.data.data && Array.isArray(response.data.data)) {
-            return response.data.data.map((canteen: { id: number; canteenName: string }) => ({
-              id: canteen.id,
-              name: canteen.canteenName,
-            }));
-          }
-          return [];
-        })
-        .catch(error => {
-          console.error('Error fetching canteen list:', error.message);
-          return [];
-        });
+  // Step 1: Menu Selection
+  if (msg === 'hi' || session.stage === 'menu_selection') {
+    session.stage = 'menu_selection';
+    const canteens = await axios
+      .get(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
+      .then(response => response.data.data || [])
+      .catch(error => {
+        console.error('Error fetching canteens:', error.message);
+        return [];
+      });
 
-      if (CANTEENS.length > 0) {
-        session.canteens = CANTEENS; // Store canteens in the session
-        reply = `👋 Welcome! Here is the list of available canteens:\n${CANTEENS.map((canteen: { name: string }, index: number) => `${index + 1}) ${canteen.name}`).join('\n')}`;
-      } else {
-        reply = `❌ No canteens available at the moment. Please try again later.`;
-      }
+    if (canteens.length > 0) {
+      session.canteens = canteens;
+      const list = canteens.map((c: { canteenName: any }, idx: number) => `${idx + 1}. ${c.canteenName}`).join('\n');
+      reply = `🍽️ Welcome! Choose a canteen:\n${list}`;
     } else {
-      reply = `❓ I didn't understand that. Please type 'Hi' to get the list of canteens.`;
+      reply = `❌ No canteens available at the moment. Please try again later.`;
     }
+    sessions[userId] = session;
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+    return;
   }
-  // Step 2: Handle canteen selection
-  else if (!session.selectedCanteen) {
-    const selectedIndex = Number(text) - 1;
-    if (session.canteens && selectedIndex >= 0 && selectedIndex < session.canteens.length) {
-      const selectedCanteen = session.canteens[selectedIndex];
-      session.selectedCanteen = selectedCanteen;
 
-      // Fetch menus for the selected canteen
-      const MENUS = await axios
-        .get(`${process.env.BASE_URL}/api/menu/getMenusByCanteen?canteenId=${selectedCanteen.id}`)
-        .then(response => {
-          if (response.data.data && Array.isArray(response.data.data)) {
-            return response.data.data.map((menu: { id: number; name: string }) => ({
-              id: menu.id,
-              name: menu.name,
-            }));
-          }
-          return [];
-        })
-        .catch(error => {
-          console.error('Error fetching menu list:', error.message);
-          return [];
-        });
+  // Step 2: Canteen Selection
+  if (session.stage === 'menu_selection' && /^[1-9]\d*$/.test(msg)) {
+    const index = parseInt(msg) - 1;
+    if (index < 0 || index >= session.canteens.length) {
+      reply = '⚠️ Invalid canteen option. Please type "hi" to restart.';
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      return;
+    }
 
-      if (MENUS.length > 0) {
-        session.menus = MENUS; // Store menus in the session
-        reply = `You selected ${selectedCanteen.name}. Here are the available menus:\n${MENUS.map((menu: { name: string }, index: number) => `${index + 1}) ${menu.name}`).join('\n')}`;
-      } else {
-        reply = `❌ No menus available for ${selectedCanteen.name}. Please try again later.`;
-      }
+    const selectedCanteen = session.canteens[index];
+    session.selectedCanteen = selectedCanteen;
+    session.stage = 'item_selection';
+
+    const menus = await axios
+      .get(`${process.env.BASE_URL}/api/menu/getMenusByCanteen?canteenId=${selectedCanteen.id}`)
+      .then(response => response.data.data || [])
+      .catch(error => {
+        console.error('Error fetching menus:', error.message);
+        return [];
+      });
+
+    if (menus.length > 0) {
+      session.menus = menus;
+      const menuList = menus.map((m: { name: any }, idx: number) => `${idx + 1}. ${m.name}`).join('\n');
+      reply = `🍴 ${selectedCanteen.canteenName.toUpperCase()} MENU:\n${menuList}\n\nSend menu number to proceed.`;
     } else {
-      reply = `❓ Invalid selection. Please select a valid canteen number:\n${session.canteens.map((canteen: { name: string }, index: number) => `${index + 1}) ${canteen.name}`).join('\n')}`;
+      reply = `❌ No menus available for ${selectedCanteen.canteenName}. Please try again later.`;
     }
+    sessions[userId] = session;
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+    return;
   }
-  // Step 3: Handle menu selection (optional for further implementation)
-  else if (!session.selectedMenu) {
-    const selectedIndex = Number(text) - 1;
-    if (session.menus && selectedIndex >= 0 && selectedIndex < session.menus.length) {
-      const selectedMenu = session.menus[selectedIndex];
-      session.selectedMenu = selectedMenu;
 
-      // Fetch items for the selected menu
-      const ITEMS = await axios
-        .get(`${process.env.BASE_URL}/api/menu/getMenuByIdforwhatsapp?menuId=${selectedMenu.id}`)
-        .then(response => {
-          if (response.data.data && Array.isArray(response.data.data)) {
-        return response.data.data.map((item: { id: number; name: string; price: number }) => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-        }));
-          }
-          return [];
-        })
-        .catch(error => {
-          console.error('Error fetching item list:', error.message);
-          return [];
-        });
+  // Step 3: Menu Selection
+  if (session.stage === 'item_selection' && /^[1-9]\d*$/.test(msg)) {
+    const index = parseInt(msg) - 1;
+    if (index < 0 || index >= session.menus.length) {
+      reply = '⚠️ Invalid menu option. Please type "hi" to restart.';
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      return;
+    }
 
-      if (ITEMS.length > 0) {
-        session.items = ITEMS; // Store items in the session
-        reply = `You selected ${selectedMenu.name}. Here are the available items:\n${ITEMS.map((item: { name: string, price: number }, index: number) => `${index + 1}) ${item.name} - ₹${item.price}`).join('\n')}`;
-      } else {
-        reply = `❌ No items available for ${selectedMenu.name}. Please try again later.`;
-      }
+    const selectedMenu = session.menus[index];
+    session.selectedMenu = selectedMenu;
+    session.stage = 'cart_selection';
+
+    const items = await axios
+      .get(`${process.env.BASE_URL}/api/menu/getMenuByIdforwhatsapp?menuId=${selectedMenu.id}`)
+      .then(response => response.data.data || [])
+      .catch(error => {
+        console.error('Error fetching items:', error.message);
+        return [];
+      });
+
+    if (items.length > 0) {
+      session.items = items;
+      const itemList = items.map((i: { id: any; name: any; price: any }) => `${i.id}. ${i.name} - ₹${i.price}`).join('\n');
+      reply = `🛒 ${selectedMenu.name.toUpperCase()} ITEMS:\n${itemList}\n\nSend items like: 1*2,2*1`;
     } else {
-      reply = `❓ Invalid selection. Please select a valid menu number:\n${session.menus.map((menu: { name: string }, index: number) => `${index + 1}) ${menu.name}`).join('\n')}`;
+      reply = `❌ No items available for ${selectedMenu.name}. Please try again later.`;
     }
+    sessions[userId] = session;
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+    return;
   }
-  else if (!session.selectedItems) {
-    interface SelectedItem {
-      item: { id: number; name: string; price: number };
-      quantity: number;
-    }
 
-    const selectedItems: SelectedItem[] = text.split(',').map((item: string) => {
-      const [itemIndex, quantity] = item.split('-').map(Number);
-      if (
-      itemIndex >= 1 &&
-      itemIndex <= session.items.length &&
-      quantity > 0
-      ) {
-      return {
-        item: session.items[itemIndex - 1],
-        quantity,
-      };
+  // Step 4: Cart Selection
+  if (session.stage === 'cart_selection' && /^\d+\*\d+(,\d+\*\d+)*$/.test(msg)) {
+    const selections = msg.split(',');
+    for (const pair of selections) {
+      const [idStr, qtyStr] = pair.split('*');
+      const id = parseInt(idStr);
+      const quantity = parseInt(qtyStr);
+      const item = session.items.find((i: { id: number }) => i.id === id);
+      if (item) {
+        session.cart = session.cart || [];
+        const existing = session.cart.find(c => c.itemId === id);
+        if (existing) existing.quantity = quantity;
+        else session.cart.push({ itemId: id, name: item.name, price: item.price, quantity });
       }
-      return null;
-    }).filter(Boolean) as SelectedItem[];
+    }
+    session.stage = 'cart_review';
+    sessions[userId] = session;
 
-    if (selectedItems.length > 0) {
-      session.selectedItems = selectedItems;
-      reply = `You selected:\n${selectedItems.map(
-        ({ item, quantity }) => `${item.name} - Quantity: ${quantity}`
-      ).join('\n')}\n\nIf you want to add more items, reply with the format 'itemIndex-quantity' (e.g., '2-1').\nConfirm your selection by replying 'Yes'.`;
-    } else {
-      reply = `❓ Invalid selection. Please select items in the format 'itemIndex-quantity' separated by commas (e.g., '1-2,3-1').\nAvailable items:\n${session.items.map(
-        (item: { name: any; price: any; }, index: number) => `${index + 1}) ${item.name} - ₹${item.price}`
-      ).join('\n')}`;
+    const cartText = (session.cart ?? [])
+      .map(c => `- ${c.name} x${c.quantity} = ₹${c.quantity * c.price}`)
+      .join('\n');
+    const total = (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0);
+    reply = `🧾 Your Cart:\n${cartText}\nTotal = ₹${total}\n\nReply:\n1. ✅ Confirm\n2. ✏️ Edit\n3. ❌ Cancel`;
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+    return;
+  }
+
+  // Step 5: Cart Review
+  if (session.stage === 'cart_review') {
+    if (msg === '✅' || msg === '1' || msg === 'confirm') {
+      delete sessions[userId]; // Clear session
+      reply = '✅ Order placed successfully. Thank you!';
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      return;
+    }
+    if (msg === '✏️' || msg === '2' || msg === 'edit') {
+      session.stage = 'cart_selection';
+      sessions[userId] = session;
+      const itemList = session.items.map((i: { id: any; name: any; price: any }) => `${i.id}. ${i.name} - ₹${i.price}`).join('\n');
+      reply = `✏️ Edit Items:\n${itemList}\n\nSend items like: 1*2,2*1`;
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      return;
+    }
+    if (msg === '❌' || msg === '3' || msg === 'cancel') {
+      delete sessions[userId]; // Clear session
+      reply = '❌ Order cancelled. You can start again by typing hi.';
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      return;
     }
   }
-  else {
-    reply = `❓ I didn't understand that. Please select a valid menu number or restart by typing 'Hi'.`;
-  }
 
-  // Send reply via Airtel API
-  try {
-    await sendWhatsAppMessage(from, reply, "918686078782");
-    console.log(`📤 Reply sent to ${from}: ${reply}`);
-  } catch (error: any) {
-    console.error('❌ Error sending reply:', error.message);
-  }
+  // Default response for invalid input
+  reply = '❓ Invalid input. Please type "hi" to restart.';
+  await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
 };
+
 
 /**
  * Function to send a WhatsApp message via Airtel API
