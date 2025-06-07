@@ -402,6 +402,8 @@ const processSpecialRecipient = async (body: any) => {
   const session = sessions[userId];
   let reply = '';
   let FROM_NUMBER="918686078782"
+  console.log(session.stage, 'Session stage for user:', userId);
+  console.log('body', msg);
 
   // Step 1: Menu Selection
   if (msg === 'hi' || session.stage === 'menu_selection') {
