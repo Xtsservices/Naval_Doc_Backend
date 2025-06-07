@@ -557,10 +557,13 @@ const processSpecialRecipient = async (body: any) => {
         // Create the order
         const order = await Order.create({
           // Use the user's ID from the database
+          userId: user.id,
           canteenId: session.selectedCanteen.id,
           menuConfigurationId: session.selectedMenu.id, // Add menuConfigurationId from session.selectedMenu
           totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
           status: 'Pending', // Default status
+          orderDate : Math.floor(new Date().getTime() / 1000), // Current date in UNIX format
+
         });
 
         // Save order items in the database
@@ -573,8 +576,6 @@ const processSpecialRecipient = async (body: any) => {
             });
 
             // Store order date in UNIX format
-            order.orderDate = Math.floor(new Date().getTime() / 1000); // Current date in UNIX format
-            await order.save();
         }
 
         // Store payment details in the Payment table
