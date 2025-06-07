@@ -538,80 +538,77 @@ const processSpecialRecipient = async (body: any) => {
       console.log('session', session);
 
     
+      const transaction = await sequelize.transaction(); // Start a transaction
       try {
         // Save order in the database
-        // Remove country code from mobile number
         const mobileNumber = userId.startsWith('91') ? userId.slice(2) : userId;
 
         // Check if user exists in the database
-        let user = await User.findOne({ where: { mobile: mobileNumber } });
+        let user = await User.findOne({ where: { mobile: mobileNumber }, transaction });
 
         // If user does not exist, create a new user
         if (!user) {
           user = await User.create({
-            mobile: mobileNumber,
-            firstName: 'Guest', // Default values for new user
-            lastName: 'User',
-            email: null,
-          });
+        mobile: mobileNumber,
+        firstName: 'Guest', // Default values for new user
+        lastName: 'User',
+        email: null,
+          }, { transaction });
         }
 
         // Create the order
         const order = await Order.create({
-          // Use the user's ID from the database
           userId: user.id,
-          createdById: user.id, // Assuming the user is the creator
+          createdById: user.id,
           canteenId: session.selectedCanteen.id,
-          menuConfigurationId: session.selectedMenu.id, // Add menuConfigurationId from session.selectedMenu
+          menuConfigurationId: session.selectedMenu.id,
           totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
-          status: 'placed', // Default status
-          orderDate : Math.floor(new Date().getTime() / 1000), // Current date in UNIX format
-
-        });
+          status: 'placed',
+          orderDate: Math.floor(new Date().getTime() / 1000),
+        }, { transaction });
 
         // Save order items in the database
-        for (const item of session.cart ?? []) {
-            await OrderItem.create({
-            orderId: order.id,
-            itemId: item.itemId,
-            quantity: item.quantity,
-            price: item.price,
-            total: item.price * item.quantity,
-            createdById: user.id,
-            });
-
-            // Store order date in UNIX format
-        }
+        await Promise.all(
+          (session.cart ?? []).map(async (item) => {
+        await OrderItem.create({
+          orderId: order.id,
+          itemId: item.itemId,
+          quantity: item.quantity,
+          price: item.price,
+          total: item.price * item.quantity,
+          createdById: user.id,
+        }, { transaction });
+          })
+        );
 
         // Store payment details in the Payment table
-        await Payment.create({
+        const payment = await Payment.create({
           orderId: order.id,
           userId: user.id,
-          createdById: user.id, // Assuming the user is the creator
+          createdById: user.id,
           amount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
           totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
-          status: 'Pending', // Default payment status
-          paymentMethod:"UPI", // Assuming UPI as the payment method
-          gatewayCharges: 0, // Assuming no gateway charges for simplicity
-          gatewayPercentage: 0, // Assuming no gateway percentage for simplicity
-          currency: 'INR', // Assuming INR as the currency
-        });
+          status: 'Pending',
+          paymentMethod: "UPI",
+          gatewayCharges: 0,
+          gatewayPercentage: 0,
+          currency: 'INR',
+        }, { transaction });
 
-        console.log('Order placed successfully:', Payment)
+        // Commit the transaction
+        await transaction.commit();
+
+        console.log('Order placed successfully:', payment);
+
         // Generate payment link using the PaymentLink function from utils
-        const paymentLink = PaymentLink(
-          order,
-          Payment,
-          user
-        );
+        const paymentLink = await PaymentLink(order, payment, user);
 
         // Send payment link to the user
         reply += `\n\n💳 Complete your payment using the following link:\n${paymentLink}`;
-
-        
-
         reply = `✅ Order placed successfully with Order ID: ${order.id}. Thank you!`;
-      } catch (error:any) {
+      } catch (error: any) {
+        // Rollback the transaction in case of an error
+        await transaction.rollback();
         console.error('Error placing order:', error.message);
         reply = '❌ Failed to place the order. Please try again later.';
       }
