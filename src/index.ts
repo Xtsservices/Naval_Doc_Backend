@@ -556,8 +556,9 @@ const processSpecialRecipient = async (body: any) => {
 
         // Create the order
         const order = await Order.create({
-          userId: user.id, // Use the user's ID from the database
+          // Use the user's ID from the database
           canteenId: session.selectedCanteen.id,
+          menuConfigurationId: session.selectedMenu.id, // Add menuConfigurationId from session.selectedMenu
           totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
           status: 'Pending', // Default status
         });
