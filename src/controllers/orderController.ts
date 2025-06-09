@@ -18,6 +18,9 @@ import { PaymentLink } from '../common/utils';
 import Wallet from '../models/wallet';
 import moment from 'moment-timezone'; // Import moment-timezone
 moment.tz('Asia/Kolkata')
+import { v4 as uuidv4 } from 'uuid';
+import { User } from '../models';
+
 
 dotenv.config();
 
@@ -805,6 +808,12 @@ export const CashfreePaymentLinkDetails = async (req: Request, res: Response): P
         const order = await Order.findByPk(payment.orderId, { transaction });
         if (order) {
           order.status = 'placed';
+          if(order.qrCode === null || order.qrCode === undefined){
+            const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`; 
+            const qrCode = await QRCode.toDataURL(qrCodeData);
+            order.qrCode = qrCode; // Generate and set the QR code if it's not already set  
+            sendWhatsQrAppMessage(order); // Send WhatsApp message with QR code
+            }
           await order.save({ transaction });
         }
       }
@@ -833,6 +842,65 @@ export const CashfreePaymentLinkDetails = async (req: Request, res: Response): P
     return res.status(500).json({
       message: 'An error occurred while fetching or updating payment details from Cashfree.',
     });
+  }
+};
+
+function generateUuid(): string {
+  return uuidv4();
+}
+interface WhatsAppMessagePayload {
+  sessionId: string;
+  to: string; // Recipient number
+  from: string; // Sender number
+  message: {
+    text: string;
+  };
+  mediaAttachment?: {
+    type: string;
+    id: string;
+  };
+}
+
+const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
+  const userId = order.userId; // Extract userId from the order object
+  const user:any = await User.findOne({ where: { id: userId } }); // Fetch user details from the User table
+  const phoneNumber = user?.phoneNumber; // Get the phone number from the user details
+
+  if (!userId || !phoneNumber) {
+    throw new Error('User ID or phone number not found for the order.');
+  }
+
+  const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
+  const username = 'world_tek';
+  const password = 'T7W9&w3396Y"'; // Replace with actual password
+
+  const auth = Buffer.from(`${username}:${password}`).toString('base64');
+
+  const payload: WhatsAppMessagePayload = {
+    sessionId: generateUuid(),
+    to: "91".concat(phoneNumber), // Recipient number
+    from: "918686078782", // Dynamically set the sender number
+    message: {
+      text: 'Your Order is Placed', // Message text
+    },
+    mediaAttachment: {
+        "type": "IMAGE",
+        "id": order.qrCode
+    }
+  };
+
+  try {
+    const response = await axios.post(url, payload, {
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // console.log('Message sent successfully:', response.data);
+  } catch (error: any) {
+    console.error('Error sending message:', error.response?.data || error.message);
+    throw error;
   }
 };
 
@@ -1011,3 +1079,5 @@ export const getWalletBalance = async (req: Request, res: Response): Promise<Res
     });
   }
 };
+
+

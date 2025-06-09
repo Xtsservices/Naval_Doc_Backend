@@ -671,6 +671,8 @@ const sendWhatsAppMessage = async (to: string, reply: string, fromNumber: string
   }
 };
 
+
+
 /**
  * Generate a unique session ID
  */
