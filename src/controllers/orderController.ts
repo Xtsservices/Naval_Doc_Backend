@@ -814,7 +814,7 @@ export const CashfreePaymentLinkDetails = async (req: Request, res: Response): P
             const qrCode = await QRCode.toDataURL(qrCodeData);
             order.qrCode = qrCode; // Generate and set the QR code if it's not already set  
             console.log('order.userId', order.userId);
-            //sendWhatsQrAppMessage(order); // Send WhatsApp message with QR code
+            sendWhatsQrAppMessage(order); // Send WhatsApp message with QR code
             }
           await order.save({ transaction });
         }
