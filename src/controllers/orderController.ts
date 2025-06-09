@@ -812,6 +812,7 @@ export const CashfreePaymentLinkDetails = async (req: Request, res: Response): P
             const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`; 
             const qrCode = await QRCode.toDataURL(qrCodeData);
             order.qrCode = qrCode; // Generate and set the QR code if it's not already set  
+            console.log('order.userId', order.userId);
             sendWhatsQrAppMessage(order); // Send WhatsApp message with QR code
             }
           await order.save({ transaction });
@@ -863,12 +864,11 @@ interface WhatsAppMessagePayload {
 
 const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
   const userId = order.userId; // Extract userId from the order object
+  console.log('sendWhatsQrAppMessage', userId);
   const user:any = await User.findOne({ where: { id: userId } }); // Fetch user details from the User table
   const phoneNumber = user?.phoneNumber; // Get the phone number from the user details
 
-  if (!userId || !phoneNumber) {
-    throw new Error('User ID or phone number not found for the order.');
-  }
+  console.log('sendWhatsQrAppMessage', user);
 
   const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
   const username = 'world_tek';
