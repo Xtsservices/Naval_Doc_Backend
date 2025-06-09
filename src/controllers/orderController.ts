@@ -865,7 +865,7 @@ interface WhatsAppMessagePayload {
 const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
   const userId = order.userId; // Extract userId from the order object
   const user:any = await User.findOne({ where: { id: userId } }); // Fetch user details from the User table
-  const phoneNumber = user?.phoneNumber; // Get the phone number from the user details
+  const phoneNumber = user?.mobile; // Get the phone number from the user details
 
   console.log('sendWhatsQrAppMessage', order.userId, phoneNumber);
 
