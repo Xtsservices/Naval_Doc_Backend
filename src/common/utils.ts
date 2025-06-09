@@ -1,15 +1,13 @@
-import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
-import moment from 'moment-timezone';
-import { messages } from './messages';
-import dotenv from 'dotenv';
-import axios from 'axios';
-import User from '../models/user';
-import userRole from '../models/userRole';
-import UserRole from '../models/userRole';
-import Role from '../models/role';
-
-
+import crypto from "crypto";
+import jwt from "jsonwebtoken";
+import moment from "moment-timezone";
+import { messages } from "./messages";
+import dotenv from "dotenv";
+import axios from "axios";
+import User from "../models/user";
+import userRole from "../models/userRole";
+import UserRole from "../models/userRole";
+import Role from "../models/role";
 
 dotenv.config();
 
@@ -28,72 +26,74 @@ export const getCustomerProfile = async (mobile: string): Promise<any> => {
       include: [
         {
           model: UserRole, // Include the UserRole table
-          as: 'userRoles', // Ensure this matches the alias in the association
+          as: "userRoles", // Ensure this matches the alias in the association
           include: [
             {
               model: Role, // Include the Role table
-              as: 'role', // Ensure this matches the alias in the association
-              attributes: ['id', 'name'], // Fetch only necessary fields
+              as: "role", // Ensure this matches the alias in the association
+              attributes: ["id", "name"], // Fetch only necessary fields
             },
           ],
-          attributes: ['roleId'], // Fetch only the roleId field from UserRole
+          attributes: ["roleId"], // Fetch only the roleId field from UserRole
         },
       ],
     });
 
     if (!user) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
     return user;
   } catch (error) {
-    console.error('Error fetching customer profile:', error);
-    throw new Error('Failed to fetch customer profile');
+    console.error("Error fetching customer profile:", error);
+    throw new Error("Failed to fetch customer profile");
   }
 };
 
 export const getCustomerDetails = async (userId: number): Promise<any> => {
   try {
     const user = await User.findOne({
-      where: { id:userId },
+      where: { id: userId },
       include: [
         {
           model: UserRole, // Include the UserRole table
-          as: 'userRoles', // Ensure this matches the alias in the association
+          as: "userRoles", // Ensure this matches the alias in the association
           include: [
             {
               model: Role, // Include the Role table
-              as: 'role', // Ensure this matches the alias in the association
-              attributes: ['id', 'name'], // Fetch only necessary fields
+              as: "role", // Ensure this matches the alias in the association
+              attributes: ["id", "name"], // Fetch only necessary fields
             },
           ],
-          attributes: ['roleId'], // Fetch only the roleId field from UserRole
+          attributes: ["roleId"], // Fetch only the roleId field from UserRole
         },
       ],
     });
 
     if (!user) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
     return user;
   } catch (error) {
-    console.error('Error fetching customer profile:', error);
-    throw new Error('Failed to fetch customer profile');
+    console.error("Error fetching customer profile:", error);
+    throw new Error("Failed to fetch customer profile");
   }
 };
 
-export const generateToken = (payload: object, expiresIn: string = '12h'): string => {
-  const secret = process.env.JWT_SECRET || 'default_secret_for_dev';
+export const generateToken = (
+  payload: object,
+  expiresIn: string = "12h"
+): string => {
+  const secret = process.env.JWT_SECRET || "default_secret_for_dev";
   if (!process.env.JWT_SECRET) {
-    console.warn('Warning: JWT_SECRET is not defined. Using fallback secret for development.');
+    console.warn(
+      "Warning: JWT_SECRET is not defined. Using fallback secret for development."
+    );
   }
 
   return jwt.sign(payload, secret, { expiresIn } as jwt.SignOptions);
 };
-
-
-
 
 /**
  * Get the expiry time in Unix timestamp for a given duration in seconds.
@@ -101,10 +101,8 @@ export const generateToken = (payload: object, expiresIn: string = '12h'): strin
  * @returns The expiry time as a Unix timestamp in the Kolkata timezone.
  */
 export const getExpiryTimeInKolkata = (durationInSeconds: number): number => {
-  return moment.tz('Asia/Kolkata').add(durationInSeconds, 'seconds').unix();
+  return moment.tz("Asia/Kolkata").add(durationInSeconds, "seconds").unix();
 };
-
-
 
 /**
  * Get a message in the configured language.
@@ -112,25 +110,24 @@ export const getExpiryTimeInKolkata = (durationInSeconds: number): number => {
  * @returns The message in the configured language.
  */
 export const getMessage = (key: string): string => {
-  const language = process.env.LANGUAGE || 'EN'; // Default to English
-  const keys = key.split('.');
+  const language = process.env.LANGUAGE || "EN"; // Default to English
+  const keys = key.split(".");
   let message: any = messages[language as keyof typeof messages];
 
   for (const k of keys) {
     if (message[k]) {
       message = message[k];
     } else {
-      return 'Message not found';
+      return "Message not found";
     }
   }
 
   return message;
 };
 
-
-
 export const sendOTPSMS = async (mobile: string, OTP: string): Promise<any> => {
-  const template = 'Dear {#var#} Kindly use this otp {#var#} for login to your Application . thank you Wecann';
+  const template =
+    "Dear {#var#} Kindly use this otp {#var#} for login to your Application . thank you Wecann";
 
   // Function to populate the template with dynamic values
   function populateTemplate(template: string, values: string[]): string {
@@ -139,18 +136,18 @@ export const sendOTPSMS = async (mobile: string, OTP: string): Promise<any> => {
   }
 
   // Populate the template with the user's name and OTP
-  const name = 'user'; // Default name for the user
+  const name = "user"; // Default name for the user
   const message = populateTemplate(template, [name, OTP]);
 
   // Example Output: Dear User, kindly use this OTP 123456 for login to your application. Thank you, Wecann.
 
-  const templateid = '1707163101087015490';
+  const templateid = "1707163101087015490";
 
   try {
     const params = {
-      username: 'WECANN',
+      username: "WECANN",
       apikey: process.env.SMSAPIKEY, // Use API key from environment variables
-      senderid: 'WECANN',
+      senderid: "WECANN",
       mobile: mobile,
       message: message,
       templateid: templateid,
@@ -159,42 +156,45 @@ export const sendOTPSMS = async (mobile: string, OTP: string): Promise<any> => {
     // Call the sendSMS function
     return await sendSMS(params);
   } catch (error) {
-    console.error('Error sending OTP SMS:', error);
-    throw new Error('Failed to send OTP SMS');
+    console.error("Error sending OTP SMS:", error);
+    throw new Error("Failed to send OTP SMS");
   }
 };
 
-
 const sendSMS = async (params: any): Promise<any> => {
   try {
-    const url = 'http://wecann.in/v3/api.php';
+    const url = "http://wecann.in/v3/api.php";
 
     // Trigger the API using axios
     const response = await axios.get(url, { params });
 
     return response.data; // Return the API response
   } catch (error) {
-    console.error('Error sending SMS:', error);
-    throw new Error('Failed to send SMS');
+    console.error("Error sending SMS:", error);
+    throw new Error("Failed to send SMS");
   }
 };
 
-export const PaymentLink = async (order:any,payment:any,user:any): Promise<Response> => {
+export const PaymentLink = async (
+  order: any,
+  payment: any,
+  user: any
+): Promise<Response> => {
   try {
     // Cashfree API credentials
     const CASHFREE_APP_ID = process.env.pgAppID;
     const CASHFREE_SECRET_KEY = process.env.pgSecreteKey;
-    const CASHFREE_BASE_URL = process.env.CASHFREE_BASE_URL || 'https://sandbox.cashfree.com/pg';
+    const CASHFREE_BASE_URL =
+      process.env.CASHFREE_BASE_URL || "https://sandbox.cashfree.com/pg";
 
     // Create order payload for Cashfree
 
+    let linkId = "testcash_pra2Nav_";
 
-
-    let linkId = "testcash_pra1Nav_";
-    linkId=linkId.concat(payment.id);
+    linkId = linkId.concat(payment.id);
     const payload = {
       link_id: linkId,
-      link_amount: payment.totalAmount, 
+      link_amount: payment.totalAmount,
       link_currency: payment.currency,
       customer_details: {
         customer_name: user.firstName + " " + user.lastName,
@@ -212,8 +212,7 @@ export const PaymentLink = async (order:any,payment:any,user:any): Promise<Respo
       },
       link_payment_methods: ["upi"], // Restrict payment methods to UPI only
       link_purpose: "Payment",
-    }; 
-
+    };
 
     // const payload = {
     //   order_id: order.orderId,
@@ -233,10 +232,10 @@ export const PaymentLink = async (order:any,payment:any,user:any): Promise<Respo
     // Make API request to Cashfree to create an order
     const response = await axios.post(`${CASHFREE_BASE_URL}/links`, payload, {
       headers: {
-        'Content-Type': 'application/json',
-        'x-client-id': CASHFREE_APP_ID,
-        'x-client-secret': CASHFREE_SECRET_KEY,
-        'x-api-version': '2023-08-01',
+        "Content-Type": "application/json",
+        "x-client-id": CASHFREE_APP_ID,
+        "x-client-secret": CASHFREE_SECRET_KEY,
+        "x-api-version": "2023-08-01",
       },
     });
 
@@ -244,20 +243,19 @@ export const PaymentLink = async (order:any,payment:any,user:any): Promise<Respo
     if (response.status === 200 && response.data) {
       const { link_id, link_url } = response.data;
 
-      console.log('response', response.data);
+      console.log("response", response.data);
 
       // Construct the payment link
       const paymentLink = link_url;
       // Return the payment link as a response
       return paymentLink;
     } else {
-      console.error('Error creating payment link:');
+      console.error("Error creating payment link:");
       // Return an error response if the API call fails
-      return new Response('Failed to create payment link', { status: 400 });
+      return new Response("Failed to create payment link", { status: 400 });
     }
   } catch (error: unknown) {
-    console.error('Error creating payment link:', error);
-    return new Response('Failed to create payment link', { status: 500 });
+    console.error("Error creating payment link:", error);
+    return new Response("Failed to create payment link", { status: 500 });
   }
 };
-

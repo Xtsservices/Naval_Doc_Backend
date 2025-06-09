@@ -25,7 +25,11 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
   const transaction: Transaction = await sequelize.transaction();
 
   try {
+    console.log("placeordererror",100)
+
     const { userId } = req.user as unknown as { userId: string };
+    console.log("placeordererror",userId)
+
     const { paymentMethod, transactionId, currency = 'INR' } = req.body;
 
     if (!userId || !paymentMethod) {
@@ -199,6 +203,7 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
     });
   } catch (error: unknown) {
     await transaction.rollback();
+    console.log("placeordererror",error)
     logger.error(`Error placing order: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
