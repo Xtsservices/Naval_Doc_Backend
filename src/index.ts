@@ -429,7 +429,7 @@ const processSpecialRecipient = async (body: any) => {
     if (canteens.length > 0) {
       session.canteens = canteens;
       const list = canteens.map((c: { canteenName: any }, idx: number) => `${idx + 1}. ${c.canteenName}`).join('\n');
-      reply = `🍽️ Welcome! Choose a canteen:\n${list}`;
+      reply = `🍽️ Welcome To welfare canteen naval dock yard ! Choose a canteen:\n${list}`;
     } else {
       reply = `❌ No canteens available at the moment. Please try again later.`;
     }
@@ -563,7 +563,7 @@ const processSpecialRecipient = async (body: any) => {
           canteenId: session.selectedCanteen.id,
           menuConfigurationId: session.selectedMenu.id,
           totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
-          status: 'placed',
+          status: 'initiated',
           orderDate: Math.floor(new Date().getTime() / 1000),
         }, { transaction });
 

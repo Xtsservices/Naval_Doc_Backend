@@ -61,11 +61,15 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
     const totalAmount = amount + gatewayCharges;
 
     // Create the order
+    let oderStatus= 'placed';
+    if(paymentMethod.includes('online')){
+      oderStatus= 'initiated';
+    }
     const order = await Order.create(
       {
         userId: userIdString,
         totalAmount: cart.totalAmount,
-        status: 'placed',
+        status: oderStatus,
         canteenId: cart.canteenId,
         menuConfigurationId: cart.menuConfigurationId,
         createdById: userIdString,
@@ -796,6 +800,14 @@ export const CashfreePaymentLinkDetails = async (req: Request, res: Response): P
         { transaction }
       ); // Update the status, transactionId, and timestamp within the transaction
 
+      // Update the order status based on payment success
+      if (paymentDetails.link_status === 'PAID') {
+        const order = await Order.findByPk(payment.orderId, { transaction });
+        if (order) {
+          order.status = 'placed';
+          await order.save({ transaction });
+        }
+      }
       // Commit the transaction
       await transaction.commit();
 
