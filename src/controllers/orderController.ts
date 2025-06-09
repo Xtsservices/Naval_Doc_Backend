@@ -875,7 +875,7 @@ const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
 
   const auth = Buffer.from(`${username}:${password}`).toString('base64');
 
-  const payload: WhatsAppMessagePayload = {
+  const payload = {
     sessionId: generateUuid(),
     to: "91".concat(phoneNumber), // Recipient number
     from: "918686078782", // Dynamically set the sender number
