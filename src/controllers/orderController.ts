@@ -868,12 +868,11 @@ const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
   const user:any = await User.findOne({ where: { id: userId } }); // Fetch user details from the User table
   const phoneNumber = user?.mobile; // Get the phone number from the user details
 
-  console.log('sendWhatsQrAppMessage', order.userId, phoneNumber);
 
   let toNumber = "91".concat(phoneNumber);
   let replyText = `Your Order is Placed. Please find the QR code below:\n\n`;
 
-  sendWhatsAppMessage(toNumber,replyText,"918686078782");
+  sendWhatsAppMessage(toNumber,replyText,"918686078782",order.qrCode);
 
 
   // const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';

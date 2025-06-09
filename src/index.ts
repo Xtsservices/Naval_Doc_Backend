@@ -374,7 +374,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
 
   // Send reply via Airtel API
   try {
-    await sendWhatsAppMessage(from, reply, FROM_NUMBER.toString());
+    await sendWhatsAppMessage(from, reply, FROM_NUMBER.toString(),null);
     console.log(`📤 Reply sent to ${from}: ${reply}`);
   } catch (error: any) {
     console.error('❌ Error sending reply:', error.message);
@@ -434,7 +434,7 @@ const processSpecialRecipient = async (body: any) => {
       reply = `❌ No canteens available at the moment. Please try again later.`;
     }
     sessions[userId] = session;
-    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
     return;
   }
 
@@ -443,7 +443,7 @@ const processSpecialRecipient = async (body: any) => {
     const index = parseInt(msg) - 1;
     if (index < 0 || index >= session.canteens.length) {
       reply = '⚠️ Invalid canteen option. Please type "hi" to restart.';
-      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
       return;
     }
 
@@ -467,7 +467,7 @@ const processSpecialRecipient = async (body: any) => {
       reply = `❌ No menus available for ${selectedCanteen.canteenName}. Please try again later.`;
     }
     sessions[userId] = session;
-    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
     return;
   }
 
@@ -476,7 +476,7 @@ const processSpecialRecipient = async (body: any) => {
     const index = parseInt(msg) - 1;
     if (index < 0 || index >= session.menus.length) {
       reply = '⚠️ Invalid menu option. Please type "hi" to restart.';
-      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
       return;
     }
 
@@ -500,7 +500,7 @@ const processSpecialRecipient = async (body: any) => {
       reply = `❌ No items available for ${selectedMenu.name}. Please try again later.`;
     }
     sessions[userId] = session;
-    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
     return;
   }
 
@@ -527,7 +527,7 @@ const processSpecialRecipient = async (body: any) => {
       .join('\n');
     const total = (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0);
     reply = `🧾 Your Cart:\n${cartText}\nTotal = ₹${total}\n\nReply:\n1. ✅ Confirm\n2. ✏️ Edit\n3. ❌ Cancel`;
-    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
     return;
   }
 
@@ -612,7 +612,7 @@ const processSpecialRecipient = async (body: any) => {
         console.error('Error placing order:', error.message);
         reply = '❌ Failed to place the order. Please try again later.';
       }
-      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
       return;
     }
     if (msg === '✏️' || msg === '2' || msg === 'edit') {
@@ -620,34 +620,41 @@ const processSpecialRecipient = async (body: any) => {
       sessions[userId] = session;
       const itemList = session.items.map((i: { id: any; name: any; price: any }) => `${i.id}. ${i.name} - ₹${i.price}`).join('\n');
       reply = `✏️ Edit Items:\n${itemList}\n\nSend items like: 1*2,2*1`;
-      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
       return;
     }
     if (msg === '❌' || msg === '3' || msg === 'cancel') {
       delete sessions[userId]; // Clear session
       reply = '❌ Order cancelled. You can start again by typing hi.';
-      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
       return;
     }
   }
 
   // Default response for invalid input
   reply = '❓ Invalid input. Please type "hi" to restart.';
-  await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+  await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
 };
 
 
 /**
  * Function to send a WhatsApp message via Airtel API
  */
-export const sendWhatsAppMessage = async (to: string, reply: string, fromNumber: string) => {
-  const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
+export const sendWhatsAppMessage = async (
+  to: string,
+  reply: string,
+  fromNumber: string,
+  qrCode: string | null
+) => {
+  const url =
+    'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
   const username = 'world_tek';
   const password = 'T7W9&w3396Y"'; // Replace with actual password
 
   const auth = Buffer.from(`${username}:${password}`).toString('base64');
 
-  const payload = {
+  // Base payload for sending a message
+  const payload: any = {
     sessionId: generateUuid(),
     to, // Recipient number
     from: fromNumber, // Dynamically set the sender number
@@ -655,6 +662,18 @@ export const sendWhatsAppMessage = async (to: string, reply: string, fromNumber:
       text: reply,
     },
   };
+
+  // If a QR code is provided, include it in the payload
+  if (qrCode) {
+    payload.message.media = [
+      {
+        type: 'image',
+        url: qrCode, // QR code in base64 format
+        caption: reply, // Optional caption for the QR code
+      },
+    ];
+    delete payload.message.text; // Remove text if media is included
+  }
 
   try {
     const response = await axios.post(url, payload, {
@@ -664,7 +683,7 @@ export const sendWhatsAppMessage = async (to: string, reply: string, fromNumber:
       },
     });
 
-    // console.log('Message sent successfully:', response.data);
+    console.log('Message sent successfully:', response.data);
   } catch (error: any) {
     console.error('Error sending message:', error.response?.data || error.message);
     throw error;
