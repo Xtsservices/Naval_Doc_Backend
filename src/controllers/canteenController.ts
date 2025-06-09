@@ -133,3 +133,33 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
     });
   }
 };
+
+export const getAllCanteensforwhatsapp = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    // Fetch all canteens
+    const canteens = await Canteen.findAll({
+      attributes: ['id', 'canteenName', 'canteenCode'], // Select only required fields
+    });
+
+    if (!canteens || canteens.length === 0) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('canteen.noCanteensFound'),
+      });
+    }
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('success.canteensFetched'),
+      data: canteens, // Return the filtered canteens directly
+    });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      logger.error(`Error fetching canteen details: ${error.message}`);
+    } else {
+      logger.error(`Unknown error fetching canteen details: ${error}`);
+    }
+
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};

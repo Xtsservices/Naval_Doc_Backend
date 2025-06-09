@@ -43,6 +43,8 @@ import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
 import crypto from 'crypto';
+import { getTotalAmount } from './controllers/adminDashboardController';
+import { PaymentLink } from './common/utils';
 
 const AIRTEL_USERNAME = 'your_username'; // Replace with your HMAC username
 const AIRTEL_SECRET = 'your_secret';     // Replace with your HMAC secret key
@@ -253,11 +255,17 @@ const AIRTEL_TOKEN = 'T7W9&w3396Y"';
 interface UserSession {
   items: string[];
   confirmed: boolean;
+  menus?: { id: number; name: string }[]; // Add menus property
 }
 
-
 // 🔄 Webhook to receive incoming messages from Airtel
-const sessions: Record<string, { city?: string; service?: string; specialization?: string; doctor?: string; date?: string; slot?: string }> = {};
+const sessions: Record<string, {
+  items: any;
+  selectedMenu: any;
+  menus: any;
+  selectedCanteen: any;
+  canteens: any; city?: string; service?: string; specialization?: string; doctor?: string; date?: string; slot?: string; stage?: string; cart?: { itemId: number; name: string; price: number; quantity: number }[] 
+}> = {};
 
 const CITIES = ['Warangal', 'Karimnagar', 'Nizamabad'];
 const SERVICES = ['Doctor Appointments', 'Pharmacy', 'Diagnostics', 'Blood Banks'];
@@ -271,11 +279,19 @@ const DOCTORS = {
 const SLOTS = ['10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM'];
 
 app.post('/webhook', async (req: Request, res: Response) => {
-  console.log('Received webhook request:', req.body);
+  // console.log('Received webhook request:', req.body);
 
+  // Check if msgStatus is RECEIVED
   if (req.body.msgStatus !== 'RECEIVED') {
     console.log('Ignoring webhook request as msgStatus is not RECEIVED.');
     return res.status(200).json({ message: 'Webhook ignored.' });
+  }
+
+  // Check if recipientAddress matches the specific number
+  if (req.body.recipientAddress === '918686078782') {
+    console.log('Navigating to another function for processing recipientAddress:', req.body.recipientAddress);
+    await processSpecialRecipient(req.body); // Navigate to another function
+    return res.status(200).json({ message: 'Special recipient processed.' });
   }
 
   const { sourceAddress: from, messageParameters } = req.body;
@@ -289,12 +305,13 @@ app.post('/webhook', async (req: Request, res: Response) => {
   console.log(`📥 Incoming message from ${from}: ${text}`);
 
   if (!sessions[from]) {
-    sessions[from] = {};
+    sessions[from] = { items: [], selectedCanteen: null, canteens: [], menus: null, selectedMenu: null };
   }
 
   const session = sessions[from];
   let reply = '';
 
+  // Handle session logic
   if (!session.city) {
     if (text.toLowerCase() === 'hi') {
       reply = `👋 Welcome to Vydhyo! Please select your city:\n${CITIES.map((city, index) => `${index + 1}) ${city}`).join('\n')}`;
@@ -357,7 +374,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
 
   // Send reply via Airtel API
   try {
-    await sendWhatsAppMessage(from, reply);
+    await sendWhatsAppMessage(from, reply, FROM_NUMBER.toString());
     console.log(`📤 Reply sent to ${from}: ${reply}`);
   } catch (error: any) {
     console.error('❌ Error sending reply:', error.message);
@@ -367,9 +384,263 @@ app.post('/webhook', async (req: Request, res: Response) => {
 });
 
 /**
+ * Function to process special recipient
+ */
+const processSpecialRecipient = async (body: any) => {
+  const { messageParameters, sourceAddress: userId } = body;
+
+  if (!messageParameters?.text?.body || !userId) {
+    console.error('Invalid payload for special recipient:', body);
+    return;
+  }
+
+  const msg = messageParameters.text.body.trim().toLowerCase();
+
+  // Initialize session for the user if not already present
+  if (!sessions[userId]) {
+    sessions[userId] = { stage: 'menu_selection', items: [], cart: [], canteens: [], menus: null, selectedCanteen: null, selectedMenu: null };
+  }
+
+  const session = sessions[userId];
+  let reply = '';
+  let FROM_NUMBER="918686078782"
+  // console.log("----------------------------");
+  // console.log(session.stage, 'Session stage for user:', userId);
+  // console.log("----------------------------");
+
+  // console.log('body', msg);
+  // console.log("----------------------------");
+
+  // console.log("----------------------------");
+
+
+
+  // Step 1: Menu Selection
+  if (msg === 'hi' ) {
+    session.stage = 'menu_selection';
+    const canteens = await axios
+      .get(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
+      .then(response => response.data.data || [])
+      .catch(error => {
+        console.error('Error fetching canteens:', error.message);
+        return [];
+      });
+
+    if (canteens.length > 0) {
+      session.canteens = canteens;
+      const list = canteens.map((c: { canteenName: any }, idx: number) => `${idx + 1}. ${c.canteenName}`).join('\n');
+      reply = `🍽️ Welcome! Choose a canteen:\n${list}`;
+    } else {
+      reply = `❌ No canteens available at the moment. Please try again later.`;
+    }
+    sessions[userId] = session;
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+    return;
+  }
+
+  // Step 2: Canteen Selection
+  if (session.stage === 'menu_selection' && /^[1-9]\d*$/.test(msg)) {
+    const index = parseInt(msg) - 1;
+    if (index < 0 || index >= session.canteens.length) {
+      reply = '⚠️ Invalid canteen option. Please type "hi" to restart.';
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      return;
+    }
+
+    const selectedCanteen = session.canteens[index];
+    session.selectedCanteen = selectedCanteen;
+    session.stage = 'item_selection';
+
+    const menus = await axios
+      .get(`${process.env.BASE_URL}/api/menu/getMenusByCanteen?canteenId=${selectedCanteen.id}`)
+      .then(response => response.data.data || [])
+      .catch(error => {
+        console.error('Error fetching menus:', error.message);
+        return [];
+      });
+
+    if (menus.length > 0) {
+      session.menus = menus;
+      const menuList = menus.map((m: { name: any }, idx: number) => `${idx + 1}. ${m.name}`).join('\n');
+      reply = `🍴 ${selectedCanteen.canteenName.toUpperCase()} MENU:\n${menuList}\n\nSend menu number to proceed.`;
+    } else {
+      reply = `❌ No menus available for ${selectedCanteen.canteenName}. Please try again later.`;
+    }
+    sessions[userId] = session;
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+    return;
+  }
+
+  // Step 3: Menu Selection
+  if (session.stage === 'item_selection' && /^[1-9]\d*$/.test(msg)) {
+    const index = parseInt(msg) - 1;
+    if (index < 0 || index >= session.menus.length) {
+      reply = '⚠️ Invalid menu option. Please type "hi" to restart.';
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      return;
+    }
+
+    const selectedMenu = session.menus[index];
+    session.selectedMenu = selectedMenu;
+    session.stage = 'cart_selection';
+
+    const items = await axios
+      .get(`${process.env.BASE_URL}/api/menu/getMenuByIdforwhatsapp?menuId=${selectedMenu.id}`)
+      .then(response => response.data.data || [])
+      .catch(error => {
+        console.error('Error fetching items:', error.message);
+        return [];
+      });
+
+    if (items.length > 0) {
+      session.items = items;
+      const itemList = items.map((i: { id: any; name: any; price: any }) => `${i.id}. ${i.name} - ₹${i.price}`).join('\n');
+      reply = `🛒 ${selectedMenu.name.toUpperCase()} ITEMS:\n${itemList}\n\nSend items like: 1*2,2*1`;
+    } else {
+      reply = `❌ No items available for ${selectedMenu.name}. Please try again later.`;
+    }
+    sessions[userId] = session;
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+    return;
+  }
+
+  // Step 4: Cart Selection
+  if (session.stage === 'cart_selection' && /^\d+\*\d+(,\d+\*\d+)*$/.test(msg)) {
+    const selections = msg.split(',');
+    for (const pair of selections) {
+      const [idStr, qtyStr] = pair.split('*');
+      const id = parseInt(idStr);
+      const quantity = parseInt(qtyStr);
+      const item = session.items.find((i: { id: number }) => i.id === id);
+      if (item) {
+        session.cart = session.cart || [];
+        const existing = session.cart.find(c => c.itemId === id);
+        if (existing) existing.quantity = quantity;
+        else session.cart.push({ itemId: id, name: item.name, price: item.price, quantity });
+      }
+    }
+    session.stage = 'cart_review';
+    sessions[userId] = session;
+
+    const cartText = (session.cart ?? [])
+      .map(c => `- ${c.name} x${c.quantity} = ₹${c.quantity * c.price}`)
+      .join('\n');
+    const total = (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0);
+    reply = `🧾 Your Cart:\n${cartText}\nTotal = ₹${total}\n\nReply:\n1. ✅ Confirm\n2. ✏️ Edit\n3. ❌ Cancel`;
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+    return;
+  }
+
+  // Step 5: Cart Review
+  if (session.stage === 'cart_review') {
+    if (msg === '✅' || msg === '1' || msg === 'confirm') {
+      delete sessions[userId]; // Clear session
+      console.log('session', session);
+
+    
+      const transaction = await sequelize.transaction(); // Start a transaction
+      try {
+        // Save order in the database
+        const mobileNumber = userId.startsWith('91') ? userId.slice(2) : userId;
+
+        // Check if user exists in the database
+        let user = await User.findOne({ where: { mobile: mobileNumber }, transaction });
+
+        // If user does not exist, create a new user
+        if (!user) {
+          user = await User.create({
+        mobile: mobileNumber,
+        firstName: 'Guest', // Default values for new user
+        lastName: 'User',
+        email: null,
+          }, { transaction });
+        }
+
+        // Create the order
+        const order = await Order.create({
+          userId: user.id,
+          createdById: user.id,
+          canteenId: session.selectedCanteen.id,
+          menuConfigurationId: session.selectedMenu.id,
+          totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
+          status: 'placed',
+          orderDate: Math.floor(new Date().getTime() / 1000),
+        }, { transaction });
+
+        // Save order items in the database
+        await Promise.all(
+          (session.cart ?? []).map(async (item) => {
+        await OrderItem.create({
+          orderId: order.id,
+          itemId: item.itemId,
+          quantity: item.quantity,
+          price: item.price,
+          total: item.price * item.quantity,
+          createdById: user.id,
+        }, { transaction });
+          })
+        );
+
+        // Store payment details in the Payment table
+        const payment = await Payment.create({
+          orderId: order.id,
+          userId: user.id,
+          createdById: user.id,
+          amount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
+          totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
+          status: 'Pending',
+          paymentMethod: "UPI",
+          gatewayCharges: 0,
+          gatewayPercentage: 0,
+          currency: 'INR',
+        }, { transaction });
+
+        // Commit the transaction
+        await transaction.commit();
+
+
+        // Generate payment link using the PaymentLink function from utils
+        const paymentLink = await PaymentLink(order, payment, user);
+        console.log('Payment link generated:', paymentLink);
+
+        // Send payment link to the user
+        reply = `💳 Complete your payment using the following link:\n${paymentLink}`;
+      //  reply = `✅ Order placed successfully with Order ID: ${order.id}. Thank you!`;
+      } catch (error: any) {
+        // Rollback the transaction in case of an error
+        await transaction.rollback();
+        console.error('Error placing order:', error.message);
+        reply = '❌ Failed to place the order. Please try again later.';
+      }
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      return;
+    }
+    if (msg === '✏️' || msg === '2' || msg === 'edit') {
+      session.stage = 'cart_selection';
+      sessions[userId] = session;
+      const itemList = session.items.map((i: { id: any; name: any; price: any }) => `${i.id}. ${i.name} - ₹${i.price}`).join('\n');
+      reply = `✏️ Edit Items:\n${itemList}\n\nSend items like: 1*2,2*1`;
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      return;
+    }
+    if (msg === '❌' || msg === '3' || msg === 'cancel') {
+      delete sessions[userId]; // Clear session
+      reply = '❌ Order cancelled. You can start again by typing hi.';
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+      return;
+    }
+  }
+
+  // Default response for invalid input
+  reply = '❓ Invalid input. Please type "hi" to restart.';
+  await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString());
+};
+
+
+/**
  * Function to send a WhatsApp message via Airtel API
  */
-const sendWhatsAppMessage = async (from: string, reply: string) => {
+const sendWhatsAppMessage = async (to: string, reply: string, fromNumber: string) => {
   const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
   const username = 'world_tek';
   const password = 'T7W9&w3396Y"'; // Replace with actual password
@@ -378,8 +649,8 @@ const sendWhatsAppMessage = async (from: string, reply: string) => {
 
   const payload = {
     sessionId: generateUuid(),
-    to: from,
-    from: '917337068888', // Your Airtel-registered business number
+    to, // Recipient number
+    from: fromNumber, // Dynamically set the sender number
     message: {
       text: reply,
     },
@@ -393,7 +664,7 @@ const sendWhatsAppMessage = async (from: string, reply: string) => {
       },
     });
 
-    console.log('Message sent successfully:', response.data);
+    // console.log('Message sent successfully:', response.data);
   } catch (error: any) {
     console.error('Error sending message:', error.response?.data || error.message);
     throw error;

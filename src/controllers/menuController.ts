@@ -360,6 +360,42 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
   }
 };
 
+export const getMenusByCanteen = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { canteenId } = req.query; // Optional filter by canteenId
+
+    // Validate if canteenId is provided
+    if (!canteenId) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: 'Canteen ID is required.',
+      });
+    }
+
+    // Fetch menus filtered by canteenId and select id and name fields
+    const menus = await Menu.findAll({
+      where: { canteenId },
+      attributes: ['id', 'name'], // Select id and name fields
+      order: [['startTime', 'ASC']], // Order by startTime
+    });
+
+    if (menus.length === 0) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: 'No menus found for the specified canteen.',
+      });
+    }
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: 'Menus fetched successfully.',
+      data: menus, // Return the filtered menus
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching menus by canteen: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Internal server error.',
+    });
+  }
+};
+
 export const getMenuById = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { id } = req.query; // Get menu ID from query parameters
@@ -444,6 +480,70 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
     logger.error(`Error fetching menu by ID: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const getMenuByIdforwhatsapp = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { menuId } = req.query;
+
+    // Validate if menuId is provided
+    if (!menuId) {
+      return res.status(400).json({
+        message: 'Menu ID is required.',
+      });
+    }
+
+    // Fetch menu items and their pricing from the Item table
+    const menuItems = await MenuItem.findAll({
+      where: { menuId },
+      attributes: ['minQuantity', 'maxQuantity'], // Include minQuantity and maxQuantity from MenuItem
+      include: [
+        {
+          model: Item,
+          as: 'menuItemItem', // Ensure this matches the alias in the MenuItem -> Item association
+          attributes: ['id', 'name', 'description'], // Fetch necessary item fields
+          include: [
+            {
+              model: Pricing,
+              as: 'pricing', // Ensure this matches the alias in the Item -> Pricing association
+              attributes: ['price', 'currency'], // Fetch necessary pricing fields
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!menuItems || menuItems.length === 0) {
+      return res.status(404).json({
+        message: 'No menu items found for the specified menu.',
+      });
+    }
+
+    // Flatten the response structure
+    const flattenedMenuItems = menuItems.map((menuItem: any) => {
+      const item = menuItem.menuItemItem;
+      const pricing = item?.pricing || {};
+      return {
+        id: item?.id || null,
+        name: item?.name || null,
+        description: item?.description || null,
+        price: pricing?.price || null,
+        currency: pricing?.currency || null,
+        minQuantity: menuItem.minQuantity || null, // Include minQuantity
+        maxQuantity: menuItem.maxQuantity || null, // Include maxQuantity
+      };
+    });
+
+    return res.status(200).json({
+      message: 'Menu items fetched successfully.',
+      data: flattenedMenuItems, // Return flattened menu items
+    });
+  } catch (error: unknown) {
+    console.error(`Error fetching menu items: ${error instanceof Error ? error.message : error}`);
+    return res.status(500).json({
+      message: 'Internal server error.',
     });
   }
 };
