@@ -640,7 +640,7 @@ const processSpecialRecipient = async (body: any) => {
 /**
  * Function to send a WhatsApp message via Airtel API
  */
-const sendWhatsAppMessage = async (to: string, reply: string, fromNumber: string) => {
+export const sendWhatsAppMessage = async (to: string, reply: string, fromNumber: string) => {
   const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
   const username = 'world_tek';
   const password = 'T7W9&w3396Y"'; // Replace with actual password

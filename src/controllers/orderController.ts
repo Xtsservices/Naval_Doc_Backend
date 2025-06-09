@@ -20,6 +20,7 @@ import moment from 'moment-timezone'; // Import moment-timezone
 moment.tz('Asia/Kolkata')
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../models';
+import { sendWhatsAppMessage } from '../index';
 
 
 dotenv.config();
@@ -813,7 +814,7 @@ export const CashfreePaymentLinkDetails = async (req: Request, res: Response): P
             const qrCode = await QRCode.toDataURL(qrCodeData);
             order.qrCode = qrCode; // Generate and set the QR code if it's not already set  
             console.log('order.userId', order.userId);
-            sendWhatsQrAppMessage(order); // Send WhatsApp message with QR code
+            //sendWhatsQrAppMessage(order); // Send WhatsApp message with QR code
             }
           await order.save({ transaction });
         }
@@ -869,39 +870,45 @@ const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
 
   console.log('sendWhatsQrAppMessage', order.userId, phoneNumber);
 
-  const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
-  const username = 'world_tek';
-  const password = 'T7W9&w3396Y"'; // Replace with actual password
+  let toNumber = "91".concat(phoneNumber);
+  let replyText = `Your Order is Placed. Please find the QR code below:\n\n`;
 
-  const auth = Buffer.from(`${username}:${password}`).toString('base64');
+  sendWhatsAppMessage(toNumber,replyText,"918686078782");
 
-  const payload = {
-    sessionId: generateUuid(),
-    to: "91".concat(phoneNumber), // Recipient number
-    from: "918686078782", // Dynamically set the sender number
-    message: {
-      text: 'Your Order is Placed', // Message text
-    },
-    mediaAttachment: {
-        "type": "IMAGE",
-        "id": "https://welfarecanteen.in/public/Naval.jpg"
-    }
-  };
-  console.log('WhatsApp Payload:', payload);
-  console.log('WhatsApp URL:', url);
-  try {
-    const response = await axios.post(url, payload, {
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
-    });
 
-     console.log('Message sent successfully:', response.data);
-  } catch (error: any) {
-    console.error('Error sending message:', error.response?.data || error.message);
-    throw error;
-  }
+  // const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
+  // const username = 'world_tek';
+  // const password = 'T7W9&w3396Y"'; // Replace with actual password
+
+  // const auth = Buffer.from(`${username}:${password}`).toString('base64');
+
+  // const payload = {
+  //   sessionId: generateUuid(),
+  //   to: "91".concat(phoneNumber), // Recipient number
+  //   from: "918686078782", // Dynamically set the sender number
+  //   message: {
+  //     text: 'Your Order is Placed', // Message text
+  //   },
+  //   mediaAttachment: {
+  //       "type": "IMAGE",
+  //       "id": "https://welfarecanteen.in/public/Naval.jpg"
+  //   }
+  // };
+  // console.log('WhatsApp Payload:', payload);
+  // console.log('WhatsApp URL:', url);
+  // try {
+  //   const response = await axios.post(url, payload, {
+  //     headers: {
+  //       Authorization: `Basic ${auth}`,
+  //       'Content-Type': 'application/json',
+  //     },
+  //   });
+
+  //    console.log('Message sent successfully:', response.data);
+  // } catch (error: any) {
+  //   console.error('Error sending message:', error.response?.data || error.message);
+  //   throw error;
+  // }
 };
 
 export const cancelOrder = async (req: Request, res: Response): Promise<Response> => {
