@@ -887,7 +887,8 @@ const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
         "id": order.qrCode
     }
   };
-
+  console.log('WhatsApp Payload:', payload);
+  console.log('WhatsApp URL:', url);
   try {
     const response = await axios.post(url, payload, {
       headers: {
