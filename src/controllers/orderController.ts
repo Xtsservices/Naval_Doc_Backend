@@ -884,7 +884,7 @@ const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
     },
     mediaAttachment: {
         "type": "IMAGE",
-        "id": order.qrCode
+        "id": "https://welfarecanteen.in/public/Naval.jpg"
     }
   };
   console.log('WhatsApp Payload:', payload);
