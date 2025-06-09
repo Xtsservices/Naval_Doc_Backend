@@ -896,7 +896,7 @@ const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
       },
     });
 
-    // console.log('Message sent successfully:', response.data);
+     console.log('Message sent successfully:', response.data);
   } catch (error: any) {
     console.error('Error sending message:', error.response?.data || error.message);
     throw error;
