@@ -864,11 +864,10 @@ interface WhatsAppMessagePayload {
 
 const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
   const userId = order.userId; // Extract userId from the order object
-  console.log('sendWhatsQrAppMessage', userId);
   const user:any = await User.findOne({ where: { id: userId } }); // Fetch user details from the User table
   const phoneNumber = user?.phoneNumber; // Get the phone number from the user details
 
-  console.log('sendWhatsQrAppMessage', user);
+  console.log('sendWhatsQrAppMessage', order.userId, phoneNumber);
 
   const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
   const username = 'world_tek';
