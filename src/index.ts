@@ -646,8 +646,15 @@ export const sendWhatsAppMessage = async (
   fromNumber: string,
   qrCode: string | null
 ) => {
-  const url =
+  let url
+  if(qrCode === null) {
+     url =
     'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
+  }else{
+     url =
+    'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
+  }
+  
   const username = 'world_tek';
   const password = 'T7W9&w3396Y"'; // Replace with actual password
 
@@ -658,21 +665,24 @@ export const sendWhatsAppMessage = async (
     sessionId: generateUuid(),
     to, // Recipient number
     from: fromNumber, // Dynamically set the sender number
-    message: {
-      text: reply,
-    },
+    message: {},
   };
 
-  // If a QR code is provided, include it in the payload
+  // If a QR code is provided, include it as media
   if (qrCode) {
-    payload.message.media = [
-      {
-        type: 'image',
-        url: qrCode, // QR code in base64 format
+    payload.message = {
+      type: 'image',
+      image: {
+        url: qrCode, // QR code in base64 format or a public URL
         caption: reply, // Optional caption for the QR code
       },
-    ];
-    delete payload.message.text; // Remove text if media is included
+    };
+  } else {
+    // If no QR code, send a text message
+    payload.message = {
+      type: 'text',
+      text: reply,
+    };
   }
 
   try {
