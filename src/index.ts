@@ -646,53 +646,85 @@ export const sendWhatsAppMessage = async (
   fromNumber: string,
   qrCodeBase64: string | null
 ) => {
-  const isImage = qrCodeBase64 !== null;
-
-  const url = isImage
-    ? 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media'
-    : 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
-
   const username = 'world_tek';
-  const password = 'T7W9&w3396Y"'; // Move to ENV in production
+  const password = 'T7W9&w3396Y"'; // ⚠️ Move to env variable in production
   const auth = Buffer.from(`${username}:${password}`).toString('base64');
 
-  const payload: any = {
-    sessionId: generateUuid(),
-    to,
-    from: fromNumber,
-  };
+  const textUrl = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
+  const mediaSendUrl = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
+  const mediaUploadUrl = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/upload/media';
 
-  if (isImage) {
-    // Clean base64 if prefixed with data:image/...
-    const cleanedBase64 = qrCodeBase64.replace(/^data:image\/\w+;base64,/, '');
-
-    payload.mediaAttachment = {
-      type: 'image',
-      attachment: {
-        base64: cleanedBase64, // Raw base64 image
-        caption: reply,
-        filename: 'qr-code.png', // Required field in Airtel API for base64
-      },
+  // Send text message if no image provided
+  if (!qrCodeBase64) {
+    const textPayload = {
+      sessionId: generateUuid(),
+      to,
+      from: fromNumber,
+      message: {
+        type: 'text',
+        text: reply
+      }
     };
-  } else {
-    payload.message = {
-      text: reply,
-    };
-  }
 
-  try {
-    const response = await axios.post(url, payload, {
+    const response = await axios.post(textUrl, textPayload, {
       headers: {
         Authorization: `Basic ${auth}`,
         'Content-Type': 'application/json',
-      },
+      }
     });
 
-    console.log('✅ Message sent successfully:', response.data);
-  } catch (error: any) {
-    console.error('❌ Error sending message:', error.response?.data || error.message);
-    throw error;
+    console.log('✅ Text message sent:', response.data);
+    return response.data;
   }
+
+  // Step 1: Upload media
+  const cleanedBase64 = qrCodeBase64.replace(/^data:image\/\w+;base64,/, '');
+
+  const uploadPayload = {
+    sessionId: generateUuid(),
+    type: 'image',
+    attachment: {
+      base64: cleanedBase64,
+      filename: 'qr-code.png' // Required field
+    }
+  };
+
+  const uploadResponse = await axios.post(mediaUploadUrl, uploadPayload, {
+    headers: {
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/json',
+    }
+  });
+
+  const mediaId = uploadResponse.data?.mediaId;
+
+  if (!mediaId) {
+    throw new Error('❌ Failed to upload image. No mediaId returned.');
+  }
+
+  // Step 2: Send media message using mediaId
+  const mediaMessagePayload = {
+    sessionId: generateUuid(),
+    to,
+    from: fromNumber,
+    message: {
+      type: 'image',
+      image: {
+        id: mediaId,
+        caption: reply
+      }
+    }
+  };
+
+  const sendMediaResponse = await axios.post(mediaSendUrl, mediaMessagePayload, {
+    headers: {
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/json',
+    }
+  });
+
+  console.log('✅ Media message sent:', sendMediaResponse.data);
+  return sendMediaResponse.data;
 };
 
 
