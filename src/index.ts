@@ -644,43 +644,36 @@ export const sendWhatsAppMessage = async (
   to: string,
   reply: string,
   fromNumber: string,
-  qrCode: string | null
+  qrCodeBase64: string | null
 ) => {
-  let url
-  if(qrCode === null) {
-     url =
-    'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
-  }else{
-     url =
-    'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
-  }
-  
-  const username = 'world_tek';
-  const password = 'T7W9&w3396Y"'; // Replace with actual password
+  const isImage = qrCodeBase64 !== null;
 
+  const url = isImage
+    ? 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media'
+    : 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
+
+  const username = 'world_tek';
+  const password = 'T7W9&w3396Y"'; // Use env variable in production
   const auth = Buffer.from(`${username}:${password}`).toString('base64');
 
-  // Base payload for sending a message
   const payload: any = {
     sessionId: generateUuid(),
-    to, // Recipient number
-    from: fromNumber, // Dynamically set the sender number
-    message: {},
+    to,
+    from: fromNumber,
   };
 
-  // If a QR code is provided, include it as media
-  if (qrCode) {
-    payload.message = {
+  if (isImage) {
+    const cleanedBase64 = qrCodeBase64.replace(/^data:image\/\w+;base64,/, '');
+
+    payload.mediaAttachment = {
       type: 'image',
-      image: {
-        url: qrCode, // QR code in base64 format or a public URL
-        caption: reply, // Optional caption for the QR code
+      attachment: {
+        base64: cleanedBase64, // Base64-encoded image (without the `data:image/...` prefix)
+        caption: reply,
       },
     };
   } else {
-    // If no QR code, send a text message
     payload.message = {
-      type: 'text',
       text: reply,
     };
   }
