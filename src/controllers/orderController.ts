@@ -871,8 +871,8 @@ const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
 
   let toNumber = "91".concat(phoneNumber);
   let replyText = `Your Order is Placed. :\n\n`;
-  console.log('order.qrCode', order.qrCode);
-  sendWhatsAppMessage(toNumber,replyText,"918686078782",null);
+  // console.log('order.qrCode', order.qrCode);
+  sendWhatsAppMessage(toNumber,replyText,"918686078782",order.qrCode);
 
 
   // const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
