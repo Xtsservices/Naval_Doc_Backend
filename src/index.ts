@@ -653,7 +653,7 @@ export const sendWhatsAppMessage = async (
     : 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
 
   const username = 'world_tek';
-  const password = 'T7W9&w3396Y"'; // Use env variable in production
+  const password = 'T7W9&w3396Y"'; // Move to ENV in production
   const auth = Buffer.from(`${username}:${password}`).toString('base64');
 
   const payload: any = {
@@ -663,13 +663,15 @@ export const sendWhatsAppMessage = async (
   };
 
   if (isImage) {
+    // Clean base64 if prefixed with data:image/...
     const cleanedBase64 = qrCodeBase64.replace(/^data:image\/\w+;base64,/, '');
 
     payload.mediaAttachment = {
       type: 'image',
       attachment: {
-        base64: cleanedBase64, // Base64-encoded image (without the `data:image/...` prefix)
+        base64: cleanedBase64, // Raw base64 image
         caption: reply,
+        filename: 'qr-code.png', // Required field in Airtel API for base64
       },
     };
   } else {
@@ -686,9 +688,9 @@ export const sendWhatsAppMessage = async (
       },
     });
 
-    console.log('Message sent successfully:', response.data);
+    console.log('✅ Message sent successfully:', response.data);
   } catch (error: any) {
-    console.error('Error sending message:', error.response?.data || error.message);
+    console.error('❌ Error sending message:', error.response?.data || error.message);
     throw error;
   }
 };
