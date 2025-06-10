@@ -644,87 +644,86 @@ export const sendWhatsAppMessage = async (
   to: string,
   reply: string,
   fromNumber: string,
-  qrCodeBase64: string | null
+  base64Image: string | null
 ) => {
   const username = 'world_tek';
-  const password = 'T7W9&w3396Y"'; // ⚠️ Move to env variable in production
+  const password = 'T7W9&w3396Y"'; // Store in environment variables in production
   const auth = Buffer.from(`${username}:${password}`).toString('base64');
 
-  const textUrl = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
-  const mediaSendUrl = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
-  const mediaUploadUrl = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/upload/media';
+  const headers = {
+    Authorization: `Basic ${auth}`,
+    'Content-Type': 'application/json',
+  };
 
-  // Send text message if no image provided
-  if (!qrCodeBase64) {
-    const textPayload = {
+  const textUrl =
+    'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
+
+  const uploadUrl =
+    'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/upload/media';
+
+  const mediaSendUrl =
+    'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
+
+  try {
+    // 🔹 If no image, send as text message
+    if (!base64Image) {
+      const textPayload = {
+        sessionId: generateUuid(),
+        to,
+        from: fromNumber,
+        message: {
+          type: 'text',
+          text: reply,
+        },
+      };
+
+      const response = await axios.post(textUrl, textPayload, { headers });
+      console.log('✅ Text message sent:', response.data);
+      return response.data;
+    }
+
+    // 🔹 Clean base64 data (remove prefix if exists)
+    const cleanedBase64 = base64Image.replace(/^data:image\/\w+;base64,/, '');
+
+    // 🔹 Upload image to get mediaId
+    const uploadPayload = {
+      sessionId: generateUuid(),
+      type: 'image',
+      attachment: {
+        base64: cleanedBase64,
+        filename: 'qr-code.png',
+      },
+    };
+
+    const uploadRes = await axios.post(uploadUrl, uploadPayload, { headers });
+    const mediaId = uploadRes.data.mediaId;
+
+    if (!mediaId) {
+      throw new Error('❌ Media upload failed. mediaId not returned.');
+    }
+
+    // 🔹 Send image message using mediaId
+    const mediaPayload = {
       sessionId: generateUuid(),
       to,
       from: fromNumber,
       message: {
-        type: 'text',
-        text: reply
-      }
+        type: 'image',
+        image: {
+          id: mediaId,
+          caption: reply,
+        },
+      },
     };
 
-    const response = await axios.post(textUrl, textPayload, {
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      }
-    });
+    const mediaRes = await axios.post(mediaSendUrl, mediaPayload, { headers });
+    console.log('✅ Image message sent:', mediaRes.data);
+    return mediaRes.data;
 
-    console.log('✅ Text message sent:', response.data);
-    return response.data;
+  } catch (error: any) {
+    console.error('❌ Error sending WhatsApp message:', error.response?.data || error.message);
+    throw error;
   }
-
-  // Step 1: Upload media
-  const cleanedBase64 = qrCodeBase64.replace(/^data:image\/\w+;base64,/, '');
-
-  const uploadPayload = {
-    sessionId: generateUuid(),
-    type: 'image',
-    attachment: {
-      base64: cleanedBase64,
-      filename: 'qr-code.png' // Required field
-    }
-  };
-
-  const uploadResponse = await axios.post(mediaUploadUrl, uploadPayload, {
-    headers: {
-      Authorization: `Basic ${auth}`,
-      'Content-Type': 'application/json',
-    }
-  });
-
-  const mediaId = uploadResponse.data?.mediaId;
-
-  if (!mediaId) {
-    throw new Error('❌ Failed to upload image. No mediaId returned.');
-  }
-
-  // Step 2: Send media message using mediaId
-  const mediaMessagePayload = {
-    sessionId: generateUuid(),
-    to,
-    from: fromNumber,
-    message: {
-      type: 'image',
-      image: {
-        id: mediaId,
-        caption: reply
-      }
-    }
-  };
-
-  const sendMediaResponse = await axios.post(mediaSendUrl, mediaMessagePayload, {
-    headers: {
-      Authorization: `Basic ${auth}`,
-      'Content-Type': 'application/json',
-    }
-  });
-
-  console.log('✅ Media message sent:', sendMediaResponse.data);
-  return sendMediaResponse.data;
 };
 
 
