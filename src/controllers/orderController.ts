@@ -823,7 +823,7 @@ export const CashfreePaymentLinkDetails = async (req: Request, res: Response): P
       await transaction.commit();
 
       // Return the updated payment details as a response
-      const order = await Order.findByPk(payment.orderId, { transaction });
+      const order = await Order.findOne({ where: { id: payment.orderId }, transaction });
       return res.status(200).json({
         message: 'Payment details updated successfully.',
         data: {
