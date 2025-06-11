@@ -20,7 +20,7 @@ import moment from 'moment-timezone'; // Import moment-timezone
 moment.tz('Asia/Kolkata')
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../models';
-import { sendWhatsAppMessage } from '../index';
+import { sendWhatsAppMessage,sendImageWithoutAttachment } from '../index';
 
 
 dotenv.config();
@@ -868,11 +868,13 @@ const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
   const user:any = await User.findOne({ where: { id: userId } }); // Fetch user details from the User table
   const phoneNumber = user?.mobile; // Get the phone number from the user details
 
+  const name = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'User'; // Default to 'User' if name doesn't exist
+
 
   let toNumber = "91".concat(phoneNumber);
-  let replyText = `Your Order is Placed. :\n\n`;
-  // console.log('order.qrCode', order.qrCode);
-  sendWhatsAppMessage(toNumber,replyText,"918686078782",null);
+
+  sendImageWithoutAttachment(toNumber,"01jxdn1kmc046q8nf76fr7z6cf",[name],[]);
+
 
 
   // const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';

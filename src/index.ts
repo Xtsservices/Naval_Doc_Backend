@@ -727,6 +727,197 @@ export const sendWhatsAppMessage = async (
 };
 
 
+/**
+ * Upload an image to Airtel API
+//  * @param filePath - The local file path of the image to upload
+//  * @returns The media ID returned by the Airtel API
+ */
+// const uploadImageToAirtelAPI = async (filePath: string): Promise<string> => {
+//   const url = 'https://iqwhatsapp.airtel.in:443/gateway/airtel-xchange/whatsapp-content-manager/v1/media';
+//   const username = 'world_tek'; // Replace with your Airtel username
+//   const password = 'T7W9&w3396Y"'; // Replace with your Airtel password
+
+//   const auth = Buffer.from(`${username}:${password}`).toString('base64');
+
+//   // Create FormData for the API request
+//   const formData = new FormData();
+//   formData.append('customerId', 'KWIKTSP_CO_j3og3FCEU1TsAz1EO7wQ'); // Replace with your customer ID
+//   formData.append('phoneNumber', '918686078782'); // Replace with your Airtel-registered number
+//   formData.append('mediaType', 'IMAGE');
+//   formData.append('messageType', 'TEMPLATE_MESSAGE');
+//   formData.append('file', fs.createReadStream(filePath)); // Attach the file
+
+//   try {
+//     const response = await axios.post(url, formData, {
+//       headers: {
+//         Authorization: `Basic ${auth}`,
+//         ...formData.getHeaders(), // Dynamically set headers for FormData
+//       },
+//     });
+
+//     console.log('✅ Image uploaded successfully:', response.data);
+
+//     // Return the media ID from the response
+//     if (response.data && response.data.id) {
+//       // sendImageWithAttachment(response.data.id, '919490219062', '01jxc2n4fawcmzwpewsx7024wg', ['prasahnth',], ['payload1']);
+//       return response.data.id;
+//     } else {
+//       throw new Error('❌ Media ID not returned by Airtel API.');
+//     }
+//   } catch (error: any) {
+//     console.error('❌ Error uploading image to Airtel API:', error.response?.data || error.message);
+//     throw error;
+//   }
+// };
+
+
+// import fs from 'fs';
+// import path from 'path';
+// import FormData from 'form-data'; // Import FormData from the 'form-data' package
+
+/**
+//  * Upload a base64 image to a local directory
+//  * @param base64Image - The base64 string of the image
+//  * @param fileName - The name of the file to save (e.g., 'qr-code.png')
+//  * @param directory - The directory where the file should be saved
+//  * @returns The file path of the saved image
+ */
+
+/**
+ * Upload a base64 image to Airtel API
+//  * @param base64Image - The base64 string of the image
+//  * @param fileName - The name of the file to upload (e.g., 'qr-code.png')
+//  * @returns The media ID returned by the Airtel API
+ */
+
+export const sendImageWithoutAttachment = async (
+  to: string,
+  templateId: string,
+  variables: string[],
+  payload: string[]
+): Promise<void> => {
+  const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/template/send';
+  const username = 'world_tek'; // Replace with your Airtel username
+  const password = 'T7W9&w3396Y"'; // Replace with your Airtel password
+
+  const auth = Buffer.from(`${username}:${password}`).toString('base64');
+
+  const headers = {
+    Authorization: `Basic ${auth}`,
+    'Content-Type': 'application/json',
+  };
+
+  // Payload for the API
+  const payloadData = {
+    templateId,
+    to,
+    from: '918686078782', // Replace with your Airtel-registerewebd number
+    message: {
+      headerVars: [],
+      variables,
+      payload,
+    },
+    
+  };
+  console.log('Sending message with out attachment:', payloadData);
+
+  try {
+    const response = await axios.post(url, payloadData, { headers });
+    console.log('✅ Message sent successfully:', response.data);
+  } catch (error: any) {
+    console.error('❌ Error sending message with attachment:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// import AWS from 'aws-sdk';
+
+
+
+/**
+ * Upload a base64 image to an S3 bucket
+ * @param base64Image - The base64 string of the image
+ * @param bucketName - The name of the S3 bucket
+ * @param folderName - The folder name in the S3 bucket (optional)
+ * @returns The URL of the uploaded image
+ */
+// const uploadBase64ImageToS3 = async (
+//   base64Image: string,
+//   bucketName: string,
+//   folderName: string = ''
+// ): Promise<string> => {
+//   // Configure AWS SDK
+//   AWS.config.update({
+//     accessKeyId: process.env.AWS_ACCESS_KEY_ID, // Replace with your AWS access key
+//     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY, // Replace with your AWS secret key
+//     region: process.env.AWS_REGION || 'us-east-1', // Replace with your AWS region
+//   });
+
+//   const s3 = new AWS.S3();
+
+//   // Clean the base64 string (remove the prefix if it exists)
+//   const base64Data = Buffer.from(base64Image.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+
+//   // Determine the file type (e.g., png, jpeg)
+//   const fileType = base64Image.match(/^data:image\/(\w+);base64,/)?.[1] || 'png';
+
+//   // Generate a unique file name
+//   const fileName = `${folderName ? `${folderName}/` : ''}${uuidv4()}.${fileType}`;
+
+//   // S3 upload parameters
+//   const params = {
+//     Bucket: bucketName,
+//     Key: fileName,
+//     Body: base64Data,
+//     ContentType: `image/${fileType}`,
+//   };
+
+//   try {
+//     const result = await s3.upload(params).promise();
+
+
+//     console.log('✅ Image uploaded successfully to S3:', result.Location);
+//     return result.Location; // Return the URL of the uploaded image
+//   } catch (error: any) {
+//     console.error('❌ Error uploading image to S3:', error.message);
+//     throw error;
+//   }
+// };
+// Removed duplicate declaration of uploadImageToAirtelAPI
+// export const uploadBase64Image = (base64Image: string, fileName: string, directory: string): string => {
+//   try {
+//     // Ensure the directory exists
+//     if (!fs.existsSync(directory)) {
+//       fs.mkdirSync(directory, { recursive: true });
+//     }
+
+//     // Clean the base64 string (remove the prefix if it exists)
+//     const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
+
+//     // Define the file path
+//     const filePath = path.join(directory, fileName);
+//     console.log("@@@@",filePath)
+//     uploadImageToAirtelAPI(filePath)
+//     // Write the file to the local directory
+//     fs.writeFileSync(filePath, base64Data, { encoding: 'base64' });
+
+//     console.log(`✅ Image saved successfully at: ${filePath}`);
+//     return filePath;
+//   } catch (error:any) {
+//     console.error('❌ Error saving image:', error.message);
+//     throw error;
+//   }
+// };
+
+// const base64Image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJQAAACUCAYAAAB1PADUAAAAAklEQVR4AewaftIAAAS4SURBVO3BQY4kRxIEQbVA/f/Lun1bPwWQSK8mZ2gi8QdVSw5Viw5Viw5Viw5Viw5Viw5Viw5Viw5Viw5Viw5Viw5Viw5Viw5Viz68lITfpPJEEp5QuUnCjcqUhCdUpiT8JpU3DlWLDlWLDlWLPixT2ZSEN1Q2qbyhMiXhCZVNSdh0qFp0qFp0qFr04cuS8ITKE0mYVG6ScKMyJWFSmZIwqUwqUxI2JeEJlW86VC06VC06VC368B+jMiXhRuWJJEwqNyp/k0PVokPVokPVog9/mSRMKjcqUxKeUKn/O1QtOlQtOlQt+vBlKr9JZUrCpDIl4Y0kTCpTEiaVTSr/JoeqRYeqRYeqRR+WJeFPpjIlYVKZkvBGEiaVmyT8mx2qFh2qFh2qFh15Kwo3KpDIl4UblCZUnkjCpvKEyJeENlU2HqkWHqkWHqkXfXlKZknCThCdUpiRMSZhUblSmJEwqUxImlSkJk8qk8obKlIRJ5YkkTCqbDlWLDlWLDlWL4g/+QUl4Q+WJJEwqm5JwozIlYVJ5Iwk3Kt90qFp0qFp0qFr0YVkSnlB5IglPJGFSmZLwhsoTSZhUpiS8oTIl4SYJk8obh6pFh6pFh6pFH15Kwo3KTRImlSkJk8qUhEnlNyXhRuUJlSkJ36Sy6VC16FC16FC16MOXJeENlSkJk8obKlMSJpUpCZPKb1KZknCjMiVhUtl0qFp0qFp0qFr04ZepPJGETUmYVCaVKQmTypSEG5WbJEwqk8qNyk0SJpVvOlQtOlQtOlQtij94IQmTyk0SnlCZkvCGypSESeWNJDyhcpOETSpTEiaVNw5Viw5Viw5Viz58WRLeSMKNym9KwhMqN0m4UZmSMKlMSXhCZdOhatGhatGhatGHL1O5ScKNyk0SJpVNSZhUpiRMKjdJmFRukjCpTEmYVG6SMKlsOlQtOlQtOlQtij94IQmTypSESWVKwhsqN0mYVL4pCZPKTRI2qUxJeELljUPVokPVokPVoviDP1gSnlC5ScKNyhtJuFF5IgmbVN44VC06VC06VC368FISfpPKpDIl4ZuSMKlMSdiUhEnlDZVvOlQtOlQtOlQt+rBMZVMSbpIwqdwkYVK5UXlCZUrCpDIl4UblDZXfdKhadKhadKhad9OHLkvCEyqYk3CRhUpmS8IbKE0l4Q2VKwo3KpkPVokPVokPVog9/OZUpCZPKjcpNEiaVKQmTyo3KG0l4IgmTyhuHqkWHqkWHqkUf/uOS8E0qbyThCZWbJEwqm5Viw5Viw5Viz58mco3qUxJuFF5IwlPJOENlSkJk8qUhEnlNx2qFh2qFh2qFn1YloTflIQnkjCp3CThRmVKwqTyRBImlSdUpiRMKt90qFp0qFp0qFoUf1C15FC16FC16FC16FC16FC16FC16FC16FC16FC16FC16FC16FC16FC16FC16FC16H/E5DkSBtV3ygAAAABJRU5ErkJggg=='; // Example base64 string
+// const fileName = 'example.png';
+// const directory = './uploads';
+// if (!process.env.AWS_S3_BUCKET_NAME) {
+//   throw new Error('AWS_S3_BUCKET_NAME is not defined in the environment variables.');
+// }
+//uploadBase64ImageToS3(base64Image, process.env.AWS_S3_BUCKET_NAME, 'naval-dock-yard');
+//uploadBase64Image(base64Image, fileName, directory);
+
 
 /**
  * Generate a unique session ID
@@ -735,6 +926,10 @@ function generateUuid(): string {
   return uuidv4();
 }
 
+
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+
