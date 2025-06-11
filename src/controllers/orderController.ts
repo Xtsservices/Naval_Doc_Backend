@@ -870,10 +870,10 @@ const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
 
   const name = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'User'; // Default to 'User' if name doesn't exist
 
-
+let OrderNo="NV".concat(order.id.toString());
   let toNumber = "91".concat(phoneNumber);
 
-  sendImageWithoutAttachment(toNumber,"01jxdn1kmc046q8nf76fr7z6cf",[name],[]);
+  sendImageWithoutAttachment(toNumber,"01jxdn1kmc046q8nf76fr7z6cf",[name,OrderNo],[]);
 
 
 
