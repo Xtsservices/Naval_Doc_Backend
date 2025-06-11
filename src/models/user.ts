@@ -1,6 +1,7 @@
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/database';
-import moment from 'moment';
+import moment from 'moment-timezone'; // Import moment-timezone
+moment.tz('Asia/Kolkata')
 import userRole from './userRole';
 
 class User extends Model {

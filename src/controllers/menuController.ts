@@ -7,8 +7,8 @@ import { createItemValidation } from '../validations/joiValidations';
 import logger from '../common/logger';
 import { getMessage } from '../common/utils';
 import { statusCodes } from '../common/statusCodes';
-import moment from 'moment-timezone';
-moment.tz.setDefault('Kolkata');
+import moment from 'moment-timezone'; // Import moment-timezone
+moment.tz('Asia/Kolkata')
 
 
 import Menu from '../models/menu';
