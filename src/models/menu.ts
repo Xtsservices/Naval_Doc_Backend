@@ -1,6 +1,7 @@
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/database';
-import moment from 'moment';
+import moment from 'moment-timezone'; // Import moment-timezone
+moment.tz('Asia/Kolkata')
 import MenuConfiguration from './menuConfiguration';
 import MenuItem from './menuItem';
 import Canteen from './canteen'; // Import the Canteen model

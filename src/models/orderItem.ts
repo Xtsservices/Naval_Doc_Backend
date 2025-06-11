@@ -1,6 +1,7 @@
 import { Model, DataTypes } from 'sequelize';
 import { sequelize } from '../config/database';
-import moment from 'moment'; // Import moment for Unix timestamps
+import moment from 'moment-timezone'; // Import moment-timezone
+moment.tz('Asia/Kolkata')
 
 class OrderItem extends Model {
   public id!: number;

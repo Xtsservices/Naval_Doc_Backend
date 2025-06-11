@@ -7,7 +7,8 @@ import { createItemValidation } from '../validations/joiValidations';
 import logger from '../common/logger';
 import { getMessage } from '../common/utils';
 import { statusCodes } from '../common/statusCodes';
-import moment from 'moment';
+import moment from 'moment-timezone'; // Import moment-timezone
+moment.tz('Asia/Kolkata')
 
 export const createItem = async (req: Request, res: Response): Promise<Response> => {
   const { name, description, type, quantity, quantityUnit, price, startDate, endDate } = req.body;
