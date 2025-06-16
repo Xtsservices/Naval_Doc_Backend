@@ -10,7 +10,7 @@ import menuRoutes from './routes/menuRoutes';
 import orderRoutes from './routes/orderRoutes';
 import adminDashboardRoutes from './routes/adminDashboardRoutes';
 import voiceRoutes from './routes/voiceRoutes';
-
+import paymentSdkRoutes from './routes/paymentSdkRoutes'; // Import payment SDK routes
 import { Buffer } from 'buffer';
 import base64 from 'base-64'; // Install via: npm install base-64
 
@@ -239,8 +239,8 @@ app.use('/api/adminDasboard', adminDashboardRoutes);
 
 app.use('/api/voice', voiceRoutes);
 
-
-
+//payment method sdk
+app.use('/api/paymentsdk', paymentSdkRoutes);
 
 
 //  const AIRTEL_API_URL = process.env.AIRTEL_API_URL!;
