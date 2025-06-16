@@ -1,8 +1,5 @@
 import { Router } from 'express';
 import { Cashfree, CFEnvironment } from 'cashfree-pg';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const router = Router();
 
