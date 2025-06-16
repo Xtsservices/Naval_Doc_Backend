@@ -14,9 +14,9 @@ const cashfree = new Cashfree(env, clientId, clientSecret);
 router.post('/createOrder', async (req, res) => {
   const { customer_id, customer_email, customer_phone, order_amount = '1.00', order_currency = 'INR' } = req.body;
 
-  return res.status(200).json({
-      customer_id
-    });
+//   return res.status(200).json({
+//       customer_id
+//     });
 
   if (!customer_id || !customer_email || !customer_phone) {
     return res.status(400).json({ error: 'Missing required fields' });
