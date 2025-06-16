@@ -1,6 +1,7 @@
 import { Model, DataTypes } from 'sequelize';
 import { sequelize } from '../config/database';
-import moment from 'moment'; // Import moment for Unix timestamps
+import moment from 'moment-timezone'; // Import moment-timezone
+moment.tz('Asia/Kolkata') // Import moment for Unix timestamps
 import Canteen from './canteen';
 
 class Order extends Model {

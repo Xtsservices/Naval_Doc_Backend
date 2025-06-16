@@ -189,7 +189,7 @@ export const PaymentLink = async (
 
     // Create order payload for Cashfree
 
-    let linkId = "testcash_pra2Nav_";
+    let linkId = "testcash_pra4Nav_";
 
     linkId = linkId.concat(payment.id);
     const payload = {
@@ -243,7 +243,6 @@ export const PaymentLink = async (
     if (response.status === 200 && response.data) {
       const { link_id, link_url } = response.data;
 
-      console.log("response", response.data);
 
       // Construct the payment link
       const paymentLink = link_url;

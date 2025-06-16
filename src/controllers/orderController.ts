@@ -18,6 +18,10 @@ import { PaymentLink } from '../common/utils';
 import Wallet from '../models/wallet';
 import moment from 'moment-timezone'; // Import moment-timezone
 moment.tz('Asia/Kolkata')
+import { v4 as uuidv4 } from 'uuid';
+import { User } from '../models';
+import { sendWhatsAppMessage,sendImageWithoutAttachment } from '../index';
+
 
 dotenv.config();
 
@@ -61,11 +65,15 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
     const totalAmount = amount + gatewayCharges;
 
     // Create the order
+    let oderStatus= 'placed';
+    if(paymentMethod.includes('online')){
+      oderStatus= 'initiated';
+    }
     const order = await Order.create(
       {
         userId: userIdString,
         totalAmount: cart.totalAmount,
-        status: 'placed',
+        status: oderStatus,
         canteenId: cart.canteenId,
         menuConfigurationId: cart.menuConfigurationId,
         createdById: userIdString,
@@ -796,15 +804,35 @@ export const CashfreePaymentLinkDetails = async (req: Request, res: Response): P
         { transaction }
       ); // Update the status, transactionId, and timestamp within the transaction
 
+      // Update the order status based on payment success
+      if (paymentDetails.link_status === 'PAID') {
+        const order = await Order.findByPk(payment.orderId, { transaction });
+        if (order) {
+          order.status = 'placed';
+          if(order.qrCode === null || order.qrCode === undefined){
+            const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`; 
+            const qrCode = await QRCode.toDataURL(qrCodeData);
+            order.qrCode = qrCode; // Generate and set the QR code if it's not already set  
+            console.log('order.userId', order.userId);
+            sendWhatsQrAppMessage(order); // Send WhatsApp message with QR code
+            }
+          await order.save({ transaction });
+        }
+      }
       // Commit the transaction
       await transaction.commit();
 
       // Return the updated payment details as a response
+      console.log('Payment details updated successfully:', payment.orderId);
+      const orderdetails = await Order.findOne({ where: { id: payment.orderId } });
+      console.log('Payment details updated successfully:', orderdetails);
+
       return res.status(200).json({
         message: 'Payment details updated successfully.',
         data: {
           payment,
           cashfreeDetails: paymentDetails,
+          orderdetails,
         },
       });
     } else {
@@ -822,6 +850,71 @@ export const CashfreePaymentLinkDetails = async (req: Request, res: Response): P
       message: 'An error occurred while fetching or updating payment details from Cashfree.',
     });
   }
+};
+
+function generateUuid(): string {
+  return uuidv4();
+}
+interface WhatsAppMessagePayload {
+  sessionId: string;
+  to: string; // Recipient number
+  from: string; // Sender number
+  message: {
+    text: string;
+  };
+  mediaAttachment?: {
+    type: string;
+    id: string;
+  };
+}
+
+const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
+  const userId = order.userId; // Extract userId from the order object
+  const user:any = await User.findOne({ where: { id: userId } }); // Fetch user details from the User table
+  const phoneNumber = user?.mobile; // Get the phone number from the user details
+
+  const name = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'User'; // Default to 'User' if name doesn't exist
+
+let OrderNo="NV".concat(order.id.toString());
+  let toNumber = "91".concat(phoneNumber);
+
+  sendImageWithoutAttachment(toNumber,"01jxdn1kmc046q8nf76fr7z6cf",[name,OrderNo],[]);
+
+
+
+  // const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
+  // const username = 'world_tek';
+  // const password = 'T7W9&w3396Y"'; // Replace with actual password
+
+  // const auth = Buffer.from(`${username}:${password}`).toString('base64');
+
+  // const payload = {
+  //   sessionId: generateUuid(),
+  //   to: "91".concat(phoneNumber), // Recipient number
+  //   from: "918686078782", // Dynamically set the sender number
+  //   message: {
+  //     text: 'Your Order is Placed', // Message text
+  //   },
+  //   mediaAttachment: {
+  //       "type": "IMAGE",
+  //       "id": "https://welfarecanteen.in/public/Naval.jpg"
+  //   }
+  // };
+  // console.log('WhatsApp Payload:', payload);
+  // console.log('WhatsApp URL:', url);
+  // try {
+  //   const response = await axios.post(url, payload, {
+  //     headers: {
+  //       Authorization: `Basic ${auth}`,
+  //       'Content-Type': 'application/json',
+  //     },
+  //   });
+
+  //    console.log('Message sent successfully:', response.data);
+  // } catch (error: any) {
+  //   console.error('Error sending message:', error.response?.data || error.message);
+  //   throw error;
+  // }
 };
 
 export const cancelOrder = async (req: Request, res: Response): Promise<Response> => {
@@ -999,3 +1092,5 @@ export const getWalletBalance = async (req: Request, res: Response): Promise<Res
     });
   }
 };
+
+

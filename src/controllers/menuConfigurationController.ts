@@ -3,7 +3,8 @@ import MenuConfiguration from '../models/menuConfiguration';
 import logger from '../common/logger';
 import { statusCodes } from '../common/statusCodes';
 import { getMessage } from '../common/utils';
-import moment from 'moment';
+import moment from 'moment-timezone'; // Import moment-timezone
+moment.tz('Asia/Kolkata')
 import { Op } from 'sequelize';
 
 // Allowed menu names
