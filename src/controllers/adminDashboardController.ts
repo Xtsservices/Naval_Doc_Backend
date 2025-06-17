@@ -9,6 +9,9 @@ import Item from '../models/item';
 import Canteen from '../models/canteen';
 import Menu from '../models/menu';
 import { User } from '../models';
+import MenuItem from '../models/menuItem';
+import MenuConfiguration from '../models/menuConfiguration';
+import Pricing from '../models/pricing';
 
 export const adminDashboard = async (req: Request, res: Response): Promise<Response> => {
   try {
@@ -94,9 +97,34 @@ export const getTotalMenus = async (req: Request, res: Response): Promise<Respon
           as: 'canteenMenu', // Use the correct alias defined in the association
           attributes: ['id', 'canteenName'], // Fetch necessary canteen fields
         },
+        {
+          model: MenuConfiguration,
+          as: 'menuMenuConfiguration', // Include menu configuration details
+          attributes: ['id', 'name', 'defaultStartTime', 'defaultEndTime'], // Fetch necessary menu configuration fields
+        },
+        {
+          model: MenuItem,
+          as: 'menuItems', // Include menu items
+          include: [
+            {
+              model: Item,
+              as: 'menuItemItem', // Include item details
+              attributes: ['id', 'name', 'description', 'image'], // Fetch necessary item fields
+              include: [
+                {
+                  model: Pricing,
+                  as: 'pricing', // Include pricing details
+                  attributes: ['id', 'price', 'currency'], // Fetch necessary pricing fields
+                },
+              ],
+            },
+          ],
+        },
       ],
       attributes: ['id', 'name', 'createdAt', 'updatedAt'], // Fetch necessary menu fields
     });
+
+    
 
     return res.status(statusCodes.SUCCESS).json({
       message: getMessage('admin.totalMenusFetched'),
