@@ -322,7 +322,7 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
     // Verify the cart item exists and belongs to the specified cart
     const cartItem = await CartItem.findOne({
       where: {
-        id: cartItemId, // Use itemId instead of itemid
+        itemId: cartItemId, // Use itemId instead of itemid
         cartId: cartId,
       },
       transaction,
