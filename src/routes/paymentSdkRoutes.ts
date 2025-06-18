@@ -3,9 +3,14 @@ import { Cashfree, CFEnvironment } from 'cashfree-pg';
 
 const router = Router();
 
-const clientId = process.env.CASHFREE_CLIENT_ID || '';
-const clientSecret = process.env.CASHFREE_CLIENT_SECRET || '';
-const env = process.env.CASHFREE_ENV === 'production' ? CFEnvironment.PRODUCTION : CFEnvironment.SANDBOX;
+//here we should keep production when we are ready to go live
+// const clientId = process.env.CASHFREE_CLIENT_ID || '';
+// const clientSecret = process.env.CASHFREE_CLIENT_SECRET || '';
+// const env = CFEnvironment.PRODUCTION 
+
+const clientId = process.env.CASHFREE_CLIENT_ID_sandbox || '';
+const clientSecret = process.env.CASHFREE_CLIENT_SECRET_sandbox || '';
+const env = CFEnvironment.SANDBOX;
 const returnUrl = process.env.CASHFREE_RETURN_URL || 'https://welfarecanteen.in/payment-status';
 
 // Initialize Cashfree SDK
