@@ -113,11 +113,12 @@ export const getAllItems = async (req: Request, res: Response): Promise<Response
   try {
     // Fetch all items with their associated pricing
     const items = await Item.findAll({
+      where: { status: 'active' },
       include: [
-        {
-          model: Pricing,
-          as: 'pricing',
-        },
+      {
+        model: Pricing,
+        as: 'pricing',
+      },
       ],
     });
 
@@ -162,6 +163,32 @@ export const getAllItemsCount = async (req: Request, res: Response): Promise<Res
     });
   } catch (error: unknown) {
     logger.error(`Error fetching items count: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const setItemInactive = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { itemId } = req.params; // Extract itemId from route parameters
+
+    // Check if the item exists
+    const item = await Item.findByPk(itemId);
+    if (!item) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('error.itemNotFound'),
+      });
+    }
+
+    // Update the item's status to inactive
+    await item.update({ status: 'inactive' });
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('admin.itemStatusUpdated'),
+    });
+  } catch (error: unknown) {
+    logger.error(`Error setting item as inactive: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
     });

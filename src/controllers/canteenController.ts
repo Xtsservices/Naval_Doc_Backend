@@ -84,7 +84,6 @@ export const createCanteen = async (req: Request, res: Response): Promise<Respon
   } catch (error: unknown) {
     // Rollback the transaction in case of an error
     await transaction.rollback();
-
     if (error instanceof Error) {
       logger.error(`Error creating canteen: ${error.message}`);
     } else {
