@@ -1,14 +1,14 @@
 import { Request, Response } from 'express';
 import { Transaction } from 'sequelize';
-import { sequelize } from '../config/database';
-import Item from '../models/item';
-import Pricing from '../models/pricing';
-import { createItemValidation } from '../validations/joiValidations';
+import moment from 'moment';
+import { Item, Pricing } from '../models'; // Adjust the import paths for your models
+// Update the import path below to the correct relative path where your utils file is located.
+// For example, if utils.ts is in src/utils/utils.ts, use '../utils/utils'
 import logger from '../common/logger';
-import { getMessage } from '../common/utils';
 import { statusCodes } from '../common/statusCodes';
-import moment from 'moment-timezone'; // Import moment-timezone
-moment.tz('Asia/Kolkata')
+import { getMessage } from '../common/utils';// Adjust logger import
+import { sequelize } from '../config/database'; // Adjust the import path for your database configuration
+import { createItemValidation,updateItemValidation } from '../validations/joiValidations';
 
 export const createItem = async (req: Request, res: Response): Promise<Response> => {
   const { name, description, type, quantity, quantityUnit, price, startDate, endDate } = req.body;
@@ -189,6 +189,105 @@ export const setItemInactive = async (req: Request, res: Response): Promise<Resp
     });
   } catch (error: unknown) {
     logger.error(`Error setting item as inactive: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const updateItem = async (req: Request, res: Response): Promise<Response> => {
+  const { id , description, type, quantity, quantityUnit, price, startDate, endDate } = req.body;
+  const image = req.file?.buffer; // Get the binary data of the uploaded image
+  const status = req.body.status || 'active'; // Default status to 'active' if not provided
+  const currency = req.body.currency || 'INR'; // Default currency to 'INR' if not provided
+
+  // Validate the request body
+  const { error } = updateItemValidation.validate({id,
+    description,
+    type,
+    quantity,
+    quantityUnit,
+    price,
+    currency,
+    startDate,
+    endDate,
+  });
+  if (error) {
+    logger.error(`Validation error: ${error.details[0].message}`);
+    return res.status(statusCodes.BAD_REQUEST).json({
+      message: getMessage('error.validationError'),
+    });
+  }
+
+  // Validate and convert startDate and endDate to Unix timestamps
+  const startDateUnix = moment(startDate, 'DD-MM-YYYY', true);
+  const endDateUnix = moment(endDate, 'DD-MM-YYYY', true);
+
+  if (!startDateUnix.isValid() || !endDateUnix.isValid()) {
+    logger.error('Invalid date format. Expected format is dd-mm-yyyy.');
+    return res.status(statusCodes.BAD_REQUEST).json({
+      message: getMessage('error.invalidDateFormat'),
+    });
+  }
+
+  const transaction: Transaction = await sequelize.transaction();
+
+  try {
+    // Check if the item exists
+    const item = await Item.findByPk(id, { transaction });
+    if (!item) {
+      logger.warn(`Item with ID "${id}" not found`);
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('item.itemNotFound'),
+      });
+    }
+
+    // Update the item details
+    await item.update(
+      {
+        description: description || item.description,
+        type: type || item.type,
+        quantity: quantity || item.quantity,
+        quantityUnit: quantityUnit || item.quantityUnit,
+        image: image || item.image, // Update image if provided
+        status: status || item.status,
+      },
+      { transaction }
+    );
+
+    // Update the pricing details
+    const pricing = await Pricing.findOne({ where: { itemId: item.id }, transaction });
+    if (pricing) {
+      await pricing.update(
+        {
+          price: price || pricing.price,
+          currency: currency || pricing.currency,
+          startDate: startDateUnix.unix() || pricing.startDate, // Update startDate if provided
+          endDate: endDateUnix.unix() || pricing.endDate, // Update endDate if provided
+          status: status || pricing.status,
+        },
+        { transaction }
+      );
+    }
+
+    // Commit the transaction
+    await transaction.commit();
+
+    logger.info(`Item updated successfully: ${id || item.id}`);
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('success.itemUpdated'),
+      data: { item, pricing },
+    });
+  } catch (error: unknown) {
+    // Rollback the transaction in case of an error
+    await transaction.rollback();
+
+    if (error instanceof Error) {
+      logger.error(`Error updating item: ${error.message}`);
+    } else {
+      logger.error(`Unknown error updating item: ${error}`);
+    }
+
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
     });
