@@ -16,7 +16,7 @@ router.get('/getItems', getAllItems);
 router.get('/getAllItemsCount', getAllItemsCount);
 
 
-router.patch('/items/:itemId/inactive', setItemInactive);
+router.post('/deleteItem', setItemInactive);
 
 
 export default router;

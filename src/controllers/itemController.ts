@@ -171,7 +171,7 @@ export const getAllItemsCount = async (req: Request, res: Response): Promise<Res
 
 export const setItemInactive = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { itemId } = req.params; // Extract itemId from route parameters
+    const { itemId } = req.body; // Extract itemId from route parameters
 
     // Check if the item exists
     const item = await Item.findByPk(itemId);
