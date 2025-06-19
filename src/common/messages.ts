@@ -7,6 +7,7 @@ export const messages = {
       otpInvalid: 'OTP must be a 6-digit number',
       otpExpired: 'OTP has expired',
       nameRequired: 'Name is required',
+      IDRequired: 'ID is required',
       typeInvalid: 'Type must be either "veg" or "non-veg"',
       quantityRequired: 'Quantity is required',
       quantityUnitInvalid: 'Quantity unit must be either "ml" or "grams"',
@@ -77,6 +78,8 @@ export const messages = {
       priceRequired: 'मूल्य आवश्यक है',
       startDateRequired: 'प्रारंभ तिथि आवश्यक है',
       endDateRequired: 'समाप्ति तिथि आवश्यक है',
+            IDRequired: 'ID is required',
+
     },
     canteen: {
       nameRequired: 'कैंटीन का नाम आवश्यक है',
