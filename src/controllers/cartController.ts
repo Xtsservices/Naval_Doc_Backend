@@ -30,7 +30,7 @@ export const addToCart = async (req: Request, res: Response): Promise<Response> 
   try {
     const { userId } = req.user as unknown as { userId: string }; // Extract userId from the request body
     const { itemId, quantity, menuId, canteenId, menuConfigurationId, orderDate } = req.body; // Include orderDate in the request body
-
+    console.log('Adding item to cart:', itemId, quantity, menuId, canteenId)
     // Validate required fields
     if (!userId || !itemId || !quantity || !menuId || !canteenId || !menuConfigurationId || !orderDate) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -300,7 +300,7 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
 
   try {
     const { cartId, cartItemId } = req.body; // Extract cartId and cartItemId from the request body
-
+    console.log('Removing item from cart:', cartId, cartItemId);
     // Validate required fields
     if (!cartId || !cartItemId) {
       return res.status(statusCodes.BAD_REQUEST).json({
