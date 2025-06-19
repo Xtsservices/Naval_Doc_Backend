@@ -7,7 +7,7 @@ const router = Router();
 // Create a menu with items
 router.post('/createMenuWithItems', authenticateToken, createMenuWithItems);
 
-router.post('/updateMenuWithItems', authenticateToken, updateMenuWithItems);
+router.post('/updateMenuWithItems/:menuId', authenticateToken, updateMenuWithItems);
 
 
 router.get('/getAllMenus', authenticateToken, getAllMenus);
