@@ -22,7 +22,7 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
   const userId = req.user?.id; // Assuming `req.user` contains the authenticated user's details
 
   // Validate required fields
-  if (!menuConfigurationId || !items || !Array.isArray(items) || !canteenId || !startTime || !endTime) {
+  if (!menuConfigurationId || !items || !Array.isArray(items) || items.length ==0 || !canteenId || !startTime || !endTime) {
     logger.error('Validation error: menuConfigurationId, items, canteenId, startTime, and endTime are required');
     return res.status(statusCodes.BAD_REQUEST).json({
       message: getMessage('validation.validationError'),
@@ -154,14 +154,13 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
   }
 };
 
-
 export const updateMenuWithItems = async (req: Request, res: Response): Promise<Response> => {
   const { menuId } = req.params; // Extract menuId from route parameters
   const { items } = req.body; // Extract items from the request body
   const userId = req.user?.id; // Assuming `req.user` contains the authenticated user's details
 
   // Validate required fields
-  if (!items || !Array.isArray(items)) {
+  if (!items || !Array.isArray(items) || items.length === 0) {
     logger.error('Validation error: items must be provided and must be an array');
     return res.status(statusCodes.BAD_REQUEST).json({
       message: getMessage('validation.validationError'),
