@@ -255,12 +255,13 @@ export const getAllMenus = async (req: Request, res: Response): Promise<Response
 
     // Build the where clause dynamically
     const whereClause: any = {};
+    whereClause.status = 'active'; // Only fetch active menus
     if (canteenId) {
       whereClause.canteenId = canteenId; // Filter by canteenId if provided
     }
 
     const menus = await Menu.findAll({
-      where: whereClause, // Apply the filter
+      where: whereClause,  // Apply the filter
       include: [
         {
           model: Canteen,
@@ -341,6 +342,7 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
       endTime: {
         [Op.gte]: todayUnix, // Menus that end on or after today
       },
+      status: 'active', // Only fetch active menus
     };
 
     if (canteenId) {
@@ -639,6 +641,35 @@ export const getMenuByIdforwhatsapp = async (req: Request, res: Response): Promi
     console.error(`Error fetching menu items: ${error instanceof Error ? error.message : error}`);
     return res.status(500).json({
       message: 'Internal server error.',
+    });
+  }
+};
+
+
+export const deleteMenu = async (req: Request, res: Response): Promise<Response> => {
+  const { menuId } = req.body; // Extract menuId from route parameters
+
+  try {
+    // Check if the menu exists
+    const menu = await Menu.findByPk(menuId);
+    if (!menu) {
+      logger.warn(`Menu with ID ${menuId} not found`);
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('menu.notFound'),
+      });
+    }
+
+    // Update the status to inactive
+    await menu.update({ status: 'inactive' });
+
+    logger.info(`Menu with ID ${menuId} marked as inactive`);
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('success.menuDeleted'),
+    });
+  } catch (error: unknown) {
+    logger.error(`Error marking menu as inactive: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
     });
   }
 };
