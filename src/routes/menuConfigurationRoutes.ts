@@ -16,7 +16,7 @@ router.get('/getAllMenuConfigurations', authenticateToken, getAllMenuConfigurati
 router.post('/createMenuConfiguration', authenticateToken, createMenuConfiguration);
 
 // Update an existing menu configuration
-router.put('/updateMenuConfiguration', authenticateToken, updateMenuConfiguration);
+router.post('/updateMenuConfiguration', authenticateToken, updateMenuConfiguration);
 
 // Delete a menu configuration
 router.delete('/deleteMenuConfiguration', authenticateToken, deleteMenuConfiguration);
