@@ -67,19 +67,18 @@ export const createMenuConfiguration = async (req: Request, res: Response): Prom
 
 // Update an existing menu configuration
 export const updateMenuConfiguration = async (req: Request, res: Response): Promise<Response> => {
-  const { id } = req.params;
-  const { name, defaultStartTime, defaultEndTime, status } = req.body;
+  const { id,  defaultStartTime, defaultEndTime, status } = req.body;
   const userId = req.user?.id; // Assuming `req.user` contains the authenticated user's details
 
-  // Validate name
-  if (name && !ALLOWED_MENU_NAMES.includes(name)) {
-    logger.error(`Validation error: Invalid menu name "${name}". Allowed names are ${ALLOWED_MENU_NAMES.join(', ')}`);
-    return res.status(statusCodes.BAD_REQUEST).json({
-      message: getMessage('validation.invalidMenuName'),
-    });
-  }
+  // No name validation or update in this section
 
-  // Check if the name already exists (excluding the current record)
+  // If you want to allow updating the name, uncomment and add 'name' to the destructuring above.
+  // const { id, name, defaultStartTime, defaultEndTime, status } = req.body;
+
+  // If name update is not allowed, remove this block entirely.
+  // If name update is allowed, uncomment and use the following:
+
+  /*
   if (name) {
     const existingConfiguration = await MenuConfiguration.findOne({
       where: { name, id: { [Op.ne]: id } }, // Exclude the current record
@@ -91,6 +90,7 @@ export const updateMenuConfiguration = async (req: Request, res: Response): Prom
       });
     }
   }
+  */
 
   // Validate and convert defaultStartTime and defaultEndTime
   const startTimeUnix = defaultStartTime ? moment(defaultStartTime, 'hh:mm A', true).unix() : undefined;
@@ -104,21 +104,22 @@ export const updateMenuConfiguration = async (req: Request, res: Response): Prom
   }
 
   try {
-    const configuration = await MenuConfiguration.findByPk(id);
+    const configuration :any = await MenuConfiguration.findByPk(id);
     if (!configuration) {
       logger.warn(`Menu configuration with ID ${id} not found`);
       return res.status(statusCodes.NOT_FOUND).json({
-        message: getMessage('menuConfiguration.notFound'),
+      message: getMessage('menuConfiguration.notFound'),
       });
     }
 
     await configuration.update({
-      name,
+      // name, // Uncomment if name update is allowed and handled above
       defaultStartTime: startTimeUnix || configuration.defaultStartTime,
       defaultEndTime: endTimeUnix || configuration.defaultEndTime,
       status,
       updatedById: userId,
     });
+
 
     return res.status(statusCodes.SUCCESS).json({
       message: getMessage('success.menuConfigurationUpdated'),
