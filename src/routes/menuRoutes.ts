@@ -1,11 +1,14 @@
 import { Router } from 'express';
-import { createMenuWithItems,getAllMenus,getMenusForNextTwoDaysGroupedByDateAndConfiguration,getMenuById,getMenusByCanteen, getMenuByIdforwhatsapp } from '../controllers/menuController';
+import { createMenuWithItems,getAllMenus,getMenusForNextTwoDaysGroupedByDateAndConfiguration,getMenuById,getMenusByCanteen, getMenuByIdforwhatsapp,updateMenuWithItems } from '../controllers/menuController';
 import authenticateToken from '../middlewares/authMiddleware';
 
 const router = Router();
 
 // Create a menu with items
 router.post('/createMenuWithItems', authenticateToken, createMenuWithItems);
+
+router.post('/updateMenuWithItems', authenticateToken, updateMenuWithItems);
+
 
 router.get('/getAllMenus', authenticateToken, getAllMenus);
 

@@ -154,6 +154,101 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
   }
 };
 
+
+export const updateMenuWithItems = async (req: Request, res: Response): Promise<Response> => {
+  const { menuId } = req.params; // Extract menuId from route parameters
+  const { items } = req.body; // Extract items from the request body
+  const userId = req.user?.id; // Assuming `req.user` contains the authenticated user's details
+
+  // Validate required fields
+  if (!items || !Array.isArray(items)) {
+    logger.error('Validation error: items must be provided and must be an array');
+    return res.status(statusCodes.BAD_REQUEST).json({
+      message: getMessage('validation.validationError'),
+    });
+  }
+
+  const transaction: Transaction = await sequelize.transaction();
+
+  try {
+    // Check if the menu exists
+    const menu = await Menu.findByPk(menuId, { transaction });
+    if (!menu) {
+      logger.warn(`Menu with ID ${menuId} not found`);
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('menu.notFound'),
+      });
+    }
+
+    for (const item of items) {
+      const { itemId, minQuantity, maxQuantity } = item;
+
+      // Check if the item exists
+      const existingItem = await Item.findByPk(itemId, { transaction });
+      if (!existingItem) {
+        logger.warn(`Item with ID ${itemId} not found`);
+        return res.status(statusCodes.NOT_FOUND).json({
+          message: getMessage('item.itemNotFound'),
+        });
+      }
+
+      // Check if the item is already associated with the menu
+      const existingMenuItem = await MenuItem.findOne({
+        where: { menuId: menu.id, itemId },
+        transaction,
+      });
+
+      if (existingMenuItem) {
+        // Update existing item
+        await existingMenuItem.update(
+          {
+            minQuantity: minQuantity || existingMenuItem.minQuantity,
+            maxQuantity: maxQuantity || existingMenuItem.maxQuantity,
+            updatedById: userId,
+          },
+          { transaction }
+        );
+        logger.info(`Updated existing item with ID ${itemId} in menu ID ${menuId}`);
+      } else {
+        // Add new item to the menu
+        await MenuItem.create(
+          {
+            menuId: menu.id,
+            itemId,
+            minQuantity,
+            maxQuantity,
+            status: 'active',
+            createdById: userId,
+            updatedById: userId,
+          },
+          { transaction }
+        );
+        logger.info(`Added new item with ID ${itemId} to menu ID ${menuId}`);
+      }
+    }
+
+    await transaction.commit();
+
+    logger.info(`Menu updated successfully with items`);
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('success.menuUpdatedWithItems'),
+      data: menu,
+    });
+  } catch (error: unknown) {
+    await transaction.rollback();
+
+    if (error instanceof Error) {
+      logger.error(`Error updating menu with items: ${error.message}`);
+    } else {
+      logger.error(`Unknown error updating menu with items: ${error}`);
+    }
+
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
 export const getAllMenus = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { canteenId } = req.query; // Extract canteenId from query parameters
