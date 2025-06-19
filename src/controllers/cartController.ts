@@ -301,6 +301,7 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
   try {
     const { cartId, cartItemId } = req.body; // Extract cartId and cartItemId from the request body
     console.log('Removing item from cart:', cartId, cartItemId);
+
     // Validate required fields
     if (!cartId || !cartItemId) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -310,7 +311,6 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
     }
 
     // Verify the cart exists
-
     const cart = await Cart.findByPk(cartId, { transaction });
     if (!cart) {
       await transaction.rollback();
@@ -322,12 +322,11 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
     // Verify the cart item exists and belongs to the specified cart
     const cartItem = await CartItem.findOne({
       where: {
-        id: cartItemId, // Use itemId instead of itemid
+        id: cartItemId,
         cartId: cartId,
       },
       transaction,
     });
-
 
     if (!cartItem) {
       await transaction.rollback();
@@ -339,11 +338,23 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
     // Remove the cart item
     await cartItem.destroy({ transaction });
 
-    // Update the cart total
+    // Check if any items remain in the cart
+    const remainingItems = await CartItem.count({ where: { cartId }, transaction });
+
+    if (remainingItems === 0) {
+      // Destroy the cart if no items remain
+      await cart.destroy({ transaction });
+      await transaction.commit();
+
+      return res.status(statusCodes.SUCCESS).json({
+        message: getMessage('cart.cleared'),
+      });
+    }
+
+    // Update the cart total if items remain
     const cartItems = await CartItem.findAll({ where: { cartId }, transaction });
     cart.totalAmount = cartItems.reduce((sum, item) => sum + item.total, 0);
     await cart.save({ transaction });
-
 
     // Commit transaction
     await transaction.commit();
