@@ -10,6 +10,7 @@ class Order extends Model {
   public totalAmount!: number;
   public status!: string;
   public canteenId!: number;
+  public orderNo!: string;
   public menuConfigurationId!: number;
   public createdById!: number; // ID of the user who created the order
   public updatedById!: number; // ID of the user who last updated the order
@@ -57,6 +58,11 @@ Order.init(
     orderDate: {
       type: DataTypes.INTEGER,
       allowNull: true, // Allow null for updates
+    },
+    orderNo: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
     },
     createdAt: {
       type: DataTypes.DATE,

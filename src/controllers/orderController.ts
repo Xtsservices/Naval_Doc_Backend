@@ -69,15 +69,28 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
     if(paymentMethod.includes('online')){
       oderStatus= 'initiated';
     }
+    // Generate a unique order number (e.g., NV + order timestamp + random 4 digits)
+    // Generate a unique order number (e.g., NV + order timestamp + random 4 digits)
+    // Ensure uniqueness by checking the database and retrying if necessary
+    // Generate a unique order number using utility function
+    const orderNo = await generateUniqueOrderNo(userId,transaction);
+    if (!orderNo) {
+      await transaction.rollback();
+      return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to generate a unique order number. Please try again.',
+      });
+    }
+
     const order = await Order.create(
       {
-        userId: userIdString,
-        totalAmount: cart.totalAmount,
-        status: oderStatus,
-        canteenId: cart.canteenId,
-        menuConfigurationId: cart.menuConfigurationId,
-        createdById: userIdString,
-        orderDate: cart.orderDate,
+      userId: userIdString,
+      totalAmount: cart.totalAmount,
+      status: oderStatus,
+      canteenId: cart.canteenId,
+      menuConfigurationId: cart.menuConfigurationId,
+      createdById: userIdString,
+      orderDate: cart.orderDate,
+      orderNo, // Add the generated order number
       },
       { transaction }
     );
@@ -1094,3 +1107,25 @@ export const getWalletBalance = async (req: Request, res: Response): Promise<Res
 };
 
 
+async function generateUniqueOrderNo(userId: any, transaction: Transaction) {
+  let orderNo: string;
+  let isUnique = false;
+  let attempts = 0;
+  do {
+    orderNo = `NV${userId}${moment().format('YYMMDDHHmmss')}`;
+    // Check if orderNo already exists
+    const existingOrder = await Order.findOne({ where: { orderNo }, transaction });
+    if (!existingOrder) {
+      isUnique = true;
+    } else {
+      // Wait a short time before retrying to avoid tight loop
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    attempts++;
+    if (attempts > 5) {
+      await transaction.rollback();
+      throw new Error('Failed to generate a unique order number. Please try again.');
+    }
+  } while (!isUnique);
+  return orderNo;
+}
