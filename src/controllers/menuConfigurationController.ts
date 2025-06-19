@@ -67,7 +67,7 @@ export const createMenuConfiguration = async (req: Request, res: Response): Prom
 
 // Update an existing menu configuration
 export const updateMenuConfiguration = async (req: Request, res: Response): Promise<Response> => {
-  const { id,  defaultStartTime, defaultEndTime, status } = req.body;
+  const { id,  defaultStartTime, defaultEndTime } = req.body;
   const userId = req.user?.id; // Assuming `req.user` contains the authenticated user's details
 
   // No name validation or update in this section
@@ -116,7 +116,6 @@ export const updateMenuConfiguration = async (req: Request, res: Response): Prom
       // name, // Uncomment if name update is allowed and handled above
       defaultStartTime: startTimeUnix || configuration.defaultStartTime,
       defaultEndTime: endTimeUnix || configuration.defaultEndTime,
-      status,
       updatedById: userId,
     });
 
