@@ -50,7 +50,7 @@ Item.init(
       defaultValue: 0, // Default quantity is 0
     },
     quantityUnit: {
-      type: DataTypes.ENUM('ml', 'grams'), // Restrict to 'ml' or 'grams'
+      type: DataTypes.ENUM('ml', 'grams','pieces'), // Restrict to 'ml' or 'grams'
       allowNull: false,
     },
     image: {
