@@ -297,7 +297,6 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
 
 export const removeCartItem = async (req: Request, res: Response): Promise<Response> => {
   const transaction = await sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED });
-
   try {
     const { cartId, cartItemId } = req.body; // Extract cartId and cartItemId from the request body
 
@@ -322,7 +321,7 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
     // Verify the cart item exists and belongs to the specified cart
     const cartItem = await CartItem.findOne({
       where: {
-        id: cartItemId, // Use itemId instead of itemid
+        itemId: cartItemId, // Use itemId instead of itemid
         cartId: cartId,
       },
       transaction,
