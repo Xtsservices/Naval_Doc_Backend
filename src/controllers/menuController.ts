@@ -520,7 +520,8 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
             {
               model: Item,
               as: 'menuItemItem', // Include item details
-              attributes: ['id', 'name', 'description', 'image','type'], // Fetch necessary fields
+              attributes: ['id', 'name', 'description', 'image','type','status'], // Fetch necessary fields
+              where: { status: 'active' }, // Fetch only items with status 'active'
               include: [
                 {
                   model: Pricing,
