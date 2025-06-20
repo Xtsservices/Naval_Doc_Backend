@@ -36,7 +36,7 @@ router.post('/cancelOrder',authenticateToken, cancelOrder);
 router.get('/getWalletTransactions',authenticateToken, getWalletTransactions);
 router.get('/getWalletBalance',authenticateToken, getWalletBalance);
 
-router.get('/updateOrderStatus', updateOrderStatus);
+router.post('/updateOrderStatus', updateOrderStatus);
 
 
 
