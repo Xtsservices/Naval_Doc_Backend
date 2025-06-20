@@ -538,9 +538,11 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
 
     // If the menu is not found, return a 404 response
     if (!menu) {
+      let menu:any=[]
       logger.warn(`Menu with ID ${id} not found`);
-      return res.status(statusCodes.NOT_FOUND).json({
+      return res.status(statusCodes.SUCCESS).json({
         message: getMessage('menu.notFound'),
+         data: menu,
       });
     }
 
