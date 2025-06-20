@@ -1129,3 +1129,63 @@ async function generateUniqueOrderNo(userId: any, transaction: Transaction) {
   } while (!isUnique);
   return orderNo;
 }
+
+
+export const updateOrderStatus = async (req: Request, res: Response): Promise<Response> => {
+  const { orderIds } = req.body; // Extract orderIds from the request body
+
+  // Start a transaction
+  const transaction: Transaction = await sequelize.transaction();
+
+  try {
+    // Validate the payload
+    if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+      logger.error('Validation error: orderIds must be a non-empty array');
+      await transaction.rollback(); // Rollback transaction
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.validationError'),
+        errors: ['orderIds must be a non-empty array'],
+      });
+    }
+
+    // Update the status of orders to 'completed'
+    const [updatedCount] = await Order.update(
+      { status: 'completed' }, // Set status to 'completed'
+      {
+        where: { id: orderIds }, // Update orders with matching IDs
+        transaction, // Use the transaction
+      }
+    );
+
+    if (updatedCount === 0) {
+      logger.warn(`No orders found for the provided IDs: ${orderIds}`);
+      await transaction.rollback(); // Rollback transaction
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('order.notFound'),
+      });
+    }
+
+    // Commit the transaction
+    await transaction.commit();
+
+    logger.info(`Order statuses updated to 'completed' for IDs: ${orderIds}`);
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('order.statusUpdated'),
+      data: { updatedCount },
+    });
+  } catch (error: unknown) {
+    // Rollback the transaction in case of an error
+    await transaction.rollback();
+
+    logger.error(`Error updating order statuses: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+
+
+
+
+
