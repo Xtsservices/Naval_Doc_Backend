@@ -520,7 +520,7 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
             {
               model: Item,
               as: 'menuItemItem', // Include item details
-              attributes: ['id', 'name', 'description', 'image'], // Fetch necessary fields
+              attributes: ['id', 'name', 'description', 'image','type'], // Fetch necessary fields
               include: [
                 {
                   model: Pricing,
