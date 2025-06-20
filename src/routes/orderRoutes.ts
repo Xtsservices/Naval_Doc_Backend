@@ -1,5 +1,5 @@
 import express from 'express';
-import { placeOrder ,CashfreePaymentLinkDetails,getAllOrders,listOrders,getOrdersSummary,getOrdersByCanteen,getOrderById,processCashfreePayment,cashfreeCallback,createPaymentLink,createCashfreePaymentLink,cancelOrder,getWalletTransactions,getWalletBalance} from '../controllers/orderController';
+import { placeOrder ,CashfreePaymentLinkDetails,getAllOrders,listOrders,getOrdersSummary,getOrdersByCanteen,getOrderById,processCashfreePayment,cashfreeCallback,createPaymentLink,createCashfreePaymentLink,cancelOrder,getWalletTransactions,getWalletBalance,updateOrderStatus} from '../controllers/orderController';
 import authenticateToken from '../middlewares/authMiddleware'; // Middleware for authentication
 
 const router = express.Router();
@@ -35,6 +35,9 @@ router.post('/cashfreecallback', cashfreeCallback);
 router.post('/cancelOrder',authenticateToken, cancelOrder);
 router.get('/getWalletTransactions',authenticateToken, getWalletTransactions);
 router.get('/getWalletBalance',authenticateToken, getWalletBalance);
+
+router.get('/updateOrderStatus', updateOrderStatus);
+
 
 
 export default router;

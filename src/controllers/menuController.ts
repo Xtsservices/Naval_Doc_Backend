@@ -520,7 +520,8 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
             {
               model: Item,
               as: 'menuItemItem', // Include item details
-              attributes: ['id', 'name', 'description', 'image'], // Fetch necessary fields
+              attributes: ['id', 'name', 'description', 'image','type','status'], // Fetch necessary fields
+              where: { status: 'active' }, // Fetch only items with status 'active'
               include: [
                 {
                   model: Pricing,
@@ -537,9 +538,11 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
 
     // If the menu is not found, return a 404 response
     if (!menu) {
+      let menu:any=[]
       logger.warn(`Menu with ID ${id} not found`);
-      return res.status(statusCodes.NOT_FOUND).json({
+      return res.status(statusCodes.SUCCESS).json({
         message: getMessage('menu.notFound'),
+         data: menu,
       });
     }
 
