@@ -975,7 +975,7 @@ export const cancelOrder = async (req: Request, res: Response): Promise<Response
           totalRefundAmount += payment.amount;
 
           // Handle wallet payment refund
-          if (payment.paymentMethod === 'wallet' || payment.paymentMethod === 'online') {
+          if (payment.paymentMethod === 'wallet' || payment.paymentMethod === 'online' || payment.paymentMethod === 'cash') {
             await Wallet.create(
               {
                 userId: order.userId, // Assuming `userId` is available in the order
