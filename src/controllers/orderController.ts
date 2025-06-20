@@ -968,7 +968,7 @@ export const cancelOrder = async (req: Request, res: Response): Promise<Response
     // Process all associated payments using map
     const payments = order.payment; // Fetch all payments associated with the order
     let totalRefundAmount = 0;
-
+console.log("payments",payments)
     await Promise.all(
       payments.map(async (payment: any) => {
         if (payment.status === 'success') {
