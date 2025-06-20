@@ -48,7 +48,9 @@ export const adminDashboard = async (req: Request, res: Response): Promise<Respo
     });
 
     // Fetch total items count
-    const totalItems = await Item.count();
+    const totalItems = await Item.count({
+      where: { status: 'active' },
+    });
 
     // Fetch total canteens count
     const totalCanteens = canteenId
@@ -57,7 +59,8 @@ export const adminDashboard = async (req: Request, res: Response): Promise<Respo
 
     // Fetch total menus count
     const totalMenus = await Menu.count({
-      where: whereCondition, // Filter by canteenId if provided
+            where: { ...whereCondition, status: 'active' }, // Filter by status 'placed' and canteenId if provided
+
     });
 
     // Combine all data into a single response
@@ -87,7 +90,9 @@ export const getTotalMenus = async (req: Request, res: Response): Promise<Respon
   try {
     const { canteenId } = req.query; // Extract canteenId from query parameters
 
-    const whereCondition = canteenId ? { canteenId } : {}; // Add condition if canteenId is provided
+    const whereCondition = canteenId
+      ? { canteenId, status: 'active' }
+      : { status: 'active' }; // Add condition if canteenId is provided and status is 'active'
 
     const totalMenus = await Menu.findAll({
       where: whereCondition, // Apply the condition to filter by canteenId
@@ -168,6 +173,7 @@ export const getTotalCanteens = async (req: Request, res: Response): Promise<Res
 export const getTotalItems = async (req: Request, res: Response): Promise<Response> => {
   try {
     const totalItems = await Item.findAll({
+      where: { status: 'active' }, // Add condition for status 'active'
       attributes: ['id', 'name', 'description', 'image'], // Include the image field
     });
 
