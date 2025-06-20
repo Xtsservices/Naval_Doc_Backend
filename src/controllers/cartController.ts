@@ -192,7 +192,7 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
 
   try {
     const { cartId, cartItemId, quantity } = req.body; // Extract values from the request body
-
+console.log("step 1",quantity,cartId,cartItemId)
     // Validate required fields
     if (!cartId || !cartItemId || !quantity) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -200,6 +200,7 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
         errors: ['cartId, cartItemId, and quantity are required'],
       });
     }
+console.log("step 2",quantity <= 0)
 
     if (quantity <= 0) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -210,6 +211,8 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
 
     // Verify the cart exists
     const cart = await Cart.findByPk(cartId, { transaction });
+console.log("step 3")
+
     if (!cart) {
       await transaction.rollback();
       return res.status(statusCodes.NOT_FOUND).json({
@@ -230,6 +233,7 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
       transaction,
     });
 
+console.log("step 4",cartItem)
 
 
     if (!cartItem) {
@@ -238,6 +242,7 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
         message: getMessage('cart.itemNotFound'),
       });
     }
+console.log("step 5",cartItem.menuItem)
 
     // Check for minimum and maximum quantity constraints
     const menuItem = cartItem.menuItem;
@@ -247,6 +252,7 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
         message: getMessage('menu.itemNotFound'),
       });
     }
+    console.log("step 6",quantity,menuItem.minQuantity,menuItem.maxQuantity)
 
     if (quantity < menuItem.minQuantity) {
       await transaction.rollback();
@@ -255,10 +261,11 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
         errors: [`Minimum quantity for this item is ${menuItem.minQuantity}`],
       });
     }
+console.log("step 7",quantity,menuItem.maxQuantity)
 
     if (quantity > menuItem.maxQuantity) {
       await transaction.rollback();
-      return res.status(statusCodes.BAD_REQUEST).json({
+      return res.status(statusCodes.SUCCESS).json({
         message: getMessage('menu.itemAboveMaxQuantity'),
         errors: [`Maximum quantity for this item is ${menuItem.maxQuantity}`],
       });
@@ -273,6 +280,7 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
     const cartItems = await CartItem.findAll({ where: { cartId }, transaction });
     cart.totalAmount = cartItems.reduce((sum, item) => sum + item.total, 0);
     await cart.save({ transaction });
+console.log("step 8",cart.totalAmount)
 
     // Commit transaction
     await transaction.commit();

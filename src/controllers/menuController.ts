@@ -80,6 +80,7 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
       where: {
         canteenId,
         menuConfigurationId,
+        status:'active', 
       },
     });
 
