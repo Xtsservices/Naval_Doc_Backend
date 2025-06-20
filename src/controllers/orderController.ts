@@ -1036,8 +1036,12 @@ export const getWalletTransactions = async (req: Request, res: Response): Promis
     });
 
     if (!transactions || transactions.length === 0) {
-      return res.status(404).json({
+      return res.status(200).json({
         message: 'No wallet transactions found for this user.',
+        data:{
+          transactions: [],
+          walletBalance: 0, // Return 0 balance if no transactions found
+        }
       });
     }
 
