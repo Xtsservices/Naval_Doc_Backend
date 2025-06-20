@@ -419,8 +419,9 @@ export const getCart = async (req: Request, res: Response): Promise<Response> =>
     });
 
     if (!cart) {
-      return res.status(statusCodes.NOT_FOUND).json({
-        message: getMessage('cart.notFound'),
+      return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('cart.notFound'),
+      data: null,
       });
     }
 
