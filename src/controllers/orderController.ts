@@ -22,6 +22,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { User } from '../models';
 import { sendWhatsAppMessage,sendImageWithoutAttachment } from '../index';
 
+import { Op } from 'sequelize'; // Import Sequelize operators
+
+
 
 dotenv.config();
 
@@ -386,6 +389,69 @@ export const getAllOrders = async (req: Request, res: Response): Promise<Respons
     });
   } catch (error: unknown) {
     logger.error(`Error fetching all orders: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const getTodaysOrders = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { canteenId } = req.user as unknown as { canteenId: string }; // Extract canteenId from the token
+
+    if (!canteenId) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.validationError'),
+        errors: ['Canteen ID is required'],
+      });
+    }
+
+    // Get today's date range
+    const startOfDay = moment().startOf('day').toDate();
+    const endOfDay = moment().endOf('day').toDate();
+
+    // Fetch today's orders for the specified canteen
+    const orders = await Order.findAll({
+      where: {
+        status: 'placed',
+        canteenId,
+        createdAt: {
+          [Op.between]: [startOfDay, endOfDay], // Filter orders created today
+        },
+      },
+      include: [
+        {
+          model: OrderItem,
+          as: 'orderItems',
+          include: [
+            {
+              model: Item,
+              as: 'menuItemItem', // Ensure this matches the alias in the OrderItem -> Item association
+              attributes: ['id', 'name'], // Fetch item name and ID
+            },
+          ],
+        },
+        {
+          model: Payment,
+          as: 'payment',
+          attributes: ['id', 'amount', 'status', 'paymentMethod'], // Fetch necessary payment fields
+        },
+      ],
+      order: [['createdAt', 'DESC']], // Sort by most recent orders
+    });
+
+    if (!orders || orders.length === 0) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('order.noOrdersFound'),
+      });
+    }
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('order.todaysOrdersFetched'),
+      data: orders,
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching today's orders: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
     });
