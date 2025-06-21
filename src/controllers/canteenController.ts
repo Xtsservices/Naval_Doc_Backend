@@ -12,11 +12,11 @@ import logger from '../common/logger';
 
 export const createCanteen = async (req: Request, res: Response): Promise<Response> => {
     
-    const { canteenName, canteenCode, firstName, lastName, email, mobile,gender } = req.body;
+    const { canteenName, canteenCode, firstName, lastName, email, mobile } = req.body;
   const canteenImage = req.file?.buffer; // Get the binary data of the uploaded image
 
   // Validate the request body
-  const { error } = createCanteenValidation.validate({ canteenName, canteenCode, firstName, lastName, email, mobile,gender });
+  const { error } = createCanteenValidation.validate({ canteenName, canteenCode, firstName, lastName, email, mobile });
   if (error) {
     logger.error(`Validation error: ${error.details[0].message}`);
     return res.status(statusCodes.BAD_REQUEST).json({
@@ -104,7 +104,7 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
         {
           model: User,
           as: 'adminUser', // Ensure this matches the alias in the Canteen -> User association
-          attributes: ['id', 'firstName', 'lastName', 'email', 'mobile', 'gender'], // Fetch necessary user fields
+          attributes: ['id', 'firstName', 'lastName', 'email', 'mobile'], // Fetch necessary user fields
         },
       ],
     });
@@ -172,7 +172,7 @@ export const getAllCanteensforwhatsapp = async (req: Request, res: Response): Pr
 };
 
 export const updateCanteen = async (req: Request, res: Response): Promise<Response> => {
-  const {canteenId,  firstName, lastName, email, mobile,gender } = req.body;
+  const {canteenId,  firstName, lastName, email, mobile } = req.body;
   const canteenImage = req.file?.buffer; // Get the binary data of the uploaded image
 
   // Validate the request body
@@ -217,7 +217,6 @@ export const updateCanteen = async (req: Request, res: Response): Promise<Respon
           lastName: lastName || adminUser.lastName,
           email: email || adminUser.email,
           mobile: mobile || adminUser.mobile,
-          gender:gender ,
         },
         { transaction }
       );

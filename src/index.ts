@@ -149,6 +149,9 @@ UserRole.init(
   { sequelize, modelName: 'UserRole' }
 );
 
+
+Canteen.hasOne(User, { as: 'adminUser', foreignKey: 'canteenId' });
+User.belongsTo(Canteen, { as: 'canteen', foreignKey: 'canteenId' });
 // User and Role associations
 User.hasMany(UserRole, { foreignKey: 'userId', as: 'userRoles' }); // Alias for User -> UserRole
 UserRole.belongsTo(User, { foreignKey: 'userId', as: 'user' }); // Reverse association

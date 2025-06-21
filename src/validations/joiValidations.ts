@@ -67,9 +67,9 @@ export const createCanteenValidation = Joi.object({
     'string.empty': messages[language].admin.emailRequired,
     'string.email': messages[language].admin.emailInvalid,
   }),
-   gender: Joi.string().required().messages({
-    'string.empty': messages[language].admin.genderInvalid || 'Gender is required.',
-  }),
+  //  gender: Joi.string().required().messages({
+  //   'string.empty': messages[language].admin.genderInvalid || 'Gender is required.',
+  // }),
   mobile: Joi.string()
     .pattern(/^[0-9]{10}$/)
     .required()
