@@ -101,13 +101,11 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
     // Fetch all canteens with associated user details
     const canteens = await Canteen.findAll({
       include: [
-      {
-        model: User,
-        as: 'adminUser',
-        attributes: ['id', 'firstName', 'lastName', 'email', 'mobile'],
-        order: [['createdAt', 'DESC']],
-        limit: 1,
-      },
+        {
+          model: User,
+          as: 'adminUser', // Ensure this matches the alias in the Canteen -> User association
+          attributes: ['id', 'firstName', 'lastName', 'email', 'mobile'], // Fetch necessary user fields
+        },
       ],
     });
 
@@ -116,7 +114,6 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
         message: getMessage('canteen.noCanteensFound'),
       });
     }
-
 
     // Convert buffer image to base64 string
     const canteensWithImagesAndUsers = canteens.map((canteen) => {
