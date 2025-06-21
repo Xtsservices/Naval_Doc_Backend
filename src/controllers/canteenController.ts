@@ -164,23 +164,23 @@ export const getAllCanteensforwhatsapp = async (req: Request, res: Response): Pr
 };
 
 export const updateCanteen = async (req: Request, res: Response): Promise<Response> => {
-  const {canteenId,  firstName, lastName, email, mobile } = req.body;
-  // const canteenImage = req.file?.buffer; // Get the binary data of the uploaded image
+  const {canteenId,  firstName, lastName, email, mobile,gender } = req.body;
+  const canteenImage = req.file?.buffer; // Get the binary data of the uploaded image
 
   // Validate the request body
-  const { error } = createCanteenValidation.validate({
+  // const { error } = createCanteenValidation.validate({
 
-    firstName,
-    lastName,
-    email,
-    mobile,
-  });
-  if (error) {
-    logger.error(`Validation error: ${error.details[0].message}`);
-    return res.status(statusCodes.BAD_REQUEST).json({
-      message: getMessage('error.validationError'),
-    });
-  }
+  //   firstName,
+  //   lastName,
+  //   email,
+  //   mobile,
+  // });
+  // if (error) {
+  //   logger.error(`Validation error: ${error.details[0].message}`);
+  //   return res.status(statusCodes.BAD_REQUEST).json({
+  //     message: getMessage('error.validationError'),
+  //   });
+  // }
 
   const transaction: Transaction = await sequelize.transaction();
 
@@ -209,6 +209,7 @@ export const updateCanteen = async (req: Request, res: Response): Promise<Respon
           lastName: lastName || adminUser.lastName,
           email: email || adminUser.email,
           mobile: mobile || adminUser.mobile,
+          gender:gender ,
         },
         { transaction }
       );
