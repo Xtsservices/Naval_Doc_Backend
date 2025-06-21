@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import e, { Request, Response } from 'express';
 import { Transaction } from 'sequelize';
 import { sequelize } from '../config/database';
 import Canteen from '../models/canteen';
@@ -155,6 +155,80 @@ export const getAllCanteensforwhatsapp = async (req: Request, res: Response): Pr
       logger.error(`Error fetching canteen details: ${error.message}`);
     } else {
       logger.error(`Unknown error fetching canteen details: ${error}`);
+    }
+
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const updateCanteen = async (req: Request, res: Response): Promise<Response> => {
+  const {canteenId,  firstName, lastName, email, mobile } = req.body;
+  // const canteenImage = req.file?.buffer; // Get the binary data of the uploaded image
+
+  // Validate the request body
+  const { error } = createCanteenValidation.validate({
+
+    firstName,
+    lastName,
+    email,
+    mobile,
+  });
+  if (error) {
+    logger.error(`Validation error: ${error.details[0].message}`);
+    return res.status(statusCodes.BAD_REQUEST).json({
+      message: getMessage('error.validationError'),
+    });
+  }
+
+  const transaction: Transaction = await sequelize.transaction();
+
+  try {
+    // Check if the canteen exists
+    const canteen:any  = await Canteen.findByPk(canteenId, { transaction });
+    if (!canteen) {
+      await transaction.rollback();
+      logger.warn(`Canteen with ID ${canteenId} not found`);
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('canteen.notFound'),
+      });
+    }
+
+    // Check if a canteen with the same code already exists (excluding the current canteen)
+    // Removed canteen code check as requested
+
+    // Update the canteen details
+   
+    // Update the admin user details
+    const adminUser = await User.findOne({ where: { canteenId: canteen.id }, transaction });
+    if (adminUser) {
+      await adminUser.update(
+        {
+          firstName: firstName || adminUser.firstName,
+          lastName: lastName || adminUser.lastName,
+          email: email || adminUser.email,
+          mobile: mobile || adminUser.mobile,
+        },
+        { transaction }
+      );
+    }
+
+    // Commit the transaction
+    await transaction.commit();
+
+    logger.info(`Canteen and admin user updated successfully: `);
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('success.canteenUpdated'),
+      data: { canteen, adminUser },
+    });
+  } catch (error: unknown) {
+    // Rollback the transaction in case of an error
+    await transaction.rollback();
+    if (error instanceof Error) {
+      logger.error(`Error updating canteen: ${error.message}`);
+    } else {
+      logger.error(`Unknown error updating canteen: ${error}`);
     }
 
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
