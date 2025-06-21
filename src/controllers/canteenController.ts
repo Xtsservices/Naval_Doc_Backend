@@ -210,14 +210,7 @@ export const updateCanteen = async (req: Request, res: Response): Promise<Respon
     // Removed canteen code check as requested
 
   // Update the canteen details
-  if (canteenImage) {
-    await canteen.update(
-      {
-        canteenImage: canteenImage,
-      },
-      { transaction }
-    );
-  }
+ 
 
   // Update the admin user details
   const adminUser = await User.findOne({ where: { canteenId: canteen.id }, transaction });
