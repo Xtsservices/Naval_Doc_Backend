@@ -45,6 +45,7 @@ export const messages = {
       emailInvalid: 'Admin email must be a valid email address',
       mobileRequired: 'Admin mobile number is required',
       mobileInvalid: 'Admin mobile number must be a valid 10-digit number',
+      genderInvalid: 'Gender is required',
     },
     success: {
       otpSent: 'OTP sent successfully',
@@ -95,6 +96,7 @@ export const messages = {
       emailInvalid: 'व्यवस्थापक का ईमेल मान्य होना चाहिए',
       mobileRequired: 'व्यवस्थापक का मोबाइल नंबर आवश्यक है',
       mobileInvalid: 'व्यवस्थापक का मोबाइल नंबर 10 अंकों का होना चाहिए',
+      genderInvalid: 'लिंग आवश्यक है',
     },
     success: {
       otpSent: 'ओटीपी सफलतापूर्वक भेजा गया',

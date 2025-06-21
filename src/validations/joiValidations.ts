@@ -57,17 +57,20 @@ export const createCanteenValidation = Joi.object({
     'string.empty': messages[language].canteen.codeRequired,
   }),
 
-  adminFirstName: Joi.string().required().messages({
+  firstName: Joi.string().required().messages({
     'string.empty': messages[language].admin.firstNameRequired,
   }),
-  adminLastName: Joi.string().required().messages({
+  lastName: Joi.string().required().messages({
     'string.empty': messages[language].admin.lastNameRequired,
   }),
-  adminEmail: Joi.string().email().required().messages({
+  email: Joi.string().email().required().messages({
     'string.empty': messages[language].admin.emailRequired,
     'string.email': messages[language].admin.emailInvalid,
   }),
-  adminMobile: Joi.string()
+   gender: Joi.string().required().messages({
+    'string.empty': messages[language].admin.genderInvalid || 'Gender is required.',
+  }),
+  mobile: Joi.string()
     .pattern(/^[0-9]{10}$/)
     .required()
     .messages({
