@@ -101,11 +101,13 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
     // Fetch all canteens with associated user details
     const canteens = await Canteen.findAll({
       include: [
-        {
-          model: User,
-          as: 'adminUser', // Ensure this matches the alias in the Canteen -> User association
-          attributes: ['id', 'firstName', 'lastName', 'email', 'mobile'], // Fetch necessary user fields
-        },
+      {
+        model: User,
+        as: 'adminUser',
+        attributes: ['id', 'firstName', 'lastName', 'email', 'mobile'],
+        order: [['createdAt', 'DESC']],
+        limit: 1,
+      },
       ],
     });
 
@@ -114,6 +116,7 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
         message: getMessage('canteen.noCanteensFound'),
       });
     }
+
 
     // Convert buffer image to base64 string
     const canteensWithImagesAndUsers = canteens.map((canteen) => {
@@ -206,21 +209,29 @@ export const updateCanteen = async (req: Request, res: Response): Promise<Respon
     // Check if a canteen with the same code already exists (excluding the current canteen)
     // Removed canteen code check as requested
 
-    // Update the canteen details
-   
-    // Update the admin user details
-    const adminUser = await User.findOne({ where: { canteenId: canteen.id }, transaction });
-    if (adminUser) {
-      await adminUser.update(
-        {
-          firstName: firstName || adminUser.firstName,
-          lastName: lastName || adminUser.lastName,
-          email: email || adminUser.email,
-          mobile: mobile || adminUser.mobile,
-        },
-        { transaction }
-      );
-    }
+  // Update the canteen details
+  if (canteenImage) {
+    await canteen.update(
+      {
+        canteenImage: canteenImage,
+      },
+      { transaction }
+    );
+  }
+
+  // Update the admin user details
+  const adminUser = await User.findOne({ where: { canteenId: canteen.id }, transaction });
+  if (adminUser) {
+    await adminUser.update(
+      {
+      firstName: firstName ?? adminUser.firstName,
+      lastName: lastName ?? adminUser.lastName,
+      email: email ?? adminUser.email,
+      mobile: mobile ?? adminUser.mobile,
+      },
+      { where: { id: adminUser.id }, transaction }
+    );
+  }
 
     // Commit the transaction
     await transaction.commit();
