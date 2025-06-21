@@ -350,6 +350,7 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
     }
 
     // Debug the SQL query
+    
 
     const menus = await Menu.findAll({
       where: whereClause,
