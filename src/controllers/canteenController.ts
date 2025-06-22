@@ -145,6 +145,7 @@ export const getAllCanteensforwhatsapp = async (req: Request, res: Response): Pr
   try {
     // Fetch all canteens
     const canteens = await Canteen.findAll({
+      where: { status: 'active' }, // Filter by active status
       attributes: ['id', 'canteenName', 'canteenCode'], // Select only required fields
     });
 

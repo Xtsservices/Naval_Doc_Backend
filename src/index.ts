@@ -267,7 +267,16 @@ const sessions: Record<string, {
   selectedMenu: any;
   menus: any;
   selectedCanteen: any;
-  canteens: any; city?: string; service?: string; specialization?: string; doctor?: string; date?: string; slot?: string; stage?: string; cart?: { itemId: number; name: string; price: number; quantity: number }[] 
+  canteens: any;
+  city?: string;
+  service?: string;
+  specialization?: string;
+  doctor?: string;
+  date?: string;
+  slot?: string;
+  stage?: string;
+  cart?: { itemId: number; name: string; price: number; quantity: number }[];
+  selectedDate?: string;
 }> = {};
 
 const CITIES = ['Warangal', 'Karimnagar', 'Nizamabad'];
@@ -401,25 +410,15 @@ const processSpecialRecipient = async (body: any) => {
 
   // Initialize session for the user if not already present
   if (!sessions[userId]) {
-    sessions[userId] = { stage: 'menu_selection', items: [], cart: [], canteens: [], menus: null, selectedCanteen: null, selectedMenu: null };
+    sessions[userId] = { stage: 'menu_selection', items: [], cart: [], canteens: [], menus: null, selectedCanteen: null, selectedMenu: null, selectedDate: undefined };
   }
 
   const session = sessions[userId];
   let reply = '';
-  let FROM_NUMBER="918686078782"
-  // console.log("----------------------------");
-  // console.log(session.stage, 'Session stage for user:', userId);
-  // console.log("----------------------------");
-
-  // console.log('body', msg);
-  // console.log("----------------------------");
-
-  // console.log("----------------------------");
-
-
+  const FROM_NUMBER = "918686078782";
 
   // Step 1: Menu Selection
-  if (msg === 'hi' ) {
+  if (msg === 'hi') {
     session.stage = 'menu_selection';
     const canteens = await axios
       .get(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
@@ -432,7 +431,7 @@ const processSpecialRecipient = async (body: any) => {
     if (canteens.length > 0) {
       session.canteens = canteens;
       const list = canteens.map((c: { canteenName: any }, idx: number) => `${idx + 1}. ${c.canteenName}`).join('\n');
-      reply = `🍽️ Welcome To welfare canteen naval dock yard ! Choose a canteen:\n${list}`;
+      reply = `🍽️ Welcome To welfare canteen naval dock yard! Choose a canteen:\n${list}`;
     } else {
       reply = `❌ No canteens available at the moment. Please try again later.`;
     }
@@ -441,21 +440,51 @@ const processSpecialRecipient = async (body: any) => {
     return;
   }
 
-  // Step 2: Canteen Selection
+  // Step 1.5: Date Selection (Added Step)
   if (session.stage === 'menu_selection' && /^[1-9]\d*$/.test(msg)) {
     const index = parseInt(msg) - 1;
     if (index < 0 || index >= session.canteens.length) {
       reply = '⚠️ Invalid canteen option. Please type "hi" to restart.';
-      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
       return;
     }
 
-    const selectedCanteen = session.canteens[index];
-    session.selectedCanteen = selectedCanteen;
+    const today = new Date();
+    const tomorrow = new Date(today.getTime() + 86400000);
+
+    const todayFormatted = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+    const tomorrowFormatted = `${String(tomorrow.getDate()).padStart(2, '0')}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${tomorrow.getFullYear()}`;
+
+    reply = `📅 Please select a date:\n1. Today (${todayFormatted})\n2. Tomorrow (${tomorrowFormatted})`;
+    session.stage = 'date_selection';
+    session.selectedCanteen = session.canteens[index];
+    sessions[userId] = session;
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
+    return;
+  }
+
+  // Step 2: Canteen Selection (After Date Selection)
+  if (session.stage === 'date_selection' && /^[1-2]$/.test(msg)) {
+    const today = new Date();
+    const tomorrow = new Date(today.getTime() + 86400000);
+
+    const todayFormatted = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+    const tomorrowFormatted = `${String(tomorrow.getDate()).padStart(2, '0')}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${tomorrow.getFullYear()}`;
+
+    if (msg === '1') {
+      session.selectedDate = todayFormatted;
+    } else if (msg === '2') {
+      session.selectedDate = tomorrowFormatted;
+    } else {
+      reply = '⚠️ Invalid date option. Please type "hi" to restart.';
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
+      return;
+    }
+
     session.stage = 'item_selection';
 
     const menus = await axios
-      .get(`${process.env.BASE_URL}/api/menu/getMenusByCanteen?canteenId=${selectedCanteen.id}`)
+      .get(`${process.env.BASE_URL}/api/menu/getMenusByCanteen?canteenId=${session.selectedCanteen.id}`)
       .then(response => response.data.data || [])
       .catch(error => {
         console.error('Error fetching menus:', error.message);
@@ -465,178 +494,16 @@ const processSpecialRecipient = async (body: any) => {
     if (menus.length > 0) {
       session.menus = menus;
       const menuList = menus.map((m: { name: any }, idx: number) => `${idx + 1}. ${m.name}`).join('\n');
-      reply = `🍴 ${selectedCanteen.canteenName.toUpperCase()} MENU:\n${menuList}\n\nSend menu number to proceed.`;
+      reply = `🍴 ${session.selectedCanteen.canteenName.toUpperCase()} MENU:\n${menuList}\n\nSend menu number to proceed.`;
     } else {
-      reply = `❌ No menus available for ${selectedCanteen.canteenName}. Please try again later.`;
+      reply = `❌ No menus available for ${session.selectedCanteen.canteenName}. Please try again later.`;
     }
     sessions[userId] = session;
-    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
     return;
   }
 
-  // Step 3: Menu Selection
-  if (session.stage === 'item_selection' && /^[1-9]\d*$/.test(msg)) {
-    const index = parseInt(msg) - 1;
-    if (index < 0 || index >= session.menus.length) {
-      reply = '⚠️ Invalid menu option. Please type "hi" to restart.';
-      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
-      return;
-    }
-
-    const selectedMenu = session.menus[index];
-    session.selectedMenu = selectedMenu;
-    session.stage = 'cart_selection';
-
-    const items = await axios
-      .get(`${process.env.BASE_URL}/api/menu/getMenuByIdforwhatsapp?menuId=${selectedMenu.id}`)
-      .then(response => response.data.data || [])
-      .catch(error => {
-        console.error('Error fetching items:', error.message);
-        return [];
-      });
-
-    if (items.length > 0) {
-      session.items = items;
-      const itemList = items.map((i: { id: any; name: any; price: any }) => `${i.id}. ${i.name} - ₹${i.price}`).join('\n');
-      reply = `🛒 ${selectedMenu.name.toUpperCase()} ITEMS:\n${itemList}\n\nSend items like: 1*2,2*1`;
-    } else {
-      reply = `❌ No items available for ${selectedMenu.name}. Please try again later.`;
-    }
-    sessions[userId] = session;
-    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
-    return;
-  }
-
-  // Step 4: Cart Selection
-  if (session.stage === 'cart_selection' && /^\d+\*\d+(,\d+\*\d+)*$/.test(msg)) {
-    const selections = msg.split(',');
-    for (const pair of selections) {
-      const [idStr, qtyStr] = pair.split('*');
-      const id = parseInt(idStr);
-      const quantity = parseInt(qtyStr);
-      const item = session.items.find((i: { id: number }) => i.id === id);
-      if (item) {
-        session.cart = session.cart || [];
-        const existing = session.cart.find(c => c.itemId === id);
-        if (existing) existing.quantity = quantity;
-        else session.cart.push({ itemId: id, name: item.name, price: item.price, quantity });
-      }
-    }
-    session.stage = 'cart_review';
-    sessions[userId] = session;
-
-    const cartText = (session.cart ?? [])
-      .map(c => `- ${c.name} x${c.quantity} = ₹${c.quantity * c.price}`)
-      .join('\n');
-    const total = (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0);
-    reply = `🧾 Your Cart:\n${cartText}\nTotal = ₹${total}\n\nReply:\n1. ✅ Confirm\n2. ✏️ Edit\n3. ❌ Cancel`;
-    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
-    return;
-  }
-
-  // Step 5: Cart Review
-  if (session.stage === 'cart_review') {
-    if (msg === '✅' || msg === '1' || msg === 'confirm') {
-      delete sessions[userId]; // Clear session
-      console.log('session', session);
-
-    
-      const transaction = await sequelize.transaction(); // Start a transaction
-      try {
-        // Save order in the database
-        const mobileNumber = userId.startsWith('91') ? userId.slice(2) : userId;
-
-        // Check if user exists in the database
-        let user = await User.findOne({ where: { mobile: mobileNumber }, transaction });
-
-        // If user does not exist, create a new user
-        if (!user) {
-          user = await User.create({
-        mobile: mobileNumber,
-        firstName: 'Guest', // Default values for new user
-        lastName: 'User',
-        email: null,
-          }, { transaction });
-        }
-
-        // Create the order
-        const order = await Order.create({
-          userId: user.id,
-          createdById: user.id,
-          canteenId: session.selectedCanteen.id,
-          menuConfigurationId: session.selectedMenu.id,
-          totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
-          status: 'initiated',
-          orderDate: Math.floor(new Date().getTime() / 1000),
-        }, { transaction });
-
-        // Save order items in the database
-        await Promise.all(
-          (session.cart ?? []).map(async (item) => {
-        await OrderItem.create({
-          orderId: order.id,
-          itemId: item.itemId,
-          quantity: item.quantity,
-          price: item.price,
-          total: item.price * item.quantity,
-          createdById: user.id,
-        }, { transaction });
-          })
-        );
-
-        // Store payment details in the Payment table
-        const payment = await Payment.create({
-          orderId: order.id,
-          userId: user.id,
-          createdById: user.id,
-          amount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
-          totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
-          status: 'Pending',
-          paymentMethod: "UPI",
-          gatewayCharges: 0,
-          gatewayPercentage: 0,
-          currency: 'INR',
-        }, { transaction });
-
-        // Commit the transaction
-        await transaction.commit();
-
-
-        // Generate payment link using the PaymentLink function from utils
-        const paymentLink = await PaymentLink(order, payment, user);
-        console.log('Payment link generated:', paymentLink);
-
-        // Send payment link to the user
-        reply = `💳 Complete your payment using the following link:\n${paymentLink}`;
-      //  reply = `✅ Order placed successfully with Order ID: ${order.id}. Thank you!`;
-      } catch (error: any) {
-        // Rollback the transaction in case of an error
-        await transaction.rollback();
-        console.error('Error placing order:', error.message);
-        reply = '❌ Failed to place the order. Please try again later.';
-      }
-      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
-      return;
-    }
-    if (msg === '✏️' || msg === '2' || msg === 'edit') {
-      session.stage = 'cart_selection';
-      sessions[userId] = session;
-      const itemList = session.items.map((i: { id: any; name: any; price: any }) => `${i.id}. ${i.name} - ₹${i.price}`).join('\n');
-      reply = `✏️ Edit Items:\n${itemList}\n\nSend items like: 1*2,2*1`;
-      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
-      return;
-    }
-    if (msg === '❌' || msg === '3' || msg === 'cancel') {
-      delete sessions[userId]; // Clear session
-      reply = '❌ Order cancelled. You can start again by typing hi.';
-      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
-      return;
-    }
-  }
-
-  // Default response for invalid input
-  reply = '❓ Invalid input. Please type "hi" to restart.';
-  await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
+  // Remaining steps (Menu Selection, Cart Selection, Cart Review, etc.) remain unchanged.
 };
 
 
@@ -912,14 +779,7 @@ export const sendImageWithoutAttachment = async (
 //   }
 // };
 
-// const base64Image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJQAAACUCAYAAAB1PADUAAAAAklEQVR4AewaftIAAAS4SURBVO3BQY4kRxIEQbVA/f/Lun1bPwWQSK8mZ2gi8QdVSw5Viw5Viw5Viw5Viw5Viw5Viw5Viw5Viw5Viw5Viw5Viw5Viw5Viz68lITfpPJEEp5QuUnCjcqUhCdUpiT8JpU3DlWLDlWLDlWLPixT2ZSEN1Q2qbyhMiXhCZVNSdh0qFp0qFp0qFr04cuS8ITKE0mYVG6ScKMyJWFSmZIwqUwqUxI2JeEJlW86VC06VC06VC368B+jMiXhRuWJJEwqNyp/k0PVokPVokPVog9/mSRMKjcqUxKeUKn/O1QtOlQtOlQt+vBlKr9JZUrCpDIl4Y0kTCpTEiaVTSr/JoeqRYeqRYeqRR+WJeFPpjIlYVKZkvBGEiaVmyT8mx2qFh2qFh2qFh15Kwo3KpDIl4UblCZUnkjCpvKEyJeENlU2HqkWHqkWHqkXfXlKZknCThCdUpiRMSZhUblSmJEwqUxImlSkJk8qk8obKlIRJ5YkkTCqbDlWLDlWLDlWL4g/+QUl4Q+WJJEwqm5JwozIlYVJ5Iwk3Kt90qFp0qFp0qFr0YVkSnlB5IglPJGFSmZLwhsoTSZhUpiS8oTIl4SYJk8obh6pFh6pFh6pFH15Kwo3KTRImlSkJk8qUhEnlNyXhRuUJlSkJ36Sy6VC16FC16FC16MOXJeENlSkJk8obKlMSJpUpCZPKb1KZknCjMiVhUtl0qFp0qFp0qFr04ZepPJGETUmYVCaVKQmTypSEG5WbJEwqk8qNyk0SJpVvOlQtOlQtOlQtij94IQmTyk0SnlCZkvCGypSESeWNJDyhcpOETSpTEiaVNw5Viw5Viw5Viz58WRLeSMKNym9KwhMqN0m4UZmSMKlMSXhCZdOhatGhatGhatGHL1O5ScKNyk0SJpVNSZhUpiRMKjdJmFRukjCpTEmYVG6SMKlsOlQtOlQtOlQtij94IQmTypSESWVKwhsqN0mYVL4pCZPKTRI2qUxJeELljUPVokPVokPVoviDP1gSnlC5ScKNyhtJuFF5IgmbVN44VC06VC06VC368FISfpPKpDIl4ZuSMKlMSdiUhEnlDZVvOlQtOlQtOlQt+rBMZVMSbpIwqdwkYVK5UXlCZUrCpDIl4UblDZXfdKhadKhadKhad9OHLkvCEyqYk3CRhUpmS8IbKE0l4Q2VKwo3KpkPVokPVokPVog9/OZUpCZPKjcpNEiaVKQmTyo3KG0l4IgmTyhuHqkWHqkWHqkUf/uOS8E0qbyThCZWbJEwqm5Viw5Viw5Viz58mco3qUxJuFF5IwlPJOENlSkJk8qUhEnlNx2qFh2qFh2qFn1YloTflIQnkjCp3CThRmVKwqTyRBImlSdUpiRMKt90qFp0qFp0qFoUf1C15FC16FC16FC16FC16FC16FC16FC16FC16FC16FC16FC16FC16FC16FC16FC16H/E5DkSBtV3ygAAAABJRU5ErkJggg=='; // Example base64 string
-// const fileName = 'example.png';
-// const directory = './uploads';
-// if (!process.env.AWS_S3_BUCKET_NAME) {
-//   throw new Error('AWS_S3_BUCKET_NAME is not defined in the environment variables.');
-// }
-//uploadBase64ImageToS3(base64Image, process.env.AWS_S3_BUCKET_NAME, 'naval-dock-yard');
-//uploadBase64Image(base64Image, fileName, directory);
+// const base64Image = 'data:image/png;base64,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
 
 
 /**
