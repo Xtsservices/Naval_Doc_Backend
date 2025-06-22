@@ -484,11 +484,11 @@ const processSpecialRecipient = async (body: any) => {
     session.stage = 'item_selection';
 
     const menus = await axios
-      .get(`${process.env.BASE_URL}/api/menu/getMenusByCanteen?canteenId=${session.selectedCanteen.id}`)
+      .get(`${process.env.BASE_URL}/api/menu/getMenusByCanteen?canteenId=${session.selectedCanteen.id}&date=${session.selectedDate}`)
       .then(response => response.data.data || [])
       .catch(error => {
-        console.error('Error fetching menus:', error.message);
-        return [];
+      console.error('Error fetching menus:', error.message);
+      return [];
       });
 
     if (menus.length > 0) {
