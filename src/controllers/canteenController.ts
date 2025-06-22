@@ -5,10 +5,14 @@ import Canteen from '../models/canteen';
 import User from '../models/user';
 import Role from '../models/role';
 import UserRole from '../models/userRole';
+import Menu from '../models/menu'; // Import Menu model
 import { createCanteenValidation } from '../validations/joiValidations';
 import { getMessage } from '../common/utils';
 import { statusCodes } from '../common/statusCodes';
 import logger from '../common/logger';
+import moment from 'moment-timezone'; // Import moment-timezone
+moment.tz('Asia/Kolkata')
+import { Op } from 'sequelize';
 
 export const createCanteen = async (req: Request, res: Response): Promise<Response> => {
     
@@ -243,6 +247,57 @@ export const updateCanteen = async (req: Request, res: Response): Promise<Respon
 
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const getMenusByCanteen = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { canteenId } = req.query; // Extract canteenId from query parameters
+
+    // Validate if canteenId is provided
+    if (!canteenId) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: 'Canteen ID is required.',
+      });
+    }
+
+    // Get the current time in Unix timestamp format
+    const currentTime = Math.floor(Date.now() / 1000);
+
+    // Fetch menus filtered by canteenId and current time
+    const menus = await Menu.findAll({
+      where: {
+        canteenId,
+        startTime: { [Op.lte]: currentTime }, // Menus that have started
+        endTime: { [Op.gte]: currentTime }, // Menus that haven't ended yet
+      },
+      attributes: ['id', 'name', 'startTime', 'endTime'], // Select id, name, startTime, and endTime fields
+      order: [['startTime', 'ASC']], // Order by startTime
+    });
+
+    if (menus.length === 0) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: 'No menus available at the current time.',
+      });
+    }
+
+    // Convert startTime and endTime to HH:mm format for response
+    const formattedMenus = menus.map((menu) => {
+      const menuData = menu.toJSON();
+      menuData.startTime = moment.unix(menuData.startTime).format('HH:mm');
+      menuData.endTime = moment.unix(menuData.endTime).format('HH:mm');
+      return menuData;
+    });
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: 'Menus fetched successfully.',
+      data: formattedMenus, // Return the filtered and formatted menus
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching menus by canteen: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Internal server error.',
     });
   }
 };
