@@ -295,13 +295,13 @@ app.post('/webhook', async (req: Request, res: Response) => {
 
   // Check if msgStatus is RECEIVED
   if (req.body.msgStatus !== 'RECEIVED') {
-    console.log('Ignoring webhook request as msgStatus is not RECEIVED.');
+    // console.log('Ignoring webhook request as msgStatus is not RECEIVED.');
     return res.status(200).json({ message: 'Webhook ignored.' });
   }
 
   // Check if recipientAddress matches the specific number
   if (req.body.recipientAddress === '918686078782') {
-    console.log('Navigating to another function for processing recipientAddress:', req.body.recipientAddress);
+    // console.log('Navigating to another function for processing recipientAddress:', req.body.recipientAddress);
     await processSpecialRecipient(req.body); // Navigate to another function
     return res.status(200).json({ message: 'Special recipient processed.' });
   }
@@ -309,12 +309,12 @@ app.post('/webhook', async (req: Request, res: Response) => {
   const { sourceAddress: from, messageParameters } = req.body;
 
   if (!from || !messageParameters?.text?.body) {
-    console.error('Invalid webhook payload:', req.body);
+    // console.error('Invalid webhook payload:', req.body);
     return res.status(400).json({ message: 'Invalid webhook payload.' });
   }
 
   const text = messageParameters.text.body.trim();
-  console.log(`📥 Incoming message from ${from}: ${text}`);
+  // console.log(`📥 Incoming message from ${from}: ${text}`);
 
   if (!sessions[from]) {
     sessions[from] = { items: [], selectedCanteen: null, canteens: [], menus: null, selectedMenu: null };
@@ -387,7 +387,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
   // Send reply via Airtel API
   try {
     await sendWhatsAppMessage(from, reply, FROM_NUMBER.toString(),null);
-    console.log(`📤 Reply sent to ${from}: ${reply}`);
+    // console.log(`📤 Reply sent to ${from}: ${reply}`);
   } catch (error: any) {
     console.error('❌ Error sending reply:', error.message);
   }
@@ -482,7 +482,7 @@ const processSpecialRecipient = async (body: any) => {
     }
 
     session.stage = 'item_selection';
-    console.log(session.selectedDate)
+    console.log(session)
     const menus = await axios
       .get(`${process.env.BASE_URL}/api/menu/getMenusByCanteen?canteenId=${session.selectedCanteen.id}&date=${session.selectedDate}`)
       .then(response => response.data.data || [])
@@ -548,7 +548,7 @@ export const sendWhatsAppMessage = async (
       };
 
       const response = await axios.post(textUrl, textPayload, { headers });
-      console.log('✅ Text message sent:', response.data);
+      // console.log('✅ Text message sent:', response.data);
       return response.data;
     }
 
@@ -587,7 +587,7 @@ export const sendWhatsAppMessage = async (
     };
 
     const mediaRes = await axios.post(mediaSendUrl, mediaPayload, { headers });
-    console.log('✅ Image message sent:', mediaRes.data);
+    // console.log('✅ Image message sent:', mediaRes.data);
     return mediaRes.data;
 
   } catch (error: any) {
@@ -689,11 +689,11 @@ export const sendImageWithoutAttachment = async (
     },
     
   };
-  console.log('Sending message with out attachment:', payloadData);
+  // console.log('Sending message with out attachment:', payloadData);
 
   try {
     const response = await axios.post(url, payloadData, { headers });
-    console.log('✅ Message sent successfully:', response.data);
+    // console.log('✅ Message sent successfully:', response.data);
   } catch (error: any) {
     console.error('❌ Error sending message with attachment:', error.response?.data || error.message);
     throw error;
