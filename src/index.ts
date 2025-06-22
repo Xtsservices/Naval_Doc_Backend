@@ -482,7 +482,7 @@ const processSpecialRecipient = async (body: any) => {
     }
 
     session.stage = 'item_selection';
-
+    console.log(session.selectedDate)
     const menus = await axios
       .get(`${process.env.BASE_URL}/api/menu/getMenusByCanteen?canteenId=${session.selectedCanteen.id}&date=${session.selectedDate}`)
       .then(response => response.data.data || [])
