@@ -460,7 +460,7 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
 
 export const getMenusByCanteen = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { canteenId } = req.query; // Optional filter by canteenId
+    const { canteenId } = req.query; // Extract canteenId from query parameters
 
     // Validate if canteenId is provided
     if (!canteenId) {
@@ -469,22 +469,37 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       });
     }
 
-    // Fetch menus filtered by canteenId and select id and name fields
+    // Get the current time in Unix timestamp format
+    const currentTime = Math.floor(Date.now() / 1000);
+
+    // Fetch menus filtered by canteenId and current time
     const menus = await Menu.findAll({
-      where: { canteenId },
-      attributes: ['id', 'name'], // Select id and name fields
+      where: {
+        canteenId,
+        startTime: { [Op.lte]: currentTime }, // Menus that have started
+        endTime: { [Op.gte]: currentTime }, // Menus that haven't ended yet
+      },
+      attributes: ['id', 'name', 'startTime', 'endTime'], // Select id, name, startTime, and endTime fields
       order: [['startTime', 'ASC']], // Order by startTime
     });
 
     if (menus.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
-        message: 'No menus found for the specified canteen.',
+        message: 'No menus available at the current time.',
       });
     }
 
+    // Convert startTime and endTime to HH:mm format for response
+    const formattedMenus = menus.map((menu) => {
+      const menuData = menu.toJSON();
+      menuData.startTime = moment.unix(menuData.startTime).format('HH:mm');
+      menuData.endTime = moment.unix(menuData.endTime).format('HH:mm');
+      return menuData;
+    });
+
     return res.status(statusCodes.SUCCESS).json({
       message: 'Menus fetched successfully.',
-      data: menus, // Return the filtered menus
+      data: formattedMenus, // Return the filtered and formatted menus
     });
   } catch (error: unknown) {
     logger.error(`Error fetching menus by canteen: ${error instanceof Error ? error.message : error}`);
