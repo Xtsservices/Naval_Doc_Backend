@@ -22,7 +22,7 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
   const userId = req.user?.id; // Assuming `req.user` contains the authenticated user's details
 
   // Validate required fields
-  if (!menuConfigurationId || !items || !Array.isArray(items) || items.length ==0 || !canteenId || !startTime || !endTime) {
+  if (!menuConfigurationId || !items || !Array.isArray(items) || items.length === 0 || !canteenId || !startTime || !endTime) {
     logger.error('Validation error: menuConfigurationId, items, canteenId, startTime, and endTime are required');
     return res.status(statusCodes.BAD_REQUEST).json({
       message: getMessage('validation.validationError'),
@@ -30,23 +30,28 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
   }
 
   // Validate date format for startTime and endTime
-  if (!moment(startTime, 'DD-MM-YYYY', true).isValid()) {
-    logger.error('Validation error: startTime must be in the format DD-MM-YYYY');
+  // Set startTime to the start of the day in Asia/Kolkata timezone
+  // If input is only DD-MM-YYYY, set time to start of day in Asia/Kolkata timezone
+  startTime = moment.tz(startTime, 'DD-MM-YYYY', 'Asia/Kolkata').startOf('day').format('DD-MM-YYYY HH:mm A');
+  if (!moment(startTime, 'DD-MM-YYYY HH:mm A', true).isValid()) {
+    logger.error('Validation error: startTime must be in the format DD-MM-YYYY HH:mm A');
     return res.status(statusCodes.BAD_REQUEST).json({
       message: getMessage('validation.invalidStartTime'),
     });
   }
 
-  if (!moment(endTime, 'DD-MM-YYYY', true).isValid()) {
-    logger.error('Validation error: endTime must be in the format DD-MM-YYYY');
+  // Set endTime to the end of the day in Asia/Kolkata timezone
+  endTime = moment.tz(endTime, 'DD-MM-YYYY', 'Asia/Kolkata').endOf('day').format('DD-MM-YYYY HH:mm A');
+  if (!moment(endTime, 'DD-MM-YYYY HH:mm A', true).isValid()) {
+    logger.error('Validation error: endTime must be in the format DD-MM-YYYY HH:mm A');
     return res.status(statusCodes.BAD_REQUEST).json({
       message: getMessage('validation.invalidEndTime'),
     });
   }
 
   // Ensure startTime is before endTime
-  startTime = moment(startTime, 'DD-MM-YYYY');
-  endTime = moment(endTime, 'DD-MM-YYYY');
+  startTime = moment(startTime, 'DD-MM-YYYY HH:mm A');
+  endTime = moment(endTime, 'DD-MM-YYYY HH:mm A');
   if (!startTime.isBefore(endTime)) {
     logger.error('Validation error: startTime must be before endTime');
     return res.status(statusCodes.BAD_REQUEST).json({
@@ -80,7 +85,7 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
       where: {
         canteenId,
         menuConfigurationId,
-        status:'active', 
+        status: 'active',
       },
     });
 
@@ -98,8 +103,8 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
         description,
         menuConfigurationId, // Reference the configuration
         canteenId, // Reference the canteen
-        startTime, // Use the startTime from the payload
-        endTime, // Use the endTime from the payload
+        startTime: startTime.unix(), // Convert startTime to Unix timestamp
+        endTime: endTime.unix(), // Convert endTime to Unix timestamp
         status: 'active',
         createdById: userId,
         updatedById: userId,
@@ -469,37 +474,72 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       });
     }
 
-    // Get the current time in Unix timestamp format
-    const currentTime = Math.floor(Date.now() / 1000);
-
-    // Fetch menus filtered by canteenId and current time
+    // Fetch menus filtered by canteenId
     const menus = await Menu.findAll({
       where: {
-        canteenId,
-        startTime: { [Op.lte]: currentTime }, // Menus that have started
-        endTime: { [Op.gte]: currentTime }, // Menus that haven't ended yet
+      canteenId,
+      status: 'active', // Only fetch active menus
       },
       attributes: ['id', 'name', 'startTime', 'endTime'], // Select id, name, startTime, and endTime fields
       order: [['startTime', 'ASC']], // Order by startTime
+      include: [
+      {
+        model: MenuConfiguration,
+        as: 'menuMenuConfiguration',
+        attributes: ['id', 'name', 'defaultStartTime', 'defaultEndTime'],
+      },
+      ],
     });
 
     if (menus.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
-        message: 'No menus available at the current time.',
+        message: 'No menus available for the specified canteen.',
       });
     }
 
     // Convert startTime and endTime to HH:mm format for response
     const formattedMenus = menus.map((menu) => {
       const menuData = menu.toJSON();
-      menuData.startTime = moment.unix(menuData.startTime).format('HH:mm');
-      menuData.endTime = moment.unix(menuData.endTime).format('HH:mm');
+
+      // Format menu start and end time
+      const menuStart = moment.unix(menuData.startTime).tz('Asia/Kolkata');
+      const menuEnd = moment.unix(menuData.endTime).tz('Asia/Kolkata');
+      menuData.startTime = menuStart.format('HH:mm');
+      menuData.endTime = menuEnd.format('HH:mm');
+
+      // If menuConfiguration exists, format its defaultStartTime and defaultEndTime
+      if (menuData.menuMenuConfiguration) {
+        const config = menuData.menuMenuConfiguration;
+        // Format defaultStartTime and defaultEndTime
+        if (config.defaultStartTime) {
+          config.formattedDefaultStartTime = moment.unix(config.defaultStartTime).tz('Asia/Kolkata').format('HH:mm');
+        }
+        if (config.defaultEndTime) {
+          config.formattedDefaultEndTime = moment.unix(config.defaultEndTime).tz('Asia/Kolkata').format('HH:mm');
+        }
+
+        // Check if current time is within menu's start and end time
+        const now = moment().tz('Asia/Kolkata');
+        // Use the already formatted start and end times for comparison
+        const menuStartTime = moment(menuData.startTime, 'HH:mm');
+        const menuEndTime = moment(menuData.endTime, 'HH:mm');
+
+        // Only include menu if current time is between start and end time
+        if (now.isBetween(menuStart, menuEnd, undefined, '[]')) {
+          menuData.menuConfiguration = config;
+        } else {
+          // If not in time range, skip this menu by returning null
+          return null;
+        }
+        delete menuData.menuMenuConfiguration;
+      }
+
       return menuData;
-    });
+    }).filter((menu: any) => menu !== null);
 
     return res.status(statusCodes.SUCCESS).json({
       message: 'Menus fetched successfully.',
-      data: formattedMenus, // Return the filtered and formatted menus
+      data: formattedMenus, // Return the formatted menus
     });
   } catch (error: unknown) {
     logger.error(`Error fetching menus by canteen: ${error instanceof Error ? error.message : error}`);
