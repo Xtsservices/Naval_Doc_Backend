@@ -15,6 +15,8 @@ moment.tz('Asia/Kolkata')
 import { Op } from 'sequelize';
 
 export const createCanteen = async (req: Request, res: Response): Promise<Response> => {
+
+
     
     const { canteenName, canteenCode, firstName, lastName, email, mobile } = req.body;
   const canteenImage = req.file?.buffer; // Get the binary data of the uploaded image
@@ -104,14 +106,16 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
   try {
     // Fetch all canteens with associated user details
     const canteens = await Canteen.findAll({
-      include: [
-        {
-          model: User,
-          as: 'adminUser', // Ensure this matches the alias in the Canteen -> User association
-          attributes: ['id', 'firstName', 'lastName', 'email', 'mobile'], // Fetch necessary user fields
-        },
-      ],
+      
     });
+
+    // include: [
+    //     {
+    //       model: User,
+    //       as: 'adminUser', // Ensure this matches the alias in the Canteen -> User association
+    //       attributes: ['id', 'firstName', 'lastName', 'email', 'mobile'], // Fetch necessary user fields
+    //     },
+    //   ],
 
     if (!canteens || canteens.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
