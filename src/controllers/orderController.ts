@@ -1254,6 +1254,174 @@ export const updateOrderStatus = async (req: Request, res: Response): Promise<Re
   }
 };
 
+export const createWalkinOrders = async (req: Request, res: Response): Promise<Response> => {
+  const transaction: Transaction = await sequelize.transaction();
+
+  try {
+    // Extract canteenId from the user's token
+    const { canteenId } = req.user as unknown as { canteenId: string };
+    
+    if (!canteenId) {
+      await transaction.rollback();
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: 'Canteen ID not found in authentication token',
+      });
+    }
+
+    const walkinOrdersData = Array.isArray(req.body) ? req.body : [req.body];
+    
+    if (walkinOrdersData.length === 0) {
+      await transaction.rollback();
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.validationError'),
+        errors: ['Order data is required'],
+      });
+    }
+
+    // Verify the canteen exists
+    const canteen = await Canteen.findByPk(canteenId, { transaction });
+    if (!canteen) {
+      logger.warn(`Canteen not found for canteenId from token: ${canteenId}`);
+      await transaction.rollback();
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: 'Canteen not found',
+      });
+    }
+    
+    const processedOrders = [];
+    
+    // Process each order in the array
+    for (const walkinOrderData of walkinOrdersData) {
+      // Validate required fields (no longer checking for menuId)
+      if (!walkinOrderData.contactNumber) {
+        continue; // Skip invalid orders
+      }
+      
+      if (!walkinOrderData.orderItems || !Array.isArray(walkinOrderData.orderItems) || walkinOrderData.orderItems.length === 0) {
+        continue; // Skip orders without items
+      }
+
+      // Check if mobile number exists in the User table
+      let user = await User.findOne({ 
+        where: { mobile: walkinOrderData.contactNumber },
+        transaction
+      });
+
+      // If user doesn't exist, create a new account
+      if (!user) {
+        user = await User.create({
+          mobile: walkinOrderData.contactNumber,
+          firstName: walkinOrderData.customerName || 'Guest',
+          lastName: 'User',
+          email: null,
+        }, { transaction });
+        
+        logger.info(`Created new user with mobile: ${walkinOrderData.contactNumber}`);
+      }
+
+      // Generate a unique order number
+      const orderNo = await generateUniqueOrderNo(user.id, transaction);
+      
+      // Create the order using canteenId from token
+      const order = await Order.create(
+        {
+          userId: user.id,
+          totalAmount: walkinOrderData.totalAmount,
+          status: 'completed',
+          canteenId: canteenId, // Use canteenId from token
+          menuConfigurationId: walkinOrderData.menuConfigurationId || canteenId, // Fallback to canteenId
+          createdById: user.id,
+          orderDate: Math.floor(Date.now() / 1000),
+          orderNo,
+          notes: walkinOrderData.notes || '',
+        },
+        { transaction }
+      );
+
+      // Generate QR Code
+      const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
+      const qrCode = await QRCode.toDataURL(qrCodeData);
+
+      // Update the order with the QR code
+      order.qrCode = qrCode;
+      await order.save({ transaction });
+
+      // Process order items
+      const orderItems = [];
+      for (const item of walkinOrderData.orderItems) {
+        // Verify the item exists
+        const menuItem = await Item.findByPk(item.menuItemId, { transaction });
+        if (!menuItem) {
+          logger.warn(`Menu item not found: ${item.menuItemId}`);
+          continue; // Skip this item
+        }
+        
+        orderItems.push({
+          orderId: order.id,
+          itemId: item.menuItemId,
+          quantity: item.quantity,
+          price: item.unitPrice,
+          total: item.totalPrice,
+          createdById: user.id,
+        });
+      }
+      
+      if (orderItems.length > 0) {
+        await OrderItem.bulkCreate(orderItems, { transaction });
+      }
+
+      // Create payment record
+      const payment = await Payment.create(
+        {
+          orderId: order.id,
+          userId: user.id,
+          createdById: user.id,
+          paymentMethod: walkinOrderData.paymentMethod.toLowerCase(),
+          transactionId: null,
+          amount: walkinOrderData.totalAmount,
+          totalAmount: walkinOrderData.finalAmount || walkinOrderData.totalAmount,
+          status: "completed",
+          gatewayCharges: 0,
+          gatewayPercentage: 0,
+          currency: 'INR',
+        },
+        { transaction }
+      );
+
+      processedOrders.push({
+        order,
+        qrCode,
+        userId: user.id
+      });
+    }
+
+    // Commit the transaction only if we have processed at least one order
+    if (processedOrders.length > 0) {
+      await transaction.commit();
+
+      return res.status(statusCodes.SUCCESS).json({
+        message: getMessage('order.placed'),
+        data: {
+          orders: processedOrders,
+          processedCount: processedOrders.length,
+          totalCount: walkinOrdersData.length
+        },
+      });
+    } else {
+      await transaction.rollback();
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: 'No valid orders to process',
+      });
+    }
+  } catch (error: unknown) {
+    await transaction.rollback();
+    logger.error(`Error creating walkin orders: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
 
 
 
