@@ -16,6 +16,7 @@ import MenuItem from '../models/menuItem';
 import MenuConfiguration from '../models/menuConfiguration';
 import Canteen from '../models/canteen'; // Import the Canteen model
 import { Op } from 'sequelize';
+import { compile } from 'joi';
 
 export const createMenuWithItems = async (req: Request, res: Response): Promise<Response> => {
   let { menuConfigurationId, description, items, canteenId, startTime, endTime } = req.body; // Include startTime and endTime in the request body
@@ -97,14 +98,18 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
     }
 
     // Create a new menu using the provided startTime and endTime
+
+    // Set startTime to the start of the day in Asia/Kolkata timezone
+    startTime = moment(startTime, 'DD-MM-YYYY').startOf('day');
+    endTime = moment(endTime, 'DD-MM-YYYY').endOf('day');
     const menu = await Menu.create(
       {
         name: menuConfiguration.name, // Use the name from the configuration
         description,
         menuConfigurationId, // Reference the configuration
         canteenId, // Reference the canteen
-        startTime: startTime.unix(), // Convert startTime to Unix timestamp
-        endTime: endTime.unix(), // Convert endTime to Unix timestamp
+        startTime: startTime, // Convert startTime to Unix timestamp
+        endTime: endTime, // Convert endTime to Unix timestamp
         status: 'active',
         createdById: userId,
         updatedById: userId,
@@ -327,35 +332,29 @@ export const getAllMenus = async (req: Request, res: Response): Promise<Response
 
 export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { canteenId } = req.query; // Optional filter by canteenId
-    // Use moment to get the current date and next 2 days
-    const now = moment(); // Current time
-    const today = moment().startOf('day');
-    const tomorrow = moment().add(1, 'days').startOf('day');
-    const dayAfterTomorrow = moment().add(2, 'days').startOf('day');
-
-    const todayUnix = today.unix(); // Start of today as Unix timestamp
-    const dayAfterTomorrowUnix = moment().add(1, 'days').endOf('day').unix(); // End of the day after tomorrow as Unix timestamp
-
-    const tomorrowUnix = tomorrow.endOf('day').unix(); // End of tomorrow as Unix timestamp
-
-    // Construct where clause to fetch menus valid from today to dayAfterTomorrow
-    const whereClause: any = {
-      startTime: {
-        [Op.lte]: tomorrowUnix, // Menus that start on or before dayAfterTomorrow
-      },
-      endTime: {
-        [Op.gte]: todayUnix, // Menus that end on or after today
-      },
-      status: 'active', // Only fetch active menus
-    };
-
-    if (canteenId) {
-      whereClause.canteenId = canteenId; // Filter by canteenId if provided
-    }
-
-    // Debug the SQL query
+    const { canteenId } = req.query;
+    const now = moment().tz('Asia/Kolkata');
+    const today = now.clone().startOf('day');
+    const tomorrow = now.clone().add(1, 'day').startOf('day');
     
+    // Prepare date keys
+    const dateKeys = [
+      today.format('DD-MM-YYYY'),
+      tomorrow.format('DD-MM-YYYY'),
+    ];
+
+    // Prepare unix ranges for filtering menus
+    const todayUnix = today.unix();
+    const tomorrowEndUnix = tomorrow.clone().endOf('day').unix();
+
+    // Build where clause
+    const whereClause: any = {
+      startTime: { [Op.lte]: tomorrowEndUnix },
+      endTime: { [Op.gte]: todayUnix },
+      status: 'active',
+    };
+    
+    if (canteenId) whereClause.canteenId = canteenId;
 
     const menus = await Menu.findAll({
       where: whereClause,
@@ -363,93 +362,101 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
         {
           model: MenuConfiguration,
           as: 'menuMenuConfiguration',
-          attributes: ['id', 'name', 'defaultStartTime', 'defaultEndTime'], // Use defaultStartTime and defaultEndTime
+          attributes: ['id', 'name', 'defaultStartTime', 'defaultEndTime', 'status'],
+          where: { status: 'active' } // Only include active menu configurations
         },
       ],
-      order: [['startTime', 'ASC']], // Order by startTime to ensure consistent grouping
+      order: [['startTime', 'ASC']],
     });
 
-  if(menus.length ===0){
-    return res.status(statusCodes.NOT_FOUND).json({
-      message: 'No Menu Found',
-    });
+    if (menus.length === 0) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: 'No Menu Found',
+      });
+    }
 
-  }
+    // Initialize groupedMenus
+    const groupedMenus: Record<string, Record<string, any[]>> = {};
+    dateKeys.forEach(dateKey => groupedMenus[dateKey] = {});
 
-
-    // Initialize grouped menus with empty objects for the next three days
-    const groupedMenus: Record<string, Record<string, any[]>> = {
-      [today.format('DD-MM-YYYY')]: {},
-      [tomorrow.format('DD-MM-YYYY')]: {},
-    //  [dayAfterTomorrow.format('DD-MM-YYYY')]: {},
-    };
-
-    // Iterate over each menu and check if its date range overlaps with the grouped dates
-    menus.forEach((menu, index) => {
+    // Process each menu and group by date and configuration
+    menus.forEach((menu) => {
       const menuData = menu.toJSON();
-      
-      const menuStartDate = moment.unix(menuData.startTime).startOf('day');
-      const menuEndDate = moment.unix(menuData.endTime).endOf('day');
-      menuData.menuConfiguration=menuData.menuMenuConfiguration 
-      const menuConfigName = menuData.menuConfiguration?.name || 'Unconfigured';
+      const menuConfig = menuData.menuMenuConfiguration;
+      const menuConfigName = menuConfig?.name || 'Unconfigured';
 
-      // Check if menuConfiguration is valid for the current date
-      const menuConfigStartTime = menuData.menuConfiguration?.defaultStartTime
-        ? moment.unix(menuData.menuConfiguration.defaultStartTime)
-        : null;
-      const menuConfigEndTime = menuData.menuConfiguration?.defaultEndTime
-        ? moment.unix(menuData.menuConfiguration.defaultEndTime)
-        : null;
+      // Menu's active date range
+      const menuStart = moment.unix(menuData.startTime).tz('Asia/Kolkata').startOf('day');
+      const menuEnd = moment.unix(menuData.endTime).tz('Asia/Kolkata').endOf('day');
 
-      // Convert defaultEndTime to HH:MM A format for display
-      const formattedDefaultEndTime = menuData.menuConfiguration?.defaultEndTime
-        ? moment.unix(menuData.menuConfiguration.defaultEndTime).format('HH:mm A')
-        : null;
+      dateKeys.forEach(dateKey => {
+        const currentDate = moment.tz(dateKey, 'DD-MM-YYYY', 'Asia/Kolkata').startOf('day');
+        
+        // Check if menu is valid for this date
+        const isMenuValidForDate = currentDate.isBetween(menuStart, menuEnd, 'day', '[]');
+        if (!isMenuValidForDate) return; // Skip if menu is not valid for this date
 
-      // Iterate over the groupedMenus keys (dates)
-      Object.keys(groupedMenus).forEach((dateKey) => {
-        const currentDate = moment(dateKey, 'DD-MM-YYYY').startOf('day');
-
-        // Check if the current date falls within the menu's start and end date range
-        const isMenuValid = currentDate.isBetween(menuStartDate, menuEndDate, 'day', '[]');
-
-        // For future dates (tomorrow and dayAfterTomorrow), we only care about menu validity
-        // For today, we need to check the current time against the menu configuration time
+        // Initialize validity as false
         let isValid = false;
         
-        if (currentDate.isAfter(today, 'day')) {
-          // For tomorrow and dayAfterTomorrow
-          isValid = isMenuValid;
+        // Determine if the current date is today
+        const isCurrentDateToday = currentDate.isSame(today, 'day');
+        
+        if (isCurrentDateToday) {
+          // For today, check menu configuration time
+          if (menuConfig?.defaultStartTime && menuConfig?.defaultEndTime) {
+            const servingStart = currentDate.clone()
+              .hour(moment.unix(menuConfig.defaultStartTime).tz('Asia/Kolkata').hour())
+              .minute(moment.unix(menuConfig.defaultStartTime).tz('Asia/Kolkata').minute());
+            
+            const servingEnd = currentDate.clone()
+              .hour(moment.unix(menuConfig.defaultEndTime).tz('Asia/Kolkata').hour())
+              .minute(moment.unix(menuConfig.defaultEndTime).tz('Asia/Kolkata').minute());
+            
+            // Check if the menu's serving window is:
+            // 1. Currently active (now is between start and end)
+            // 2. Coming up later today (start is after now but still today)
+            const isCurrentlyActive = now.isSameOrAfter(servingStart) && now.isBefore(servingEnd);
+            const isUpcomingToday = now.isBefore(servingStart) && servingStart.isSame(today, 'day');
+            
+            isValid = isCurrentlyActive || isUpcomingToday;
+          }
         } else {
-          // For today
-          const isTimeValidForToday =
-            (!menuConfigStartTime || now.isSameOrAfter(menuConfigStartTime)) &&
-            (!menuConfigEndTime || now.isSameOrBefore(menuConfigEndTime));
-          isValid = isMenuValid && isTimeValidForToday;
+          // For future dates (tomorrow), show all menus
+          isValid = true;
         }
-
+        
+        // Only add to response if valid
         if (isValid) {
-          // Initialize the configuration group if it doesn't exist
           if (!groupedMenus[dateKey][menuConfigName]) {
             groupedMenus[dateKey][menuConfigName] = [];
           }
-
-          // Push the menu data into the appropriate group
+          
           groupedMenus[dateKey][menuConfigName].push({
-            id: menuData.id, // Include menu ID
+            id: menuData.id,
             name: menuData.name,
             startTime: menuData.startTime,
             endTime: menuData.endTime,
             menuConfiguration: {
-              ...menuData.menuConfiguration,
-              formattedDefaultEndTime, // Add formatted defaultEndTime
+              ...menuConfig,
+              formattedDefaultStartTime: menuConfig?.defaultStartTime
+                ? moment.unix(menuConfig.defaultStartTime).tz('Asia/Kolkata').format('HH:mm')
+                : null,
+              formattedDefaultEndTime: menuConfig?.defaultEndTime
+                ? moment.unix(menuConfig.defaultEndTime).tz('Asia/Kolkata').format('HH:mm')
+                : null,
             },
           });
-          
         }
       });
     });
 
+    // Clean up empty date keys
+    for (const dateKey of dateKeys) {
+      if (Object.keys(groupedMenus[dateKey]).length === 0) {
+        delete groupedMenus[dateKey];
+      }
+    }
 
     return res.status(statusCodes.SUCCESS).json({
       message: 'Menus fetched successfully',
