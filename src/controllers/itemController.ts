@@ -50,7 +50,7 @@ export const createItem = async (req: Request, res: Response): Promise<Response>
 
   try {
     // Check if an item with the same name already exists
-    const existingItem = await Item.findOne({ where: { name }, transaction });
+    const existingItem = await Item.findOne({ where: { name, status:"active" }, transaction });
     if (existingItem) {
       logger.warn(`Item with name "${name}" already exists`);
       return res.status(statusCodes.BAD_REQUEST).json({
