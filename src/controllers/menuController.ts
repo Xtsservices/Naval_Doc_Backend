@@ -22,7 +22,7 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
   const userId = req.user?.id; // Assuming `req.user` contains the authenticated user's details
 
   // Validate required fields
-  if (!menuConfigurationId || !items || !Array.isArray(items) || items.length ==0 || !canteenId || !startTime || !endTime) {
+  if (!menuConfigurationId || !items || !Array.isArray(items) || items.length === 0 || !canteenId || !startTime || !endTime) {
     logger.error('Validation error: menuConfigurationId, items, canteenId, startTime, and endTime are required');
     return res.status(statusCodes.BAD_REQUEST).json({
       message: getMessage('validation.validationError'),
@@ -30,23 +30,28 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
   }
 
   // Validate date format for startTime and endTime
-  if (!moment(startTime, 'DD-MM-YYYY', true).isValid()) {
-    logger.error('Validation error: startTime must be in the format DD-MM-YYYY');
+  // Set startTime to the start of the day in Asia/Kolkata timezone
+  // If input is only DD-MM-YYYY, set time to start of day in Asia/Kolkata timezone
+  startTime = moment.tz(startTime, 'DD-MM-YYYY', 'Asia/Kolkata').startOf('day').format('DD-MM-YYYY HH:mm A');
+  if (!moment(startTime, 'DD-MM-YYYY HH:mm A', true).isValid()) {
+    logger.error('Validation error: startTime must be in the format DD-MM-YYYY HH:mm A');
     return res.status(statusCodes.BAD_REQUEST).json({
       message: getMessage('validation.invalidStartTime'),
     });
   }
 
-  if (!moment(endTime, 'DD-MM-YYYY', true).isValid()) {
-    logger.error('Validation error: endTime must be in the format DD-MM-YYYY');
+  // Set endTime to the end of the day in Asia/Kolkata timezone
+  endTime = moment.tz(endTime, 'DD-MM-YYYY', 'Asia/Kolkata').endOf('day').format('DD-MM-YYYY HH:mm A');
+  if (!moment(endTime, 'DD-MM-YYYY HH:mm A', true).isValid()) {
+    logger.error('Validation error: endTime must be in the format DD-MM-YYYY HH:mm A');
     return res.status(statusCodes.BAD_REQUEST).json({
       message: getMessage('validation.invalidEndTime'),
     });
   }
 
   // Ensure startTime is before endTime
-  startTime = moment(startTime, 'DD-MM-YYYY');
-  endTime = moment(endTime, 'DD-MM-YYYY');
+  startTime = moment(startTime, 'DD-MM-YYYY HH:mm A');
+  endTime = moment(endTime, 'DD-MM-YYYY HH:mm A');
   if (!startTime.isBefore(endTime)) {
     logger.error('Validation error: startTime must be before endTime');
     return res.status(statusCodes.BAD_REQUEST).json({
@@ -80,7 +85,7 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
       where: {
         canteenId,
         menuConfigurationId,
-        status:'active', 
+        status: 'active',
       },
     });
 
@@ -98,8 +103,8 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
         description,
         menuConfigurationId, // Reference the configuration
         canteenId, // Reference the canteen
-        startTime, // Use the startTime from the payload
-        endTime, // Use the endTime from the payload
+        startTime: startTime.unix(), // Convert startTime to Unix timestamp
+        endTime: endTime.unix(), // Convert endTime to Unix timestamp
         status: 'active',
         createdById: userId,
         updatedById: userId,
@@ -460,31 +465,120 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
 
 export const getMenusByCanteen = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { canteenId } = req.query; // Optional filter by canteenId
+    const { canteenId, date } = req.query; // Extract canteenId and optional date
 
-    // Validate if canteenId is provided
     if (!canteenId) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: 'Canteen ID is required.',
       });
     }
 
-    // Fetch menus filtered by canteenId and select id and name fields
     const menus = await Menu.findAll({
-      where: { canteenId },
-      attributes: ['id', 'name'], // Select id and name fields
-      order: [['startTime', 'ASC']], // Order by startTime
+      where: {
+        canteenId,
+        status: 'active',
+      },
+      attributes: ['id', 'name', 'startTime', 'endTime'],
+      order: [['startTime', 'ASC']],
+      include: [
+        {
+          model: MenuConfiguration,
+          as: 'menuMenuConfiguration',
+          attributes: ['id', 'name', 'defaultStartTime', 'defaultEndTime'],
+        },
+      ],
     });
 
     if (menus.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
-        message: 'No menus found for the specified canteen.',
+        message: 'No menus available for the specified canteen.',
       });
     }
 
+    // Determine target date - default to today in DD-MM-YYYY format
+    let targetDate;
+    const today = moment().tz('Asia/Kolkata');
+    
+    if (date) {
+      // Parse the provided date
+      targetDate = moment(date.toString(), 'DD-MM-YYYY').tz('Asia/Kolkata');
+      if (!targetDate.isValid()) {
+        return res.status(statusCodes.BAD_REQUEST).json({
+          message: 'Invalid date format. Use DD-MM-YYYY format.',
+        });
+      }
+    } else {
+      // Default to today
+      targetDate = today;
+    }
+
+    // Start of the target date
+    const targetDateStart = targetDate.clone().startOf('day');
+    const targetDateFormatted = targetDate.format('DD-MM-YYYY');
+    
+    // Get current time for comparison
+    const now = moment().tz('Asia/Kolkata');
+    const isToday = targetDateStart.isSame(now, 'day');
+    
+    // Show only menus where the target date falls within the menu configuration's default time window
+    const validMenus = menus.filter((menu) => {
+      const menuData = menu.toJSON();
+      const config = menuData.menuMenuConfiguration;
+      
+      if (!config || !config.defaultStartTime || !config.defaultEndTime) {
+        return false;
+      }
+      
+      // Create moments for the menu's default start and end times
+      const defaultStartTime = moment.unix(config.defaultStartTime).tz('Asia/Kolkata');
+      const defaultEndTime = moment.unix(config.defaultEndTime).tz('Asia/Kolkata');
+      
+      // Create target date's datetime objects with these hours and minutes
+      const targetDayStart = targetDateStart.clone()
+        .hour(defaultStartTime.hour())
+        .minute(defaultStartTime.minute());
+      
+      const targetDayEnd = targetDateStart.clone()
+        .hour(defaultEndTime.hour())
+        .minute(defaultEndTime.minute());
+      
+      // For today, check if current time falls within this window
+      // For future dates, show all menus that would be valid on that day
+      return isToday 
+        ? now.isSameOrAfter(targetDayStart) && now.isBefore(targetDayEnd)
+        : true; // Show all menus for future dates
+    });
+
+    if (validMenus.length === 0) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: `No valid menus available for ${targetDateFormatted}.`,
+      });
+    }
+
+    // Format times for response
+    const formattedMenus = validMenus.map((menu) => {
+      const menuData = menu.toJSON();
+      
+      if (menuData.menuMenuConfiguration) {
+        const config = menuData.menuMenuConfiguration;
+        if (config.defaultStartTime) {
+          config.formattedDefaultStartTime = moment.unix(config.defaultStartTime).tz('Asia/Kolkata').format('HH:mm');
+          menuData.startTime = config.formattedDefaultStartTime; // Use configuration time for display
+        }
+        if (config.defaultEndTime) {
+          config.formattedDefaultEndTime = moment.unix(config.defaultEndTime).tz('Asia/Kolkata').format('HH:mm');
+          menuData.endTime = config.formattedDefaultEndTime; // Use configuration time for display
+        }
+        menuData.menuConfiguration = config;
+        delete menuData.menuMenuConfiguration;
+      }
+
+      return menuData;
+    });
+
     return res.status(statusCodes.SUCCESS).json({
-      message: 'Menus fetched successfully.',
-      data: menus, // Return the filtered menus
+      message: `Menus fetched successfully for ${targetDateFormatted}.`,
+      data: formattedMenus,
     });
   } catch (error: unknown) {
     logger.error(`Error fetching menus by canteen: ${error instanceof Error ? error.message : error}`);

@@ -5,18 +5,24 @@ import Canteen from '../models/canteen';
 import User from '../models/user';
 import Role from '../models/role';
 import UserRole from '../models/userRole';
+import Menu from '../models/menu'; // Import Menu model
 import { createCanteenValidation } from '../validations/joiValidations';
 import { getMessage } from '../common/utils';
 import { statusCodes } from '../common/statusCodes';
 import logger from '../common/logger';
+import moment from 'moment-timezone'; // Import moment-timezone
+moment.tz('Asia/Kolkata')
+import { Op } from 'sequelize';
 
 export const createCanteen = async (req: Request, res: Response): Promise<Response> => {
+
+
     
-    const { canteenName, canteenCode, adminFirstName, adminLastName, adminEmail, adminMobile } = req.body;
+    const { canteenName, canteenCode, firstName, lastName, email, mobile } = req.body;
   const canteenImage = req.file?.buffer; // Get the binary data of the uploaded image
 
   // Validate the request body
-  const { error } = createCanteenValidation.validate({ canteenName, canteenCode, adminFirstName, adminLastName, adminEmail, adminMobile });
+  const { error } = createCanteenValidation.validate({ canteenName, canteenCode, firstName, lastName, email, mobile });
   if (error) {
     logger.error(`Validation error: ${error.details[0].message}`);
     return res.status(statusCodes.BAD_REQUEST).json({
@@ -55,10 +61,10 @@ export const createCanteen = async (req: Request, res: Response): Promise<Respon
     // Create the user for the canteen admin
     const user = await User.create(
       {
-        firstName: adminFirstName,
-        lastName: adminLastName,
-        email: adminEmail,
-        mobile: adminMobile,
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        mobile: mobile,
         canteenId: canteen.id, // Associate the user with the canteen
       },
       { transaction }
@@ -98,8 +104,18 @@ export const createCanteen = async (req: Request, res: Response): Promise<Respon
 
 export const getAllCanteens = async (req: Request, res: Response): Promise<Response> => {
   try {
-    // Fetch all canteens
-    const canteens = await Canteen.findAll();
+    // Fetch all canteens with associated user details
+    const canteens = await Canteen.findAll({
+      
+    });
+
+    // include: [
+    //     {
+    //       model: User,
+    //       as: 'adminUser', // Ensure this matches the alias in the Canteen -> User association
+    //       attributes: ['id', 'firstName', 'lastName', 'email', 'mobile'], // Fetch necessary user fields
+    //     },
+    //   ],
 
     if (!canteens || canteens.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
@@ -108,7 +124,7 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
     }
 
     // Convert buffer image to base64 string
-    const canteensWithImages = canteens.map((canteen) => {
+    const canteensWithImagesAndUsers = canteens.map((canteen) => {
       const canteenData = canteen.toJSON();
       if (canteenData.canteenImage) {
         canteenData.canteenImage = `data:image/jpeg;base64,${canteenData.canteenImage.toString('base64')}`;
@@ -118,7 +134,7 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
 
     return res.status(statusCodes.SUCCESS).json({
       message: getMessage('success.canteensFetched'),
-      data: canteensWithImages,
+      data: canteensWithImagesAndUsers,
     });
   } catch (error: unknown) {
     if (error instanceof Error) {
@@ -137,6 +153,7 @@ export const getAllCanteensforwhatsapp = async (req: Request, res: Response): Pr
   try {
     // Fetch all canteens
     const canteens = await Canteen.findAll({
+      // where: { status: 'active' }, // Filter by active status
       attributes: ['id', 'canteenName', 'canteenCode'], // Select only required fields
     });
 
@@ -165,22 +182,22 @@ export const getAllCanteensforwhatsapp = async (req: Request, res: Response): Pr
 
 export const updateCanteen = async (req: Request, res: Response): Promise<Response> => {
   const {canteenId,  firstName, lastName, email, mobile } = req.body;
-  // const canteenImage = req.file?.buffer; // Get the binary data of the uploaded image
+  const canteenImage = req.file?.buffer; // Get the binary data of the uploaded image
 
   // Validate the request body
-  const { error } = createCanteenValidation.validate({
+  // const { error } = createCanteenValidation.validate({
 
-    firstName,
-    lastName,
-    email,
-    mobile,
-  });
-  if (error) {
-    logger.error(`Validation error: ${error.details[0].message}`);
-    return res.status(statusCodes.BAD_REQUEST).json({
-      message: getMessage('error.validationError'),
-    });
-  }
+  //   firstName,
+  //   lastName,
+  //   email,
+  //   mobile,
+  // });
+  // if (error) {
+  //   logger.error(`Validation error: ${error.details[0].message}`);
+  //   return res.status(statusCodes.BAD_REQUEST).json({
+  //     message: getMessage('error.validationError'),
+  //   });
+  // }
 
   const transaction: Transaction = await sequelize.transaction();
 
@@ -198,21 +215,22 @@ export const updateCanteen = async (req: Request, res: Response): Promise<Respon
     // Check if a canteen with the same code already exists (excluding the current canteen)
     // Removed canteen code check as requested
 
-    // Update the canteen details
-   
-    // Update the admin user details
-    const adminUser = await User.findOne({ where: { canteenId: canteen.id }, transaction });
-    if (adminUser) {
-      await adminUser.update(
-        {
-          firstName: firstName || adminUser.firstName,
-          lastName: lastName || adminUser.lastName,
-          email: email || adminUser.email,
-          mobile: mobile || adminUser.mobile,
-        },
-        { transaction }
-      );
-    }
+  // Update the canteen details
+ 
+
+  // Update the admin user details
+  const adminUser = await User.findOne({ where: { canteenId: canteen.id }, transaction });
+  if (adminUser) {
+    await adminUser.update(
+      {
+      firstName: firstName ?? adminUser.firstName,
+      lastName: lastName ?? adminUser.lastName,
+      email: email ?? adminUser.email,
+      mobile: mobile ?? adminUser.mobile,
+      },
+      { where: { id: adminUser.id }, transaction }
+    );
+  }
 
     // Commit the transaction
     await transaction.commit();
@@ -233,6 +251,57 @@ export const updateCanteen = async (req: Request, res: Response): Promise<Respon
 
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const getMenusByCanteen = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { canteenId } = req.query; // Extract canteenId from query parameters
+
+    // Validate if canteenId is provided
+    if (!canteenId) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: 'Canteen ID is required.',
+      });
+    }
+
+    // Get the current time in Unix timestamp format
+    const currentTime = Math.floor(Date.now() / 1000);
+
+    // Fetch menus filtered by canteenId and current time
+    const menus = await Menu.findAll({
+      where: {
+        canteenId,
+        startTime: { [Op.lte]: currentTime }, // Menus that have started
+        endTime: { [Op.gte]: currentTime }, // Menus that haven't ended yet
+      },
+      attributes: ['id', 'name', 'startTime', 'endTime'], // Select id, name, startTime, and endTime fields
+      order: [['startTime', 'ASC']], // Order by startTime
+    });
+
+    if (menus.length === 0) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: 'No menus available at the current time.',
+      });
+    }
+
+    // Convert startTime and endTime to HH:mm format for response
+    const formattedMenus = menus.map((menu) => {
+      const menuData = menu.toJSON();
+      menuData.startTime = moment.unix(menuData.startTime).format('HH:mm');
+      menuData.endTime = moment.unix(menuData.endTime).format('HH:mm');
+      return menuData;
+    });
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: 'Menus fetched successfully.',
+      data: formattedMenus, // Return the filtered and formatted menus
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching menus by canteen: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Internal server error.',
     });
   }
 };
