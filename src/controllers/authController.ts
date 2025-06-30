@@ -14,6 +14,7 @@ import { responseHandler } from '../common/responseHandler';
 import { statusCodes } from '../common/statusCodes';
 import logger from '../common/logger';
 import { Op } from 'sequelize'; // Import Op for query operators
+import Canteen from '../models/canteen';
 
 export const loginWithMobile = async (req: Request, res: Response) => {
   const { mobile } = req.body;
@@ -104,7 +105,7 @@ const beautifyUser = (user: any) => {
   };
 };
 export const verifyOtp = async (req: Request, res: Response) => {
-  const { mobile, otp } = req.body;
+  const { mobile, otp ,type} = req.body;
 
   const { error } = verifyOtpValidation.validate({ mobile, otp });
 
@@ -155,6 +156,31 @@ export const verifyOtp = async (req: Request, res: Response) => {
         .json({ message: getMessage('user.notFound') });
     }
 
+    let canteenName: string | null = null;
+    //here we are checking user role if canteenAdmin 
+    if (type === 'tab') {
+      const userRole = await UserRole.findOne({
+      where: { userId: user.id, roleId: 1 },
+      transaction
+      });
+
+      if (!userRole) {
+        logger.warn(`User with mobile ${mobile} is not a canteen admin`);
+        await transaction.rollback();
+        return res
+          .status(statusCodes.UNAUTHORIZED)
+          .json({ message: `This mobile is not a canteen admin`});
+      } 
+      // Get canteen name if user has canteenId
+      
+      console.log("canteenIddata",user)
+      if (user.canteenId) {
+        const canteen = await Canteen.findOne({ where: { id: user.canteenId } });
+        canteenName = canteen?.dataValues?.canteenName ? canteen.dataValues.canteenName : null;
+      }
+    
+    }
+
     // Generate a JWT token using the userId
     const token = generateToken({ userId: user.id });
 
@@ -164,6 +190,8 @@ export const verifyOtp = async (req: Request, res: Response) => {
     res.status(statusCodes.SUCCESS).json({
       message: getMessage('success.otpVerified'),
       data: beautifyUser(user),
+      canteenName: canteenName,
+      canteenId:user.canteenId,
       token:token
     });
   } catch (error: unknown) {

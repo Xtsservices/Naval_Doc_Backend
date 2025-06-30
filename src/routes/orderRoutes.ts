@@ -39,7 +39,7 @@ router.get('/getWalletBalance',authenticateToken, getWalletBalance);
 router.post('/updateOrderStatus', updateOrderStatus);
 
 
-router.get('/getTodaysOrdersByCateen', getTodaysOrders);
+router.get('/getTodaysOrdersByCateen/:canteenId', getTodaysOrders);
 
 router.post('/createWalkinOrders', authenticateToken,createWalkinOrders);
 
