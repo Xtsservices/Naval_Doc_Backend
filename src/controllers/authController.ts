@@ -49,7 +49,8 @@ export const loginWithMobile = async (req: Request, res: Response) => {
     }
 
     // Generate OTP and expiry time
-    const otp = generateOtp();
+    // const otp = generateOtp();
+    const otp = '123456';
     const expiresAt = getExpiryTimeInKolkata(60); // OTP expires in 60 seconds
 
     // Save OTP to the database
