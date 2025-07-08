@@ -1,32 +1,40 @@
-import e, { Request, Response } from 'express';
-import { Transaction } from 'sequelize';
-import { sequelize } from '../config/database';
-import Canteen from '../models/canteen';
-import User from '../models/user';
-import Role from '../models/role';
-import UserRole from '../models/userRole';
-import Menu from '../models/menu'; // Import Menu model
-import { createCanteenValidation } from '../validations/joiValidations';
-import { getMessage } from '../common/utils';
-import { statusCodes } from '../common/statusCodes';
-import logger from '../common/logger';
-import moment from 'moment-timezone'; // Import moment-timezone
-moment.tz('Asia/Kolkata')
-import { Op } from 'sequelize';
+import e, { Request, Response } from "express";
+import { Transaction } from "sequelize";
+import { sequelize } from "../config/database";
+import Canteen from "../models/canteen";
+import User from "../models/user";
+import Role from "../models/role";
+import UserRole from "../models/userRole";
+import Menu from "../models/menu"; // Import Menu model
+import { createCanteenValidation } from "../validations/joiValidations";
+import { getMessage } from "../common/utils";
+import { statusCodes } from "../common/statusCodes";
+import logger from "../common/logger";
+import moment from "moment-timezone"; // Import moment-timezone
+moment.tz("Asia/Kolkata");
+import { Op } from "sequelize";
 
-export const createCanteen = async (req: Request, res: Response): Promise<Response> => {
-
-
-    
-    const { canteenName, canteenCode, firstName, lastName, email, mobile } = req.body;
+export const createCanteen = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { canteenName, canteenCode, firstName, lastName, email, mobile } =
+    req.body;
   const canteenImage = req.file?.buffer; // Get the binary data of the uploaded image
 
   // Validate the request body
-  const { error } = createCanteenValidation.validate({ canteenName, canteenCode, firstName, lastName, email, mobile });
+  const { error } = createCanteenValidation.validate({
+    canteenName,
+    canteenCode,
+    firstName,
+    lastName,
+    email,
+    mobile,
+  });
   if (error) {
     logger.error(`Validation error: ${error.details[0].message}`);
     return res.status(statusCodes.BAD_REQUEST).json({
-      message: getMessage('error.validationError'),
+      message: getMessage("error.validationError"),
     });
   }
 
@@ -34,11 +42,14 @@ export const createCanteen = async (req: Request, res: Response): Promise<Respon
 
   try {
     // Check if a canteen with the same code already exists
-    const existingCanteen = await Canteen.findOne({ where: { canteenCode }, transaction });
+    const existingCanteen = await Canteen.findOne({
+      where: { canteenCode },
+      transaction,
+    });
     if (existingCanteen) {
       logger.warn(`Canteen with code ${canteenCode} already exists`);
       return res.status(statusCodes.BAD_REQUEST).json({
-        message: getMessage('canteen.canteenCodeExists'),
+        message: getMessage("canteen.canteenCodeExists"),
       });
     }
 
@@ -54,7 +65,7 @@ export const createCanteen = async (req: Request, res: Response): Promise<Respon
 
     // Check if the "Canteen Admin" role exists
     const [canteenAdminRole] = await Role.findOrCreate({
-      where: { name: 'Canteen Admin' },
+      where: { name: "Canteen Admin" },
       transaction,
     });
 
@@ -84,7 +95,7 @@ export const createCanteen = async (req: Request, res: Response): Promise<Respon
 
     logger.info(`Canteen and admin user created successfully: ${canteenName}`);
     return res.status(statusCodes.SUCCESS).json({
-      message: getMessage('success.canteenCreated'),
+      message: getMessage("success.canteenCreated"),
       data: { canteen, adminUser: user },
     });
   } catch (error: unknown) {
@@ -97,17 +108,18 @@ export const createCanteen = async (req: Request, res: Response): Promise<Respon
     }
 
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
-      message: getMessage('error.internalServerError'),
+      message: getMessage("error.internalServerError"),
     });
   }
 };
 
-export const getAllCanteens = async (req: Request, res: Response): Promise<Response> => {
+export const getAllCanteens = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
   try {
     // Fetch all canteens with associated user details
-    const canteens = await Canteen.findAll({
-      
-    });
+    const canteens = await Canteen.findAll({});
 
     // include: [
     //     {
@@ -118,8 +130,9 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
     //   ],
 
     if (!canteens || canteens.length === 0) {
-      return res.status(statusCodes.NOT_FOUND).json({
-        message: getMessage('canteen.noCanteensFound'),
+      return res.status(200).json({
+        message: "No canteens found",
+        data: [],
       });
     }
 
@@ -127,13 +140,15 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
     const canteensWithImagesAndUsers = canteens.map((canteen) => {
       const canteenData = canteen.toJSON();
       if (canteenData.canteenImage) {
-        canteenData.canteenImage = `data:image/jpeg;base64,${canteenData.canteenImage.toString('base64')}`;
+        canteenData.canteenImage = `data:image/jpeg;base64,${canteenData.canteenImage.toString(
+          "base64"
+        )}`;
       }
       return canteenData;
     });
 
     return res.status(statusCodes.SUCCESS).json({
-      message: getMessage('success.canteensFetched'),
+      message: getMessage("success.canteensFetched"),
       data: canteensWithImagesAndUsers,
     });
   } catch (error: unknown) {
@@ -144,27 +159,30 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
     }
 
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
-      message: getMessage('error.internalServerError'),
+      message: getMessage("error.internalServerError"),
     });
   }
 };
 
-export const getAllCanteensforwhatsapp = async (req: Request, res: Response): Promise<Response> => {
+export const getAllCanteensforwhatsapp = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
   try {
     // Fetch all canteens
     const canteens = await Canteen.findAll({
       // where: { status: 'active' }, // Filter by active status
-      attributes: ['id', 'canteenName', 'canteenCode'], // Select only required fields
+      attributes: ["id", "canteenName", "canteenCode"], // Select only required fields
     });
 
     if (!canteens || canteens.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
-        message: getMessage('canteen.noCanteensFound'),
+        message: getMessage("canteen.noCanteensFound"),
       });
     }
 
     return res.status(statusCodes.SUCCESS).json({
-      message: getMessage('success.canteensFetched'),
+      message: getMessage("success.canteensFetched"),
       data: canteens, // Return the filtered canteens directly
     });
   } catch (error: unknown) {
@@ -175,13 +193,24 @@ export const getAllCanteensforwhatsapp = async (req: Request, res: Response): Pr
     }
 
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
-      message: getMessage('error.internalServerError'),
+      message: getMessage("error.internalServerError"),
     });
   }
 };
 
-export const updateCanteen = async (req: Request, res: Response): Promise<Response> => {
-  const { canteenId, firstName, lastName, email, mobile, canteenName, canteenCode } = req.body;
+export const updateCanteen = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const {
+    canteenId,
+    firstName,
+    lastName,
+    email,
+    mobile,
+    canteenName,
+    canteenCode,
+  } = req.body;
   const canteenImage = req.file?.buffer; // Get the binary data of the uploaded image
 
   const transaction: Transaction = await sequelize.transaction();
@@ -193,7 +222,7 @@ export const updateCanteen = async (req: Request, res: Response): Promise<Respon
       await transaction.rollback();
       logger.warn(`Canteen with ID ${canteenId} not found`);
       return res.status(statusCodes.NOT_FOUND).json({
-        message: getMessage('canteen.notFound'),
+        message: getMessage("canteen.notFound"),
       });
     }
 
@@ -209,7 +238,10 @@ export const updateCanteen = async (req: Request, res: Response): Promise<Respon
     }
 
     // Update the admin user details
-    const adminUser = await User.findOne({ where: { canteenId: canteen.id }, transaction });
+    const adminUser = await User.findOne({
+      where: { canteenId: canteen.id },
+      transaction,
+    });
     if (adminUser) {
       await adminUser.update(
         {
@@ -229,11 +261,13 @@ export const updateCanteen = async (req: Request, res: Response): Promise<Respon
     // Convert image to base64 for response
     const responseCanteen = canteen.toJSON();
     if (responseCanteen.canteenImage) {
-      responseCanteen.canteenImage = `data:image/jpeg;base64,${responseCanteen.canteenImage.toString('base64')}`;
+      responseCanteen.canteenImage = `data:image/jpeg;base64,${responseCanteen.canteenImage.toString(
+        "base64"
+      )}`;
     }
 
     return res.status(statusCodes.SUCCESS).json({
-      message: getMessage('success.canteenUpdated'),
+      message: getMessage("success.canteenUpdated"),
       data: {
         canteen: responseCanteen,
         adminUser: adminUser ? adminUser.toJSON() : null,
@@ -249,19 +283,22 @@ export const updateCanteen = async (req: Request, res: Response): Promise<Respon
     }
 
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
-      message: getMessage('error.internalServerError'),
+      message: getMessage("error.internalServerError"),
     });
   }
 };
 
-export const getMenusByCanteen = async (req: Request, res: Response): Promise<Response> => {
+export const getMenusByCanteen = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
   try {
     const { canteenId } = req.query; // Extract canteenId from query parameters
 
     // Validate if canteenId is provided
     if (!canteenId) {
       return res.status(statusCodes.BAD_REQUEST).json({
-        message: 'Canteen ID is required.',
+        message: "Canteen ID is required.",
       });
     }
 
@@ -275,32 +312,36 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
         startTime: { [Op.lte]: currentTime }, // Menus that have started
         endTime: { [Op.gte]: currentTime }, // Menus that haven't ended yet
       },
-      attributes: ['id', 'name', 'startTime', 'endTime'], // Select id, name, startTime, and endTime fields
-      order: [['startTime', 'ASC']], // Order by startTime
+      attributes: ["id", "name", "startTime", "endTime"], // Select id, name, startTime, and endTime fields
+      order: [["startTime", "ASC"]], // Order by startTime
     });
 
     if (menus.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
-        message: 'No menus available at the current time.',
+        message: "No menus available at the current time.",
       });
     }
 
     // Convert startTime and endTime to HH:mm format for response
     const formattedMenus = menus.map((menu) => {
       const menuData = menu.toJSON();
-      menuData.startTime = moment.unix(menuData.startTime).format('HH:mm');
-      menuData.endTime = moment.unix(menuData.endTime).format('HH:mm');
+      menuData.startTime = moment.unix(menuData.startTime).format("HH:mm");
+      menuData.endTime = moment.unix(menuData.endTime).format("HH:mm");
       return menuData;
     });
 
     return res.status(statusCodes.SUCCESS).json({
-      message: 'Menus fetched successfully.',
+      message: "Menus fetched successfully.",
       data: formattedMenus, // Return the filtered and formatted menus
     });
   } catch (error: unknown) {
-    logger.error(`Error fetching menus by canteen: ${error instanceof Error ? error.message : error}`);
+    logger.error(
+      `Error fetching menus by canteen: ${
+        error instanceof Error ? error.message : error
+      }`
+    );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
-      message: 'Internal server error.',
+      message: "Internal server error.",
     });
   }
 };
