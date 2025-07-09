@@ -3,20 +3,23 @@ import logger from '../common/logger';
 import { getMessage } from '../common/utils';
 import { statusCodes } from '../common/statusCodes';
 import { sequelize } from '../config/database'; // Import sequelize for transaction management
+import { Op } from 'sequelize';
 import { responseHandler } from '../common/responseHandler';
 import Order from '../models/order';
 import Item from '../models/item';
 import Canteen from '../models/canteen';
 import Menu from '../models/menu';
+import OrderItem from '../models/orderItem'
 import { User } from '../models';
 import MenuItem from '../models/menuItem';
 import MenuConfiguration from '../models/menuConfiguration';
 import Pricing from '../models/pricing';
+import moment from 'moment-timezone';
+
 
 export const adminDashboard = async (req: Request, res: Response): Promise<Response> => {
   try {
 
-    console.log(req.params,req.query)
     const { canteenId } = req.query; // Extract canteenId from query parameters
 
     // Add condition if canteenId is provided
@@ -93,7 +96,7 @@ export const getTotalMenus = async (req: Request, res: Response): Promise<Respon
     const whereCondition = canteenId
       ? { canteenId, status: 'active' }
       : { status: 'active' }; // Add condition if canteenId is provided and status is 'active'
-
+console.log("whereCondition",whereCondition)
     const totalMenus = await Menu.findAll({
       where: whereCondition, // Apply the condition to filter by canteenId
       include: [
@@ -109,6 +112,7 @@ export const getTotalMenus = async (req: Request, res: Response): Promise<Respon
         },
         {
           model: MenuItem,
+          where: { status: 'active' }, 
           as: 'menuItems', // Include menu items
           include: [
             {
@@ -198,59 +202,107 @@ export const getTotalItems = async (req: Request, res: Response): Promise<Respon
   }
 };
 
+
 export const getTotalOrders = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { canteenId, status } = req.query; // Extract canteenId and status from query parameters
+    const { canteenId, status, orderDate } = req.query;
 
-    // Build the where condition dynamically
     const whereCondition: any = {};
-    if (canteenId) {
-      whereCondition.canteenId = canteenId; // Filter by canteenId if provided
-    }
+    if (canteenId) whereCondition.canteenId = canteenId;
+    if (status && status !== 'all') whereCondition.status = status;
 
-    // Add status filter if provided and not 'all'
-    if (status && status !== 'all') {
-      whereCondition.status = status; // Filter by specific status
+    // ✅ Exact date match (based on orderDate column which is Unix timestamp)
+    if (orderDate && typeof orderDate === 'string') {
+      const parsedDate = moment.tz(orderDate, 'YYYY/MM/DD', 'Asia/Kolkata');
+      const dateUnix = parsedDate.startOf('day').unix(); // Only date part
+      whereCondition.orderDate = dateUnix;
     }
 
     const totalOrders = await Order.findAll({
-      where: whereCondition, // Apply the dynamic where condition
+      where: whereCondition,
       include: [
         {
-          model: User, // Include the User model
-          as: 'orderUser', // Use the correct alias defined in the association
-          attributes: ['id', 'firstName', 'lastName', 'email', 'mobile'], // Fetch necessary user fields
+          model: Canteen,
+          as: 'orderCanteen',
+          attributes: ['id', 'canteenName'],
         },
         {
-          model: Canteen, // Include the Canteen model
-          as: 'orderCanteen', // Use the correct alias defined in the association
-          attributes: ['id', 'canteenName'], // Fetch necessary canteen fields
+          model: OrderItem,
+          as: 'orderItems',
+          attributes: ['id', 'quantity', 'price', 'total', 'itemId'],
+          include: [
+            {
+              model: Item,
+              as: 'menuItemItem',
+              attributes: [
+                'id',
+                'name',
+                'description',
+                'type',
+                'status',
+                'quantity',
+                'quantityUnit',
+              ],
+            },
+          ],
         },
       ],
-      attributes: ['id', 'totalAmount', 'status', 'createdAt', 'updatedAt'], // Fetch necessary order fields
+      attributes: [
+        'id',
+        'orderDate',
+        'orderNo',
+        'totalAmount',
+        'status',
+        'canteenId',
+        'menuConfigurationId',
+        'createdAt',
+        'updatedAt',
+      ],
+      raw: false,
+      nest: true,
     });
 
-  if(totalOrders && totalOrders.length === 0) 
-    {
-      return res.status(404).json({
-        message: 'NO Orders Found',
-      });
+    // Attach menuName based on canteenId and menuConfigurationId
+    const menus = await Menu.findAll({
+      attributes: ['id', 'name', 'canteenId', 'menuConfigurationId'],
+    });
 
-    }else{
-      return res.status(200).json({
-        message: 'Total orders fetched successfully',
-        data: totalOrders,
-      });
+    const ordersWithMenuName = totalOrders.map((order) => {
+      const matchedMenu = menus.find(
+        (menu) =>
+          menu.canteenId === order.canteenId &&
+          menu.menuConfigurationId === order.menuConfigurationId
+      );
 
+      return {
+        ...order.toJSON(),
+        menuName: matchedMenu?.name || null,
+      };
+    });
+
+    if (!ordersWithMenuName.length) {
+      return res.status(200).json({data:[], message: 'No orders found' });
     }
-   
-  }catch (error: unknown) {
-    console.error(`Error fetching total orders: ${error instanceof Error ? error.message : error}`);
-    return res.status(500).json({
-      message: 'Failed to fetch total orders',
+
+    return res.status(200).json({
+      message: 'Orders fetched successfully',
+      data: ordersWithMenuName,
     });
+  } catch (error: unknown) {
+    console.error(`Error fetching orders: ${error instanceof Error ? error.message : error}`);
+    return res.status(500).json({ message: 'Failed to fetch total orders' });
   }
 };
+
+
+
+
+
+
+
+
+
+
 
 export const getTotalAmount = async (req: Request, res: Response): Promise<Response> => {
   try {

@@ -133,6 +133,9 @@ export const verifyOtp = async (req: Request, res: Response) => {
 
     // Check if the OTP has expired
     const currentTime = Math.floor(Date.now() / 1000); // Current time in Unix timestamp
+    console.log("object",currentTime)
+    console.log("otpRecord.expiresAt",otpRecord.expiresAt)
+    console.log("otpRecord.expiresAt",currentTime > otpRecord.expiresAt)
     if (currentTime > otpRecord.expiresAt) {
       logger.warn(`Expired OTP for mobile ${mobile}`);
       await otpRecord.destroy({ transaction }); // Delete the expired OTP

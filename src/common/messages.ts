@@ -10,7 +10,7 @@ export const messages = {
       IDRequired: 'ID is required',
       typeInvalid: 'Type must be either "veg" or "non-veg"',
       quantityRequired: 'Quantity is required',
-      quantityUnitInvalid: 'Quantity unit must be either "ml" or "grams"',
+      quantityUnitInvalid: 'Quantity unit must be either "ml" or "grams" or "pieces" or "cups" or "plates"',
       priceRequired: 'Price is required',
       startDateRequired: 'Start date is required',
       endDateRequired: 'End date is required',

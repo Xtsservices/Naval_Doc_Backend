@@ -166,11 +166,10 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
 };
 
 export const updateMenuWithItems = async (req: Request, res: Response): Promise<Response> => {
-  const { menuId } = req.params; // Extract menuId from route parameters
-  const { items } = req.body; // Extract items from the request body
-  const userId = req.user?.id; // Assuming `req.user` contains the authenticated user's details
+  const { menuId } = req.params;
+  const { items } = req.body;
+  const userId = req.user?.id;
 
-  // Validate required fields
   if (!items || !Array.isArray(items) || items.length === 0) {
     logger.error('Validation error: items must be provided and must be an array');
     return res.status(statusCodes.BAD_REQUEST).json({
@@ -181,7 +180,6 @@ export const updateMenuWithItems = async (req: Request, res: Response): Promise<
   const transaction: Transaction = await sequelize.transaction();
 
   try {
-    // Check if the menu exists
     const menu = await Menu.findByPk(menuId, { transaction });
     if (!menu) {
       logger.warn(`Menu with ID ${menuId} not found`);
@@ -190,40 +188,61 @@ export const updateMenuWithItems = async (req: Request, res: Response): Promise<
       });
     }
 
+    const incomingItemIds = items.map(item => item.itemId);
+
+    // Step 1: Fetch all existing MenuItems for this menu
+    const existingMenuItems = await MenuItem.findAll({
+      where: { menuId },
+      transaction,
+    });
+
+    // Step 2: Deactivate items not present in the new list
+    for (const menuItem of existingMenuItems) {
+      if (!incomingItemIds.includes(menuItem.itemId)) {
+        await menuItem.update(
+          {
+            status: 'inactive',
+            updatedById: userId,
+          },
+          { transaction }
+        );
+        logger.info(`Marked item ID ${menuItem.itemId} as inactive for menu ID ${menuId}`);
+      }
+    }
+
+    // Step 3: Create or update items in the incoming list
     for (const item of items) {
       const { itemId, minQuantity, maxQuantity } = item;
 
-      // Check if the item exists
       const existingItem = await Item.findByPk(itemId, { transaction });
       if (!existingItem) {
         logger.warn(`Item with ID ${itemId} not found`);
+        await transaction.rollback();
         return res.status(statusCodes.NOT_FOUND).json({
           message: getMessage('item.itemNotFound'),
         });
       }
 
-      // Check if the item is already associated with the menu
       const existingMenuItem = await MenuItem.findOne({
-        where: { menuId: menu.id, itemId },
+        where: { menuId, itemId },
         transaction,
       });
 
       if (existingMenuItem) {
-        // Update existing item
         await existingMenuItem.update(
           {
-            minQuantity: minQuantity || existingMenuItem.minQuantity,
-            maxQuantity: maxQuantity || existingMenuItem.maxQuantity,
+            minQuantity: minQuantity ?? existingMenuItem.minQuantity,
+            maxQuantity: maxQuantity ?? existingMenuItem.maxQuantity,
+            status: 'active', // re-activate if previously inactive
             updatedById: userId,
           },
           { transaction }
         );
         logger.info(`Updated existing item with ID ${itemId} in menu ID ${menuId}`);
       } else {
-        // Add new item to the menu
         await MenuItem.create(
           {
-            menuId: menu.id,
+            menuId,
             itemId,
             minQuantity,
             maxQuantity,
@@ -238,8 +257,8 @@ export const updateMenuWithItems = async (req: Request, res: Response): Promise<
     }
 
     await transaction.commit();
-
     logger.info(`Menu updated successfully with items`);
+
     return res.status(statusCodes.SUCCESS).json({
       message: getMessage('success.menuUpdatedWithItems'),
       data: menu,
@@ -258,6 +277,7 @@ export const updateMenuWithItems = async (req: Request, res: Response): Promise<
     });
   }
 };
+
 
 export const getAllMenus = async (req: Request, res: Response): Promise<Response> => {
   try {
@@ -751,7 +771,7 @@ export const getMenuByIdforwhatsapp = async (req: Request, res: Response): Promi
 };
 
 
-export const deleteMenu = async (req: Request, res: Response): Promise<Response> => {
+export const deleteMenu2 = async (req: Request, res: Response): Promise<Response> => {
   const { menuId } = req.body; // Extract menuId from route parameters
 
   try {
@@ -766,6 +786,38 @@ export const deleteMenu = async (req: Request, res: Response): Promise<Response>
 
     // Update the status to inactive
     await menu.update({ status: 'inactive' });
+
+    logger.info(`Menu with ID ${menuId} marked as inactive`);
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('success.menuDeleted'),
+    });
+  } catch (error: unknown) {
+    logger.error(`Error marking menu as inactive: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const deleteMenu = async (req: Request, res: Response): Promise<Response> => {
+  const { menuId } = req.body;
+
+  try {
+    // Check if the menu exists
+    const menu = await Menu.findByPk(menuId);
+
+    if (!menu) {
+      logger.warn(`Menu with ID ${menuId} not found`);
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('menu.notFound'),
+      });
+    }
+
+    // ✅ Only update the status field
+    await Menu.update(
+      { status: 'inactive' },
+      { where: { id: menuId } }
+    );
 
     logger.info(`Menu with ID ${menuId} marked as inactive`);
     return res.status(statusCodes.SUCCESS).json({

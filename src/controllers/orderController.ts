@@ -421,10 +421,8 @@ export const getTodaysOrders = async (
   res: Response
 ): Promise<Response> => {
   try {
-    console.log("canteenIdu", 1000);
     const canteenId = req.params.canteenId; // Extract canteenId from the request parameters
     // const { canteenId } = req.user as unknown as { canteenId: string }; // Extract canteenId from the token
-    console.log("canteenIdu", canteenId);
     if (!canteenId) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage("validation.validationError"),
