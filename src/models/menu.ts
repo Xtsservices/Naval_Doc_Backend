@@ -18,6 +18,7 @@ class Menu extends Model {
   public updatedById!: number | null;
   public createdAt!: number;
   public updatedAt!: number;
+  public menuConfigurationId!: number | null;
 }
 
 Menu.init(

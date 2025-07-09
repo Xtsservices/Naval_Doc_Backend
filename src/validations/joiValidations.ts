@@ -103,8 +103,8 @@ export const createItemValidation = Joi.object({
     'number.min': messages[language].validation.quantityRequired || 'Quantity must be at least 0.',
     'any.required': messages[language].validation.quantityRequired || 'Quantity is required.',
   }),
-  quantityUnit: Joi.string().valid('ml', 'grams','pieces').required().messages({
-    'any.only': messages[language].validation.quantityUnitInvalid || 'Quantity unit must be either "ml" or "grams".',
+  quantityUnit: Joi.string().valid('ml', 'grams','pieces','cups','packets','plates').required().messages({
+    'any.only': messages[language].validation.quantityUnitInvalid || 'Quantity unit must be either "ml" or "grams" or "cups" or "packets" or "plates".',
     'any.required': messages[language].validation.quantityUnitInvalid || 'Quantity unit is required.',
   }),
   price: Joi.number().positive().required().messages({
@@ -149,8 +149,8 @@ export const updateItemValidation = Joi.object({
     'number.min': messages[language].validation.quantityRequired || 'Quantity must be at least 0.',
     'any.required': messages[language].validation.quantityRequired || 'Quantity is required.',
   }),
-  quantityUnit: Joi.string().valid('ml', 'grams','pieces').required().messages({
-    'any.only': messages[language].validation.quantityUnitInvalid || 'Quantity unit must be either "ml" or "grams".',
+  quantityUnit: Joi.string().valid('ml', 'grams','pieces','cups','packets','plates').required().messages({
+    'any.only': messages[language].validation.quantityUnitInvalid || 'Quantity unit must be either "ml" or "grams" or "cups" or "packets" or "plates".',
     'any.required': messages[language].validation.quantityUnitInvalid || 'Quantity unit is required.',
   }),
   price: Joi.number().positive().required().messages({
