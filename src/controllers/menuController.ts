@@ -516,6 +516,7 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       ],
     });
 
+    console.log('Menus fetched:', menus.length);
     if (menus.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
         message: 'No menus available for the specified canteen.',
