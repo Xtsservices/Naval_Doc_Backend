@@ -18,6 +18,10 @@ const returnUrl = process.env.CASHFREE_RETURN_URL || 'https://welfarecanteen.in/
 // Initialize Cashfree SDK
 const cashfree = new Cashfree(env, clientId, clientSecret);
 
+console.log(env, clientId, clientSecret)
+
+
+
 router.post('/createOrder', async (req, res) => {
   console.log("request",req.body)
   const { customer_id, customer_email, customer_phone, order_amount = '1.00', order_currency = 'INR' } = req.body;
@@ -43,6 +47,7 @@ router.post('/createOrder', async (req, res) => {
   };
 
   try {
+    console.log('Cashfree Order Request:', orderRequest);
     const response = await cashfree.PGCreateOrder(orderRequest);
     console.log('Cashfree Order Error:', response);
 
