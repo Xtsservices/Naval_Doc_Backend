@@ -500,33 +500,10 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       });
     }
 
-    const menus = await Menu.findAll({
-      where: {
-        canteenId,
-        status: 'active',
-      },
-      attributes: ['id', 'name', 'startTime', 'endTime'],
-      order: [['startTime', 'ASC']],
-      include: [
-        {
-          model: MenuConfiguration,
-          as: 'menuMenuConfiguration',
-          attributes: ['id', 'name', 'defaultStartTime', 'defaultEndTime'],
-        },
-      ],
-    });
-
-    console.log('Menus fetched:', menus.length);
-    if (menus.length === 0) {
-      return res.status(statusCodes.NOT_FOUND).json({
-        message: 'No menus available for the specified canteen.',
-      });
-    }
-
     // Determine target date - default to today in DD-MM-YYYY format
     let targetDate;
-    const today = moment().tz('Asia/Kolkata');
-    console.log('Today:', today, 'Target date:', date);
+    const now = moment().tz('Asia/Kolkata');
+    
     if (date) {
       // Parse the provided date
       targetDate = moment(date.toString(), 'DD-MM-YYYY').tz('Asia/Kolkata');
@@ -537,19 +514,47 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       }
     } else {
       // Default to today
-      targetDate = today;
+      targetDate = now;
     }
 
-    // Start of the target date
+    // Start and end of the target date
     const targetDateStart = targetDate.clone().startOf('day');
-    const targetDateFormatted = targetDate.format('DD-MM-YYYY');
+    const targetDateEnd = targetDate.clone().endOf('day');
+    const targetDateUnixStart = targetDateStart.unix();
+    const targetDateUnixEnd = targetDateEnd.unix();
     
-    // Get current time for comparison
-    const now = moment().tz('Asia/Kolkata');
+    // Check if the requested date is today
     const isToday = targetDateStart.isSame(now, 'day');
-    
-    // Show only menus where the target date falls within the menu configuration's default time window
-    console.log('Filtering menus for date:', targetDateFormatted, 'Is today:', isToday);
+    const targetDateFormatted = targetDate.format('DD-MM-YYYY');
+
+    // Get all menus for the canteen that overlap with the target date
+    const menus = await Menu.findAll({
+      where: {
+        canteenId,
+        status: 'active',
+        startTime: { [Op.lte]: targetDateUnixEnd },
+        endTime: { [Op.gte]: targetDateUnixStart }
+      },
+      attributes: ['id', 'name', 'startTime', 'endTime'],
+      order: [['startTime', 'ASC']],
+      include: [
+        {
+          model: MenuConfiguration,
+          as: 'menuMenuConfiguration',
+          attributes: ['id', 'name', 'defaultStartTime', 'defaultEndTime', 'status'],
+          where: { status: 'active' } // Only active menu configurations
+        },
+      ],
+    });
+
+    if (menus.length === 0) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: 'No menus available for the specified canteen.',
+        data: []
+      });
+    }
+
+    // Filter menus based on menu configuration times and current time
     const validMenus = menus.filter((menu) => {
       const menuData = menu.toJSON();
       const config = menuData.menuMenuConfiguration;
@@ -558,62 +563,74 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
         return false;
       }
       
-      // Create moments for the menu's default start and end times
-      const defaultStartTime = moment.unix(config.defaultStartTime).tz('Asia/Kolkata');
-      const defaultEndTime = moment.unix(config.defaultEndTime).tz('Asia/Kolkata');
+      // Get configuration start and end times
+      const configStartTime = moment.unix(config.defaultStartTime).tz('Asia/Kolkata');
+      const configEndTime = moment.unix(config.defaultEndTime).tz('Asia/Kolkata');
       
       // Create target date's datetime objects with these hours and minutes
-      const targetDayStart = targetDateStart.clone()
-        .hour(defaultStartTime.hour())
-        .minute(defaultStartTime.minute());
+      const menuStartTime = targetDateStart.clone()
+        .hour(configStartTime.hour())
+        .minute(configStartTime.minute());
       
-      const targetDayEnd = targetDateStart.clone()
-        .hour(defaultEndTime.hour())
-        .minute(defaultEndTime.minute());
+      const menuEndTime = targetDateStart.clone()
+        .hour(configEndTime.hour())
+        .minute(configEndTime.minute());
       
-      // For today, check if current time falls within this window
-      // For future dates, show all menus that would be valid on that day
-      return isToday 
-        ? now.isSameOrAfter(targetDayStart) && now.isBefore(targetDayEnd)
-        : true; // Show all menus for future dates
+      if (isToday) {
+        // For today, check if current time is before the end time
+        // and check if start time is either:
+        // 1. Already passed (menu is active)
+        // 2. Coming up later today (future menu)
+        return now.isBefore(menuEndTime);
+      } else {
+        // For future dates, show all menus valid for that day
+        return true;
+      }
     });
-
-    console.log('Valid menus:', validMenus.length);
 
     if (validMenus.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
-        message: `No valid menus available for ${targetDateFormatted}.`,
+        message: `No available menus for ${targetDateFormatted}.`,
+        data: []
       });
     }
 
-    console.log('Valid menus after filtering:', validMenus.length);
-
-    // Format times for response
+    // Format menus for response
     const formattedMenus = validMenus.map((menu) => {
       const menuData = menu.toJSON();
       
       if (menuData.menuMenuConfiguration) {
         const config = menuData.menuMenuConfiguration;
-        if (config.defaultStartTime) {
-          config.formattedDefaultStartTime = moment.unix(config.defaultStartTime).tz('Asia/Kolkata').format('HH:mm');
-          menuData.startTime = config.formattedDefaultStartTime; // Use configuration time for display
-        }
-        if (config.defaultEndTime) {
-          config.formattedDefaultEndTime = moment.unix(config.defaultEndTime).tz('Asia/Kolkata').format('HH:mm');
-          menuData.endTime = config.formattedDefaultEndTime; // Use configuration time for display
-        }
-        menuData.menuConfiguration = config;
+        
+        // Format time strings
+        const formattedStartTime = config.defaultStartTime 
+          ? moment.unix(config.defaultStartTime).tz('Asia/Kolkata').format('HH:mm')
+          : null;
+          
+        const formattedEndTime = config.defaultEndTime
+          ? moment.unix(config.defaultEndTime).tz('Asia/Kolkata').format('HH:mm')
+          : null;
+        
+        // Create a clean menuConfiguration object
+        menuData.menuConfiguration = {
+          id: config.id,
+          name: config.name,
+          defaultStartTime: config.defaultStartTime,
+          defaultEndTime: config.defaultEndTime,
+          formattedStartTime,
+          formattedEndTime,
+          status: config.status
+        };
+        
         delete menuData.menuMenuConfiguration;
       }
 
       return menuData;
     });
 
-    console.log('Formatted menus:', formattedMenus.length);
-
     return res.status(statusCodes.SUCCESS).json({
       message: `Menus fetched successfully for ${targetDateFormatted}.`,
-      data: formattedMenus,
+      data: formattedMenus
     });
   } catch (error: unknown) {
     logger.error(`Error fetching menus by canteen: ${error instanceof Error ? error.message : error}`);
