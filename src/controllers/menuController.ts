@@ -572,15 +572,17 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       // Get configuration start and end times
       const configStartTime = moment.unix(config.defaultStartTime).tz('Asia/Kolkata');
       const configEndTime = moment.unix(config.defaultEndTime).tz('Asia/Kolkata');
+
+      console.log(configStartTime.format('HH:mm'), configEndTime.format('HH:mm'));
       
       // Create target date's datetime objects with these hours and minutes
       const menuEndTime = targetDateStart.clone()
         .hour(configEndTime.hour())
         .minute(configEndTime.minute());
-      console.log(`Menu End Time: ${menuEndTime.format('DD-MM-YYYY HH:mm')}`);
+      // console.log(`Menu End Time: ${menuEndTime.format('DD-MM-YYYY HH:mm')}`);
 
-      console.log(`Current Time: ${now.format('DD-MM-YYYY HH:mm')}`);
-      console.log(`Menu Start Time: ${targetDateStart.format('DD-MM-YYYY HH:mm')}`);
+      // console.log(`Current Time: ${now.format('DD-MM-YYYY HH:mm')}`);
+      // console.log(`Menu Start Time: ${targetDateStart.format('DD-MM-YYYY HH:mm')}`);
       if (isToday) {
         // For today, check if current time is before the end time
         // Menu is either currently active or will be active later today
