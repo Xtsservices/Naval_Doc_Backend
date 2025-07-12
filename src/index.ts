@@ -14,6 +14,8 @@ import paymentSdkRoutes from './routes/paymentSdkRoutes'; // Import payment SDK 
 import { Buffer } from 'buffer';
 import base64 from 'base-64'; // Install via: npm install base-64
 
+import { generateUniqueOrderNo } from './controllers/orderController'; // Import the function to generate unique order numbers
+
 
 
 
@@ -502,6 +504,188 @@ const processSpecialRecipient = async (body: any) => {
     await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
     return;
   }
+
+  // Step 3: Menu Selection
+
+  // Step 3: Menu Selection
+if (session.stage === 'item_selection' && /^[1-9]\d*$/.test(msg)) {
+  const index = parseInt(msg) - 1;
+  if (index < 0 || index >= session.menus.length) {
+    reply = '⚠️ Invalid menu option. Please type "hi" to restart.';
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
+    return;
+  }
+
+  const selectedMenu = session.menus[index];
+  session.selectedMenu = selectedMenu;
+  session.stage = 'cart_selection';
+
+  const items = await axios
+    .get(`${process.env.BASE_URL}/api/menu/getMenuByIdforwhatsapp?menuId=${selectedMenu.id}`)
+    .then(response => response.data.data || [])
+    .catch(error => {
+      console.error('Error fetching items:', error.message);
+      return [];
+    });
+
+  if (items.length > 0) {
+    session.items = items;
+    const itemList = items.map((i: { id: any; name: any; price: any }) => `${i.id}. ${i.name} - ₹${i.price}`).join('\n');
+    reply = `🛒 ${selectedMenu.name.toUpperCase()} ITEMS:\n${itemList}\n\nSend items like: 1*2,2*1`;
+  } else {
+    reply = `❌ No items available for ${selectedMenu.name}. Please try again later.`;
+  }
+  
+  sessions[userId] = session;
+  await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
+  return;
+}
+
+if (session.stage === 'cart_selection' && /^\d+\*\d+(,\d+\*\d+)*$/.test(msg)) {
+    const selections = msg.split(',');
+    for (const pair of selections) {
+      const [idStr, qtyStr] = pair.split('*');
+      const id = parseInt(idStr);
+      const quantity = parseInt(qtyStr);
+      const item = session.items.find((i: { id: number }) => i.id === id);
+      if (item) {
+        session.cart = session.cart || [];
+        const existing = session.cart.find(c => c.itemId === id);
+        if (existing) existing.quantity = quantity;
+        else session.cart.push({ itemId: id, name: item.name, price: item.price, quantity });
+      }
+      reply = `❌ No menus available for ${session.selectedCanteen.canteenName}. Please try again later.`;
+    }
+    session.stage = 'cart_review';
+    sessions[userId] = session;
+
+    const cartText = (session.cart ?? [])
+      .map(c => `- ${c.name} x${c.quantity} = ₹${c.quantity * c.price}`)
+      .join('\n');
+    const total = (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0);
+    reply = `🧾 Your Cart:\n${cartText}\nTotal = ₹${total}\n\nReply:\n1. ✅ Confirm\n2. ✏️ Edit\n3. ❌ Cancel`;
+    await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
+    return;
+  }
+
+
+  // Step 5: Cart Review
+  if (session.stage === 'cart_review') {
+    if (msg === '✅' || msg === '1' || msg === 'confirm') {
+      delete sessions[userId]; // Clear session
+      console.log('session', session);
+
+    
+      const transaction = await sequelize.transaction(); // Start a transaction
+      try {
+        // Save order in the database
+        const mobileNumber = userId.startsWith('91') ? userId.slice(2) : userId;
+
+        // Check if user exists in the database
+        let user = await User.findOne({ where: { mobile: mobileNumber }, transaction });
+
+        // If user does not exist, create a new user
+        if (!user) {
+          user = await User.create({
+        mobile: mobileNumber,
+        firstName: 'Guest', // Default values for new user
+        lastName: 'User',
+        email: null,
+          }, { transaction });
+        }
+
+        // Create the order
+            const orderNo = await generateUniqueOrderNo(user.id, transaction);
+
+        const order = await Order.create({
+          userId: user.id,
+          createdById: user.id,
+          orderNo: orderNo,
+          canteenId: session.selectedCanteen.id,
+          menuConfigurationId: session.selectedMenu.id,
+          totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
+          status: 'initiated',
+          orderDate: Math.floor(new Date().getTime() / 1000),
+        }, { transaction });
+
+        // Save order items in the database
+        await Promise.all(
+          (session.cart ?? []).map(async (item) => {
+        await OrderItem.create({
+          orderId: order.id,
+          itemId: item.itemId,
+          quantity: item.quantity,
+          price: item.price,
+          total: item.price * item.quantity,
+          createdById: user.id,
+        }, { transaction });
+          })
+        );
+
+        // Store payment details in the Payment table
+        const payment = await Payment.create({
+          orderId: order.id,
+          userId: user.id,
+          createdById: user.id,
+          amount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
+          totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
+          status: 'Pending',
+          paymentMethod: "UPI",
+          gatewayCharges: 0,
+          gatewayPercentage: 0,
+          currency: 'INR',
+        }, { transaction });
+
+        // Commit the transaction
+        await transaction.commit();
+
+
+        // Generate payment link using the PaymentLink function from utils
+        const paymentLink = await PaymentLink(order, payment, user);
+        // console.log('Payment link generated:', paymentLink);
+
+        // Send payment link to the user
+        reply = `💳 Complete your payment using the following link:\n${paymentLink}`;
+      //  reply = `✅ Order placed successfully with Order ID: ${order.id}. Thank you!`;
+      } catch (error: any) {
+        // Rollback the transaction in case of an error
+        await transaction.rollback();
+        console.error('Error placing order:', error.message);
+        reply = '❌ Failed to place the order. Please try again later.';
+      }
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
+      return;
+    }
+    if (msg === '✏️' || msg === '2' || msg === 'edit') {
+      session.stage = 'cart_selection';
+      sessions[userId] = session;
+      const itemList = session.items.map((i: { id: any; name: any; price: any }) => `${i.id}. ${i.name} - ₹${i.price}`).join('\n');
+      reply = `✏️ Edit Items:\n${itemList}\n\nSend items like: 1*2,2*1`;
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
+      return;
+    }
+    if (msg === '❌' || msg === '3' || msg === 'cancel') {
+      delete sessions[userId]; // Clear session
+      reply = '❌ Order cancelled. You can start again by typing hi.';
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
+      return;
+    }
+  }
+
+  // Default response for invalid input
+  reply = '❓ Invalid input. Please type "hi" to restart.';
+  await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(),null);
+
+  
+  
+
+
+      
+
+
+  
+  
+  
 
   // Remaining steps (Menu Selection, Cart Selection, Cart Review, etc.) remain unchanged.
 };

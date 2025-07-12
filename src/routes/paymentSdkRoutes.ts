@@ -19,6 +19,7 @@ const returnUrl = process.env.CASHFREE_RETURN_URL || 'https://welfarecanteen.in/
 const cashfree = new Cashfree(env, clientId, clientSecret);
 
 router.post('/createOrder', async (req, res) => {
+  console.log("request",req.body)
   const { customer_id, customer_email, customer_phone, order_amount = '1.00', order_currency = 'INR' } = req.body;
 
 

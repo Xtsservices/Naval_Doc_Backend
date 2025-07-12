@@ -1347,7 +1347,7 @@ export const getWalletBalance = async (
   }
 };
 
-async function generateUniqueOrderNo(userId: any, transaction: Transaction) {
+export async function generateUniqueOrderNo(userId: any, transaction: Transaction) {
   let orderNo: string;
   let isUnique = false;
   let attempts = 0;

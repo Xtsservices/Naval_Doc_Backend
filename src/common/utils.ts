@@ -189,7 +189,11 @@ export const PaymentLink = async (
 
     // Create order payload for Cashfree
 
-    let linkId = "testcash_pra6Nav_";
+    const currentDate = new Date();
+    const day = String(currentDate.getDate()).padStart(2, '0');
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const year = currentDate.getFullYear();
+    let linkId = `live_${day}${month}${year}_`;
 
     linkId = linkId.concat(payment.id);
     const payload = {
@@ -250,6 +254,8 @@ export const PaymentLink = async (
       return paymentLink;
     } else {
       console.error("Error creating payment link:");
+      console.error(response.data);
+      console.error("Status code:", response.status);
       // Return an error response if the API call fails
       return new Response("Failed to create payment link", { status: 400 });
     }
