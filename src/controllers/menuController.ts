@@ -561,10 +561,10 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
     const validMenus = menus.filter((menu) => {
       const menuData = menu.toJSON();
       const config = menuData.menuMenuConfiguration;
-      console.log(`Processing menu: ${menuData.name}, Configuration: ${config?.name}`);
-      console.log(`Menu Start: ${menuData.startTime}, Menu End: ${menuData.endTime}`);
-      console.log(`Target Date Start: ${targetDateStart.unix()}, Target Date End: ${targetDateEnd.unix()}`);
-      console.log(`Config Start: ${config?.defaultStartTime}, Config End: ${config?.defaultEndTime}`);
+      // console.log(`Processing menu: ${menuData.name}, Configuration: ${config?.name}`);
+      // console.log(`Menu Start: ${menuData.startTime}, Menu End: ${menuData.endTime}`);
+      // console.log(`Target Date Start: ${targetDateStart.unix()}, Target Date End: ${targetDateEnd.unix()}`);
+      // console.log(`Config Start: ${config?.defaultStartTime}, Config End: ${config?.defaultEndTime}`);
       if (!config || !config.defaultStartTime || !config.defaultEndTime) {
         return false;
       }
@@ -577,7 +577,10 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       const menuEndTime = targetDateStart.clone()
         .hour(configEndTime.hour())
         .minute(configEndTime.minute());
-      
+      console.log(`Menu End Time: ${menuEndTime.format('DD-MM-YYYY HH:mm')}`);
+
+      console.log(`Current Time: ${now.format('DD-MM-YYYY HH:mm')}`);
+      console.log(`Menu Start Time: ${targetDateStart.format('DD-MM-YYYY HH:mm')}`);
       if (isToday) {
         // For today, check if current time is before the end time
         // Menu is either currently active or will be active later today
