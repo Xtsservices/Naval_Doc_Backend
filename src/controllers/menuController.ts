@@ -526,7 +526,7 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
     // Determine target date - default to today in DD-MM-YYYY format
     let targetDate;
     const today = moment().tz('Asia/Kolkata');
-    
+    console.log('Today:', today, 'Target date:', date);
     if (date) {
       // Parse the provided date
       targetDate = moment(date.toString(), 'DD-MM-YYYY').tz('Asia/Kolkata');
@@ -549,6 +549,7 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
     const isToday = targetDateStart.isSame(now, 'day');
     
     // Show only menus where the target date falls within the menu configuration's default time window
+    console.log('Filtering menus for date:', targetDateFormatted, 'Is today:', isToday);
     const validMenus = menus.filter((menu) => {
       const menuData = menu.toJSON();
       const config = menuData.menuMenuConfiguration;
@@ -577,11 +578,15 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
         : true; // Show all menus for future dates
     });
 
+    console.log('Valid menus:', validMenus.length);
+
     if (validMenus.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
         message: `No valid menus available for ${targetDateFormatted}.`,
       });
     }
+
+    console.log('Valid menus after filtering:', validMenus.length);
 
     // Format times for response
     const formattedMenus = validMenus.map((menu) => {
