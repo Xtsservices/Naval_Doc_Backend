@@ -494,6 +494,7 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
   try {
     const { canteenId, date } = req.query; // Extract canteenId and optional date
 
+    console.log(`Canteen ID: ${canteenId}, Date: ${date}`);
     if (!canteenId) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: 'Canteen ID is required.',
@@ -547,12 +548,14 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       ],
     });
 
+    console.log(`Menus found: ${menus.length}`);
     if (menus.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
         message: 'No menus available for the specified canteen.',
         data: []
       });
     }
+    console.log(`Menus found: ${menus.length}, isToday: ${isToday}, targetDateFormatted: ${targetDateFormatted}`);
 
     // Filter menus based on menu configuration times and current time
     const validMenus = menus.filter((menu) => {
@@ -588,12 +591,16 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       }
     });
 
+    console.log(`Valid menus after filtering: ${validMenus.length}`);
+
     if (validMenus.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
         message: `No available menus for ${targetDateFormatted}.`,
         data: []
       });
     }
+
+    console.log(`Valid menus found: ${validMenus.length}, targetDateFormatted: ${targetDateFormatted}`);
 
     // Format menus for response
     const formattedMenus = validMenus.map((menu) => {
@@ -627,6 +634,8 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
 
       return menuData;
     });
+
+    console.log(`Formatted menus: ${formattedMenus.length}`);
 
     return res.status(statusCodes.SUCCESS).json({
       message: `Menus fetched successfully for ${targetDateFormatted}.`,
