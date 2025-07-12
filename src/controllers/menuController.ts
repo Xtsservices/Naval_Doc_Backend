@@ -561,7 +561,10 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
     const validMenus = menus.filter((menu) => {
       const menuData = menu.toJSON();
       const config = menuData.menuMenuConfiguration;
-      
+      console.log(`Processing menu: ${menuData.name}, Configuration: ${config?.name}`);
+      console.log(`Menu Start: ${menuData.startTime}, Menu End: ${menuData.endTime}`);
+      console.log(`Target Date Start: ${targetDateStart.unix()}, Target Date End: ${targetDateEnd.unix()}`);
+      console.log(`Config Start: ${config?.defaultStartTime}, Config End: ${config?.defaultEndTime}`);
       if (!config || !config.defaultStartTime || !config.defaultEndTime) {
         return false;
       }
