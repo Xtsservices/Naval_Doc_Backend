@@ -642,7 +642,7 @@ if (session.stage === 'cart_selection' && /^\d+\*\d+(,\d+\*\d+)*$/.test(msg)) {
 
         // Generate payment link using the PaymentLink function from utils
         const paymentLink = await PaymentLink(order, payment, user);
-        console.log('Payment link generated:', paymentLink);
+        // console.log('Payment link generated:', paymentLink);
 
         // Send payment link to the user
         reply = `💳 Complete your payment using the following link:\n${paymentLink}`;
