@@ -8,6 +8,8 @@ const clientId = process.env.CASHFREE_CLIENT_ID || '';
 const clientSecret = process.env.CASHFREE_CLIENT_SECRET || '';
 const env = CFEnvironment.PRODUCTION 
 
+console.log("clientId",clientId)
+console.log("clientSecret",clientSecret)
 // this is local
 // const clientId = process.env.CASHFREE_CLIENT_ID_sandbox || '';
 // const clientSecret = process.env.CASHFREE_CLIENT_SECRET_sandbox || '';
