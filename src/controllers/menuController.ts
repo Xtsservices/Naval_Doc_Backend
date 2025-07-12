@@ -571,19 +571,13 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       const configEndTime = moment.unix(config.defaultEndTime).tz('Asia/Kolkata');
       
       // Create target date's datetime objects with these hours and minutes
-      const menuStartTime = targetDateStart.clone()
-        .hour(configStartTime.hour())
-        .minute(configStartTime.minute());
-      
       const menuEndTime = targetDateStart.clone()
         .hour(configEndTime.hour())
         .minute(configEndTime.minute());
       
       if (isToday) {
         // For today, check if current time is before the end time
-        // and check if start time is either:
-        // 1. Already passed (menu is active)
-        // 2. Coming up later today (future menu)
+        // Menu is either currently active or will be active later today
         return now.isBefore(menuEndTime);
       } else {
         // For future dates, show all menus valid for that day
