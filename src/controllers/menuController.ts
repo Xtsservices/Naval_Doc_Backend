@@ -604,6 +604,8 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       return menuData;
     });
 
+    console.log('Formatted menus:', formattedMenus.length);
+
     return res.status(statusCodes.SUCCESS).json({
       message: `Menus fetched successfully for ${targetDateFormatted}.`,
       data: formattedMenus,
