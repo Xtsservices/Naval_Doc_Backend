@@ -14,6 +14,8 @@ import paymentSdkRoutes from './routes/paymentSdkRoutes'; // Import payment SDK 
 import { Buffer } from 'buffer';
 import base64 from 'base-64'; // Install via: npm install base-64
 
+import { generateUniqueOrderNo } from './controllers/orderController'; // Import the function to generate unique order numbers
+
 
 
 
@@ -593,9 +595,12 @@ if (session.stage === 'cart_selection' && /^\d+\*\d+(,\d+\*\d+)*$/.test(msg)) {
         }
 
         // Create the order
+            const orderNo = await generateUniqueOrderNo(user.id, transaction);
+
         const order = await Order.create({
           userId: user.id,
           createdById: user.id,
+          orderNo: orderNo,
           canteenId: session.selectedCanteen.id,
           menuConfigurationId: session.selectedMenu.id,
           totalAmount: (session.cart ?? []).reduce((sum, c) => sum + c.price * c.quantity, 0),
