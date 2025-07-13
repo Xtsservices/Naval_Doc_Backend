@@ -1035,16 +1035,13 @@ export const CashfreePaymentLinkDetails = async (
         const order = await Order.findByPk(payment.orderId, { transaction });
         if (order) {
           order.status = "placed";
-          console.log("order.qrCode", order.qrCode);
           if (order.qrCode === null || order.qrCode === undefined) {
             const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
             const qrCode = await QRCode.toDataURL(qrCodeData);
             order.qrCode = qrCode; // Generate and set the QR code if it's not already set
-            console.log("order.userId", order.userId);
             const { base64, filePath } = await generateOrderQRCode(order, transaction);
                       await order.save({ transaction });
 
-            console.log("filePath", filePath);
             if (filePath) {
               let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
               console.log("whatsappuploadedid", whatsappuploadedid);
@@ -1052,7 +1049,17 @@ export const CashfreePaymentLinkDetails = async (
             }
 
           }else{
+
+
+            const { base64, filePath } = await generateOrderQRCode(order, transaction);
                       await order.save({ transaction });
+
+            if (filePath) {
+              let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
+              console.log("whatsappuploadedid", whatsappuploadedid);
+              sendWhatsQrAppMessage(order, whatsappuploadedid)
+            }
+
 
           }
         }
