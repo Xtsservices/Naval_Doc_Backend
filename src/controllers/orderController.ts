@@ -20,7 +20,7 @@ import moment from "moment-timezone"; // Import moment-timezone
 moment.tz("Asia/Kolkata");
 import { v4 as uuidv4 } from "uuid";
 import { User } from "../models";
-import { sendWhatsAppMessage, sendImageWithoutAttachment,uploadImageToAirtelAPI } from "../index";
+import { sendWhatsAppMessage, sendImageWithoutAttachment, uploadImageToAirtelAPI } from "../index";
 
 import { Op } from "sequelize"; // Import Sequelize operators
 import fs from 'fs';
@@ -210,13 +210,13 @@ export const placeOrder = async (
     // Commit the transaction
     await transaction.commit();
 
-    if(order.status === "placed") {
+    if (order.status === "placed") {
       const { base64, filePath } = await generateOrderQRCode(order, transaction);
 
-      if(filePath){
-      let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
+      if (filePath) {
+        let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
 
-      sendWhatsQrAppMessage(order,whatsappuploadedid)
+        sendWhatsQrAppMessage(order, whatsappuploadedid)
       }
 
     }
@@ -234,7 +234,7 @@ export const placeOrder = async (
       },
     });
   } catch (error: unknown) {
-        console.log("placeordererror", error);
+    console.log("placeordererror", error);
 
     await transaction.rollback();
     logger.error(
@@ -367,8 +367,7 @@ export const getOrderById = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching order by ID: ${
-        error instanceof Error ? error.message : error
+      `Error fetching order by ID: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -417,8 +416,7 @@ export const getAllOrders = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching all orders: ${
-        error instanceof Error ? error.message : error
+      `Error fetching all orders: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -480,7 +478,7 @@ export const getTodaysOrders = async (
 
     if (!orders || orders.length === 0) {
       return res.status(statusCodes.SUCCESS).json({
-        data:[],
+        data: [],
         message: getMessage("order.noOrdersFound"),
       });
     }
@@ -491,8 +489,7 @@ export const getTodaysOrders = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching today's orders: ${
-        error instanceof Error ? error.message : error
+      `Error fetching today's orders: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -524,8 +521,7 @@ export const getOrdersSummary = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching orders summary: ${
-        error instanceof Error ? error.message : error
+      `Error fetching orders summary: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -566,8 +562,7 @@ export const getOrdersByCanteen = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching orders by canteen: ${
-        error instanceof Error ? error.message : error
+      `Error fetching orders by canteen: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -682,8 +677,7 @@ export const processCashfreePayment = async (
       logger.error("Cashfree Error Response:", error.response?.data);
     }
     logger.error(
-      `Error processing Cashfree payment: ${
-        error instanceof Error ? error.message : error
+      `Error processing Cashfree payment: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -732,8 +726,7 @@ export const cashfreeCallback = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error processing Cashfree callback: ${
-        error instanceof Error ? error.message : error
+      `Error processing Cashfree callback: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -843,8 +836,7 @@ export const createPaymentLink = async (
       logger.error("Cashfree Error Response:", error.response?.data);
     }
     logger.error(
-      `Error creating Cashfree payment link: ${
-        error instanceof Error ? error.message : error
+      `Error creating Cashfree payment link: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -958,8 +950,7 @@ export const createCashfreePaymentLink = async (
       logger.error("Cashfree Error Response:", error.response?.data);
     }
     logger.error(
-      `Error creating Cashfree payment link: ${
-        error instanceof Error ? error.message : error
+      `Error creating Cashfree payment link: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -1049,13 +1040,14 @@ export const CashfreePaymentLinkDetails = async (
             const qrCode = await QRCode.toDataURL(qrCodeData);
             order.qrCode = qrCode; // Generate and set the QR code if it's not already set
             console.log("order.userId", order.userId);
-             const { base64, filePath } = await generateOrderQRCode(order, transaction);
+            const { base64, filePath } = await generateOrderQRCode(order, transaction);
 
-      if(filePath){
-      let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
-
-      sendWhatsQrAppMessage(order,whatsappuploadedid)
-      }
+            console.log("filePath", filePath);
+            if (filePath) {
+              let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
+              console.log("whatsappuploadedid", whatsappuploadedid);
+              sendWhatsQrAppMessage(order, whatsappuploadedid)
+            }
 
           }
           await order.save({ transaction });
@@ -1116,7 +1108,7 @@ interface WhatsAppMessagePayload {
   };
 }
 
-const sendWhatsQrAppMessage = async (order: any,whatsappuploadedid:any|null): Promise<void> => {
+const sendWhatsQrAppMessage = async (order: any, whatsappuploadedid: any | null): Promise<void> => {
   const userId = order.userId; // Extract userId from the order object
   const user: any = await User.findOne({ where: { id: userId } }); // Fetch user details from the User table
   const phoneNumber = user?.mobile; // Get the phone number from the user details
@@ -1129,28 +1121,28 @@ const sendWhatsQrAppMessage = async (order: any,whatsappuploadedid:any|null): Pr
   let OrderNo = "NV".concat(order.id.toString());
   let toNumber = "91".concat(phoneNumber);
 
-  if(whatsappuploadedid){
+  if (whatsappuploadedid) {
 
-     sendImageWithoutAttachment(
-    toNumber,
-    "01jxc2n4fawcmzwpewsx7024wg",
-    [name,],
-    [],
-    whatsappuploadedid
-  );
+    sendImageWithoutAttachment(
+      toNumber,
+      "01jxc2n4fawcmzwpewsx7024wg",
+      [name,],
+      [],
+      whatsappuploadedid
+    );
 
-  }else{
+  } else {
 
-     sendImageWithoutAttachment(
-    toNumber,
-    "01jxc2n4fawcmzwpewsx7024wg",
-    [name, OrderNo],
-    [],
-    whatsappuploadedid
-  );
+    sendImageWithoutAttachment(
+      toNumber,
+      "01jxc2n4fawcmzwpewsx7024wg",
+      [name, OrderNo],
+      [],
+      whatsappuploadedid
+    );
 
   }
- 
+
 
   // const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
   // const username = 'world_tek';
@@ -1459,8 +1451,7 @@ export const updateOrderStatus = async (
     await transaction.rollback();
 
     logger.error(
-      `Error updating order statuses: ${
-        error instanceof Error ? error.message : error
+      `Error updating order statuses: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -1644,8 +1635,7 @@ export const createWalkinOrders = async (
   } catch (error: unknown) {
     await transaction.rollback();
     logger.error(
-      `Error creating walkin orders: ${
-        error instanceof Error ? error.message : error
+      `Error creating walkin orders: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -1666,17 +1656,17 @@ export const generateOrderQRCode = async (order: any, transaction?: any): Promis
   try {
     // Create QR code data URL with order details
     const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
-    
+
     // Create a unique filename for the QR code
     const qrCodeFileName = `order_${order.OrderNo}_${Date.now()}.png`;
-    
+
     // Ensure upload directory exists
     const uploadDir = path.join(__dirname, '../../upload');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
       console.log(`Created directory: ${uploadDir}`);
     }
-    
+
     const qrCodeFilePath = path.join(uploadDir, qrCodeFileName);
 
     // Configure QR code options for high quality
@@ -1692,21 +1682,21 @@ export const generateOrderQRCode = async (order: any, transaction?: any): Promis
 
     // Generate QR code as base64 for database storage
     const qrCodeBase64 = await QRCode.toDataURL(qrCodeData, qrCodeOptions);
-    
+
     // Save to file system - the PNG format is automatically determined from the file extension
     await QRCode.toFile(qrCodeFilePath, qrCodeData, qrCodeOptions);
 
-    
-    
+
+
     // Update the order with the QR code if transaction is provided
     if (transaction && order) {
       order.qrCode = qrCodeBase64;
       order.qrCodeFilePath = qrCodeFilePath;
-     // await order.save({ transaction });
+      // await order.save({ transaction });
     }
-    
+
     console.log(`QR code saved to file: ${qrCodeFilePath}`);
-    
+
     return {
       base64: qrCodeBase64,
       filePath: qrCodeFilePath
