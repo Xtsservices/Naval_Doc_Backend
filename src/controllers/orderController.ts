@@ -20,10 +20,11 @@ import moment from "moment-timezone"; // Import moment-timezone
 moment.tz("Asia/Kolkata");
 import { v4 as uuidv4 } from "uuid";
 import { User } from "../models";
-import { sendWhatsAppMessage, sendImageWithoutAttachment } from "../index";
+import { sendWhatsAppMessage, sendImageWithoutAttachment,uploadImageToAirtelAPI } from "../index";
 
 import { Op } from "sequelize"; // Import Sequelize operators
-
+import fs from 'fs';
+import path from 'path';
 dotenv.config();
 
 export const placeOrder = async (
@@ -33,10 +34,8 @@ export const placeOrder = async (
   const transaction: Transaction = await sequelize.transaction();
 
   try {
-    console.log("placeordererror", 100);
 
     const { userId } = req.user as unknown as { userId: string };
-    console.log("placeordererror", userId);
 
     const { paymentMethod, transactionId, currency = "INR" } = req.body;
 
@@ -211,6 +210,17 @@ export const placeOrder = async (
     // Commit the transaction
     await transaction.commit();
 
+    if(order.status === "placed") {
+      const { base64, filePath } = await generateOrderQRCode(order, transaction);
+
+      if(filePath){
+      let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
+
+      sendWhatsQrAppMessage(order,whatsappuploadedid)
+      }
+
+    }
+
     return res.status(statusCodes.SUCCESS).json({
       message: getMessage("order.placed"),
       data: {
@@ -224,8 +234,9 @@ export const placeOrder = async (
       },
     });
   } catch (error: unknown) {
+        console.log("placeordererror", error);
+
     await transaction.rollback();
-    console.log("placeordererror", error);
     logger.error(
       `Error placing order: ${error instanceof Error ? error.message : error}`
     );
@@ -1038,7 +1049,14 @@ export const CashfreePaymentLinkDetails = async (
             const qrCode = await QRCode.toDataURL(qrCodeData);
             order.qrCode = qrCode; // Generate and set the QR code if it's not already set
             console.log("order.userId", order.userId);
-            sendWhatsQrAppMessage(order); // Send WhatsApp message with QR code
+             const { base64, filePath } = await generateOrderQRCode(order, transaction);
+
+      if(filePath){
+      let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
+
+      sendWhatsQrAppMessage(order,whatsappuploadedid)
+      }
+
           }
           await order.save({ transaction });
         }
@@ -1098,7 +1116,7 @@ interface WhatsAppMessagePayload {
   };
 }
 
-const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
+const sendWhatsQrAppMessage = async (order: any,whatsappuploadedid:any|null): Promise<void> => {
   const userId = order.userId; // Extract userId from the order object
   const user: any = await User.findOne({ where: { id: userId } }); // Fetch user details from the User table
   const phoneNumber = user?.mobile; // Get the phone number from the user details
@@ -1111,12 +1129,28 @@ const sendWhatsQrAppMessage = async (order: any): Promise<void> => {
   let OrderNo = "NV".concat(order.id.toString());
   let toNumber = "91".concat(phoneNumber);
 
-  sendImageWithoutAttachment(
+  if(whatsappuploadedid){
+
+     sendImageWithoutAttachment(
     toNumber,
-    "01jxdn1kmc046q8nf76fr7z6cf",
-    [name, OrderNo],
-    []
+    "01jxc2n4fawcmzwpewsx7024wg",
+    [name,],
+    [],
+    whatsappuploadedid
   );
+
+  }else{
+
+     sendImageWithoutAttachment(
+    toNumber,
+    "01jxc2n4fawcmzwpewsx7024wg",
+    [name, OrderNo],
+    [],
+    whatsappuploadedid
+  );
+
+  }
+ 
 
   // const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
   // const username = 'world_tek';
@@ -1617,5 +1651,68 @@ export const createWalkinOrders = async (
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage("error.internalServerError"),
     });
+  }
+};
+
+
+
+/**
+ * Generates a QR code for an order and saves it both as a PNG file and base64 string
+ * @param order - The order object that needs a QR code
+ * @param transaction - Optional Sequelize transaction
+ * @returns Object with the base64 string and file path
+ */
+export const generateOrderQRCode = async (order: any, transaction?: any): Promise<{ base64: string, filePath: string }> => {
+  try {
+    // Create QR code data URL with order details
+    const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
+    
+    // Create a unique filename for the QR code
+    const qrCodeFileName = `order_${order.OrderNo}_${Date.now()}.png`;
+    
+    // Ensure upload directory exists
+    const uploadDir = path.join(__dirname, '../../upload');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+      console.log(`Created directory: ${uploadDir}`);
+    }
+    
+    const qrCodeFilePath = path.join(uploadDir, qrCodeFileName);
+
+    // Configure QR code options for high quality
+    const qrCodeOptions = {
+      errorCorrectionLevel: 'H' as const, // High error correction for better scanning
+      width: 300, // QR code width in pixels
+      margin: 1,
+      color: {
+        dark: '#000000',  // Black dots
+        light: '#FFFFFF'  // White background
+      }
+    };
+
+    // Generate QR code as base64 for database storage
+    const qrCodeBase64 = await QRCode.toDataURL(qrCodeData, qrCodeOptions);
+    
+    // Save to file system - the PNG format is automatically determined from the file extension
+    await QRCode.toFile(qrCodeFilePath, qrCodeData, qrCodeOptions);
+
+    
+    
+    // Update the order with the QR code if transaction is provided
+    if (transaction && order) {
+      order.qrCode = qrCodeBase64;
+      order.qrCodeFilePath = qrCodeFilePath;
+     // await order.save({ transaction });
+    }
+    
+    console.log(`QR code saved to file: ${qrCodeFilePath}`);
+    
+    return {
+      base64: qrCodeBase64,
+      filePath: qrCodeFilePath
+    };
+  } catch (error) {
+    console.error(`Error generating QR code: ${error}`);
+    throw error;
   }
 };
