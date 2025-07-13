@@ -995,6 +995,10 @@ export const CashfreePaymentLinkDetails = async (
         message: `No payment record found for numericPart: ${numericPart}`,
       });
     }
+    let sendWhatsAppMessage = false;
+    if (payment.status === "success") {
+      sendWhatsAppMessage = true; // Set to true if payment is already successful
+    }
 
     // Cashfree API credentials
     const CASHFREE_APP_ID = process.env.pgAppID;
@@ -1040,7 +1044,7 @@ export const CashfreePaymentLinkDetails = async (
             const qrCode = await QRCode.toDataURL(qrCodeData);
             order.qrCode = qrCode; // Generate and set the QR code if it's not already set
             const { base64, filePath } = await generateOrderQRCode(order, transaction);
-                      await order.save({ transaction });
+            await order.save({ transaction });
 
             if (filePath) {
               let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
@@ -1048,17 +1052,23 @@ export const CashfreePaymentLinkDetails = async (
               sendWhatsQrAppMessage(order, whatsappuploadedid)
             }
 
-          }else{
+          } else {
 
+            if (sendWhatsAppMessage) {
 
-            const { base64, filePath } = await generateOrderQRCode(order, transaction);
-                      await order.save({ transaction });
+              const { base64, filePath } = await generateOrderQRCode(order, transaction);
 
-            if (filePath) {
-              let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
-              console.log("whatsappuploadedid", whatsappuploadedid);
-              sendWhatsQrAppMessage(order, whatsappuploadedid)
+              if (filePath) {
+                let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
+                console.log("whatsappuploadedid", whatsappuploadedid);
+                sendWhatsQrAppMessage(order, whatsappuploadedid)
+              }
+
             }
+
+              await order.save({ transaction });
+
+
 
 
           }
