@@ -29,7 +29,7 @@ console.log(env, clientId, clientSecret)
 
 router.post('/createOrder', async (req, res) => {
   console.log("request",req.body)
-  const { customer_id, customer_email, customer_phone, order_amount = '1.00', order_currency = 'INR' } = req.body;
+  const { customer_id, customer_email, customer_phone, order_amount, order_currency = 'INR' } = req.body;
 
 
   if (!customer_id || !customer_email || !customer_phone) {
