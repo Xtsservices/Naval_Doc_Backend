@@ -119,15 +119,33 @@ export const getAllCanteens = async (
 ): Promise<Response> => {
   try {
     // Fetch all canteens with associated user details
-    const canteens = await Canteen.findAll({});
-
-    // include: [
-    //     {
-    //       model: User,
-    //       as: 'adminUser', // Ensure this matches the alias in the Canteen -> User association
-    //       attributes: ['id', 'firstName', 'lastName', 'email', 'mobile'], // Fetch necessary user fields
-    //     },
-    //   ],
+    const canteens = await Canteen.findAll({
+      include: [
+        {
+          model: User,
+          as: 'canteenUsers', // Make sure this alias matches your association
+          attributes: ['id', 'firstName', 'lastName', 'email', 'mobile', 'canteenId'], // Include canteenId
+          required: false, // LEFT JOIN to include canteens even without users
+          include: [
+            {
+              model: UserRole,
+              as: 'userRoles',
+              attributes: ['roleId'],
+              required: false,
+              include: [
+                {
+                  model: Role,
+                  as: 'role',
+                  attributes: ['id', 'name'],
+                  required: false,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      order: [['id', 'ASC']], // Order canteens by ID
+    });
 
     if (!canteens || canteens.length === 0) {
       return res.status(200).json({
@@ -136,20 +154,46 @@ export const getAllCanteens = async (
       });
     }
 
-    // Convert buffer image to base64 string
+    // Convert buffer image to base64 string and format the response
     const canteensWithImagesAndUsers = canteens.map((canteen) => {
       const canteenData = canteen.toJSON();
+      
+      // Convert image buffer to base64 if exists
       if (canteenData.canteenImage) {
-        canteenData.canteenImage = `data:image/jpeg;base64,${canteenData.canteenImage.toString(
-          "base64"
-        )}`;
+        canteenData.canteenImage = `data:image/jpeg;base64,${canteenData.canteenImage.toString('base64')}`;
       }
+      
+      // Format users data with roles and canteenId
+      if (canteenData.canteenUsers && canteenData.canteenUsers.length > 0) {
+        canteenData.users = canteenData.canteenUsers
+          .filter((user: any) => user.canteenId === canteenData.id) // Filter users by matching canteenId
+          .map((user: any) => ({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        mobile: user.mobile,
+        canteenId: user.canteenId,
+        fullName: `${user.firstName} ${user.lastName}`,
+        roles: user.userRoles?.map((userRole: any) => ({
+          id: userRole.role?.id,
+          name: userRole.role?.name,
+        })) || [],
+          }));
+        
+        // Remove the original canteenUsers array
+        delete canteenData.canteenUsers;
+      } else {
+        canteenData.users = [];
+      }
+      
       return canteenData;
     });
 
     return res.status(statusCodes.SUCCESS).json({
       message: getMessage("success.canteensFetched"),
       data: canteensWithImagesAndUsers,
+      count: canteensWithImagesAndUsers.length,
     });
   } catch (error: unknown) {
     if (error instanceof Error) {
