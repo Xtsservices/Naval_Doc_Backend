@@ -4,9 +4,12 @@ import { Cashfree, CFEnvironment } from 'cashfree-pg';
 const router = Router();
 
 //here we should keep production when we are ready to go live
-const clientId = process.env.CASHFREE_CLIENT_ID || '';
-const clientSecret = process.env.CASHFREE_CLIENT_SECRET || '';
+// const clientId = process.env.CASHFREE_CLIENT_ID || '';
+// const clientSecret = process.env.CASHFREE_CLIENT_SECRET || '';
 const env = CFEnvironment.PRODUCTION 
+
+const clientId = process.env.pgAppID;
+    const clientSecret = process.env.pgSecreteKey;
 
 console.log("clientId",clientId)
 console.log("clientSecret",clientSecret)
@@ -26,7 +29,7 @@ console.log(env, clientId, clientSecret)
 
 router.post('/createOrder', async (req, res) => {
   console.log("request",req.body)
-  const { customer_id, customer_email, customer_phone, order_amount = '1.00', order_currency = 'INR' } = req.body;
+  const { customer_id, customer_email, customer_phone, order_amount, order_currency = 'INR' } = req.body;
 
 
   if (!customer_id || !customer_email || !customer_phone) {
