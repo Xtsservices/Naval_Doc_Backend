@@ -124,7 +124,7 @@ export const getAllCanteens = async (
       include: [
         {
           model: User,
-          as: 'canteenUsers', // Make sure this alias matches your association
+          as: 'adminUser', // Use the correct alias that matches your association
           attributes: ['id', 'firstName', 'lastName', 'email', 'mobile', 'canteenId'], // Include canteenId
           required: false, // LEFT JOIN to include canteens even without users
           include: [
@@ -164,26 +164,24 @@ export const getAllCanteens = async (
         canteenData.canteenImage = `data:image/jpeg;base64,${canteenData.canteenImage.toString('base64')}`;
       }
       
-      // Format users data with roles and canteenId
-      if (canteenData.canteenUsers && canteenData.canteenUsers.length > 0) {
-        canteenData.users = canteenData.canteenUsers
-          .filter((user: any) => user.canteenId === canteenData.id) // Filter users by matching canteenId
-          .map((user: any) => ({
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        mobile: user.mobile,
-        canteenId: user.canteenId,
-        fullName: `${user.firstName} ${user.lastName}`,
-        roles: user.userRoles?.map((userRole: any) => ({
-          id: userRole.role?.id,
-          name: userRole.role?.name,
-        })) || [],
-          }));
+      // Format user data with roles and canteenId
+      if (canteenData.adminUser) {
+        canteenData.users = [{
+          id: canteenData.adminUser.id,
+          firstName: canteenData.adminUser.firstName,
+          lastName: canteenData.adminUser.lastName,
+          email: canteenData.adminUser.email,
+          mobile: canteenData.adminUser.mobile,
+          canteenId: canteenData.adminUser.canteenId,
+          fullName: `${canteenData.adminUser.firstName} ${canteenData.adminUser.lastName}`,
+          roles: canteenData.adminUser.userRoles?.map((userRole: any) => ({
+            id: userRole.role?.id,
+            name: userRole.role?.name,
+          })) || [],
+        }];
         
-        // Remove the original canteenUsers array
-        delete canteenData.canteenUsers;
+        // Remove the original adminUser object
+        delete canteenData.adminUser;
       } else {
         canteenData.users = [];
       }
