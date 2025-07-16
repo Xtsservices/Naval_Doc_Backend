@@ -161,6 +161,41 @@ export const sendOTPSMS = async (mobile: string, OTP: string): Promise<any> => {
   }
 };
 
+export const sendOrderSMS = async (mobile: string, orderno: string,name:string): Promise<any> => {
+  const template =
+    "Dear {#var#} Thank you For choosing Order Is {#var#} WIth Wecann have a great day .";
+
+  // Function to populate the template with dynamic values
+  function populateTemplate(template: string, values: string[]): string {
+    let index = 0;
+    return template.replace(/{#var#}/g, () => values[index++]);
+  }
+
+  // Populate the template with the user's name and OTP
+  const message = populateTemplate(template, [name, orderno]);
+
+  // Example Output: Dear User, kindly use this OTP 123456 for login to your application. Thank you, Wecann.
+
+  const templateid = "1707163101096063708";
+
+  try {
+    const params = {
+      username: "WECANN",
+      apikey: process.env.SMSAPIKEY, // Use API key from environment variables
+      senderid: "WECANN",
+      mobile: mobile,
+      message: message,
+      templateid: templateid,
+    };
+
+    // Call the sendSMS function
+    return await sendSMS(params);
+  } catch (error) {
+    console.error("Error sending order SMS:", error);
+    throw new Error("Failed to send order SMS");
+  }
+};
+
 const sendSMS = async (params: any): Promise<any> => {
   try {
     const url = "http://wecann.in/v3/api.php";

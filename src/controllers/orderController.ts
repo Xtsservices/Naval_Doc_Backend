@@ -6,7 +6,7 @@ import Order from "../models/order";
 import OrderItem from "../models/orderItem";
 import Payment from "../models/payment";
 import logger from "../common/logger";
-import { getMessage } from "../common/utils";
+import { getMessage, sendOrderSMS } from "../common/utils";
 import { statusCodes } from "../common/statusCodes";
 import { Transaction } from "sequelize";
 import QRCode from "qrcode"; // Import QRCode library
@@ -1154,6 +1154,9 @@ const sendWhatsQrAppMessage = async (order: any, whatsappuploadedid: any | null)
   let toNumber = "91".concat(phoneNumber);
 
   if (whatsappuploadedid) {
+
+    /// sendOrderSMS
+    let smsresult = await sendOrderSMS(phoneNumber, order.orderNo, name);
 
     sendImageWithoutAttachment(
       toNumber,
