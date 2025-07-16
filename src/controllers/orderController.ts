@@ -1007,9 +1007,9 @@ export const CashfreePaymentLinkDetails = async (
         message: `No payment record found for numericPart: ${numericPart}`,
       });
     }
-    let sendWhatsAppMessage = false;
+    let sendWhatsAppMessage = true;
     if (payment.status === "success") {
-      sendWhatsAppMessage = true; // Set to true if payment is already successful
+      sendWhatsAppMessage = false; // Set to true if payment is already successful
     }
 
     // Cashfree API credentials
