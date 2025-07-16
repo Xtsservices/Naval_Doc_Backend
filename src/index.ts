@@ -446,7 +446,7 @@ const processSpecialRecipient = async (body: any) => {
   if (session.stage === 'menu_selection' && /^[1-9]\d*$/.test(msg)) {
     const index = parseInt(msg) - 1;
     if (index < 0 || index >= session.canteens.length) {
-      reply = '⚠️ Invalid canteen option. Please type "hi" to restart.';
+      reply = `⚠️ Invalid canteen option. Please select a valid canteen number from the list above or type "hi" to restart.`;
       await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
       return;
     }
@@ -478,7 +478,7 @@ const processSpecialRecipient = async (body: any) => {
     } else if (msg === '2') {
       session.selectedDate = tomorrowFormatted;
     } else {
-      reply = '⚠️ Invalid date option. Please type "hi" to restart.';
+      reply = '⚠️ Invalid date option. Please reply with 1 for Today or 2 for Tomorrow, or type "hi" to restart.';
       await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
       return;
     }
@@ -498,7 +498,8 @@ const processSpecialRecipient = async (body: any) => {
       const menuList = menus.map((m: { name: any }, idx: number) => `${idx + 1}. ${m.name}`).join('\n');
       reply = `🍴 ${session.selectedCanteen.canteenName.toUpperCase()} MENU:\n${menuList}\n\nSend menu number to proceed.`;
     } else {
-      reply = `❌ No menus available for ${session.selectedCanteen.canteenName}. Please try again later.`;
+      reply = `❌ No menus available for ${session.selectedCanteen.canteenName}. Please try again or select another canteen by replying with a different number, or type "hi" to restart.`;
+      session.stage = 'menu_selection'; // Allow user to select another canteen
     }
     sessions[userId] = session;
     await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
