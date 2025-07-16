@@ -37,7 +37,7 @@ export const placeOrder = async (
 
     const { userId } = req.user as unknown as { userId: string };
 
-    const { paymentMethod, transactionId, currency = "INR" } = req.body;
+    const { paymentMethod, transactionId, currency = "INR", platform } = req.body;
 
     if (!userId || !paymentMethod) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -46,6 +46,7 @@ export const placeOrder = async (
       });
     }
 
+    
     // Ensure userId is a string
     const userIdString = String(userId);
 
@@ -71,6 +72,10 @@ export const placeOrder = async (
     let oderStatus = "placed";
     if (paymentMethod.includes("online")) {
       oderStatus = "initiated";
+    }
+
+    if(platform && platform ==="mobile"){
+      oderStatus == "placed";
     }
     // Generate a unique order number (e.g., NV + order timestamp + random 4 digits)
     // Generate a unique order number (e.g., NV + order timestamp + random 4 digits)
@@ -197,7 +202,13 @@ export const placeOrder = async (
       } else if (paymentMethod.includes("online")) {
         status = "pending";
 
+        if(platform && platform ==="mobile"){
+          status = "placed";
+        }
+        if(status === "pending"){
         linkResponse = await PaymentLink(order, newpayment, req.user);
+        }
+
       }
 
       // Create a payment record for the remaining amount
