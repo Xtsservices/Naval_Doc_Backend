@@ -484,7 +484,6 @@ const processSpecialRecipient = async (body: any) => {
     }
 
     session.stage = 'item_selection';
-    console.log(session)
     const menus = await axios
       .get(`${process.env.BASE_URL}/api/menu/getMenusByCanteen?canteenId=${session.selectedCanteen.id}&date=${session.selectedDate}`)
       .then(response => response.data.data || [])
@@ -499,7 +498,7 @@ const processSpecialRecipient = async (body: any) => {
       reply = `🍴 ${session.selectedCanteen.canteenName.toUpperCase()} MENU:\n${menuList}\n\nSend menu number to proceed.`;
     } else {
       reply = `❌ No menus available for ${session.selectedCanteen.canteenName}. Please try again or select another canteen by replying with a different number, or type "hi" to restart.`;
-      session.stage = 'menu_selection'; // Allow user to select another canteen
+      session.stage = 'date_selection'; // Allow user to select another canteen
     }
     sessions[userId] = session;
     await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
