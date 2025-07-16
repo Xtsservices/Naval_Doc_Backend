@@ -448,7 +448,7 @@ export const getTodaysOrders = async (
       where: {
         status: "placed",
         canteenId,
-        createdAt: {
+        orderDate: {
           [Op.between]: [startOfDay, endOfDay], // Filter orders created today
         },
       },
