@@ -920,7 +920,7 @@ export const sendImageWithoutAttachment = async (
     Authorization: `Basic ${auth}`,
     'Content-Type': 'application/json',
   };
-
+  console.log("to number",to)
   // Payload for the API
   const payloadData = {
     templateId,

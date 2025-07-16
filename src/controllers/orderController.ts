@@ -222,11 +222,12 @@ export const placeOrder = async (
     await transaction.commit();
 
     if (order.status === "placed") {
+      console.log(`Order placed successfully: ${order.id}`);
       const { base64, filePath } = await generateOrderQRCode(order, transaction);
 
       if (filePath) {
         let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
-
+        console.log("whatsappuploadedid", whatsappuploadedid);
         sendWhatsQrAppMessage(order, whatsappuploadedid)
       }
 
@@ -1157,6 +1158,7 @@ const sendWhatsQrAppMessage = async (order: any, whatsappuploadedid: any | null)
 
     /// sendOrderSMS
     let smsresult = await sendOrderSMS(phoneNumber, order.orderNo, name);
+    console.log("smsresult", smsresult);
 
     sendImageWithoutAttachment(
       toNumber,
@@ -1699,7 +1701,7 @@ export const generateOrderQRCode = async (order: any, transaction?: any): Promis
     const uploadDir = path.join(__dirname, '../../upload');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
-      console.log(`Created directory: ${uploadDir}`);
+      // console.log(`Created directory: ${uploadDir}`);
     }
 
     const qrCodeFilePath = path.join(uploadDir, qrCodeFileName);
@@ -1730,7 +1732,7 @@ export const generateOrderQRCode = async (order: any, transaction?: any): Promis
       // await order.save({ transaction });
     }
 
-    console.log(`QR code saved to file: ${qrCodeFilePath}`);
+    // console.log(`QR code saved to file: ${qrCodeFilePath}`);
 
     return {
       base64: qrCodeBase64,

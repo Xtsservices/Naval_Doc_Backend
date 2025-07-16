@@ -23,12 +23,12 @@ const returnUrl = process.env.CASHFREE_RETURN_URL || 'https://welfarecanteen.in/
 // Initialize Cashfree SDK
 const cashfree = new Cashfree(env, clientId, clientSecret);
 
-console.log(env, clientId, clientSecret)
+// console.log(env, clientId, clientSecret)
 
 
 
 router.post('/createOrder', async (req, res) => {
-  console.log("request",req.body)
+  // console.log("request",req.body)
   const { customer_id, customer_email, customer_phone, order_amount, order_currency = 'INR' } = req.body;
 
 
@@ -52,13 +52,13 @@ router.post('/createOrder', async (req, res) => {
   };
 
   try {
-    console.log('Cashfree Order Request:', orderRequest);
+    // console.log('Cashfree Order Request:', orderRequest);
     const response = await cashfree.PGCreateOrder(orderRequest);
-    console.log('Cashfree Order Error:', response);
+    // console.log('Cashfree Order Error:', response);
 
     res.status(201).json(response.data);
   } catch (error: any) {
-    console.error('Cashfree Order Error:', error?.response?.data ?? error.message);
+    // console.error('Cashfree Order Error:', error?.response?.data ?? error.message);
     res.status(500).json({
       error: 'Cashfree order creation failed.',
       reason: error?.response?.data?.message || 'Internal server error',

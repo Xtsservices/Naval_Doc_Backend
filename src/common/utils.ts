@@ -289,8 +289,8 @@ export const PaymentLink = async (
       return paymentLink;
     } else {
       console.error("Error creating payment link:");
-      console.error(response.data);
-      console.error("Status code:", response.status);
+      // console.error(response.data);
+      // console.error("Status code:", response.status);
       // Return an error response if the API call fails
       return new Response("Failed to create payment link", { status: 400 });
     }
