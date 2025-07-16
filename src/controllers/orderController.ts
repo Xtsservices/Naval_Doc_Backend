@@ -75,7 +75,7 @@ export const placeOrder = async (
     }
 
     if(platform && platform ==="mobile"){
-      oderStatus == "placed";
+      oderStatus = "placed";
     }
     // Generate a unique order number (e.g., NV + order timestamp + random 4 digits)
     // Generate a unique order number (e.g., NV + order timestamp + random 4 digits)

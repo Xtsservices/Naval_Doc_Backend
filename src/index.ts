@@ -497,7 +497,7 @@ const processSpecialRecipient = async (body: any) => {
       const menuList = menus.map((m: { name: any }, idx: number) => `${idx + 1}. ${m.name}`).join('\n');
       reply = `🍴 ${session.selectedCanteen.canteenName.toUpperCase()} MENU:\n${menuList}\n\nSend menu number to proceed.`;
     } else {
-      reply = `❌ No menus available for ${session.selectedCanteen.canteenName}. Please try again or select another canteen by replying with a different number, or type "hi" to restart.`;
+      reply = `❌ No menus available for ${session.selectedCanteen.canteenName}. Please try again or select another date by replying with 1 for Today or 2 for Tomorrow, or type "hi" to restart.`;
       session.stage = 'date_selection'; // Allow user to select another canteen
     }
     sessions[userId] = session;
@@ -511,7 +511,7 @@ const processSpecialRecipient = async (body: any) => {
 if (session.stage === 'item_selection' && /^[1-9]\d*$/.test(msg)) {
   const index = parseInt(msg) - 1;
   if (index < 0 || index >= session.menus.length) {
-    reply = '⚠️ Invalid menu option. Please type "hi" to restart.';
+    reply = '⚠️ Invalid menu option. Please select a valid menu number from the list above or type "hi" to restart.';
     await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
     return;
   }
@@ -543,6 +543,18 @@ if (session.stage === 'item_selection' && /^[1-9]\d*$/.test(msg)) {
 
 if (session.stage === 'cart_selection' && /^\d+\*\d+(,\d+\*\d+)*$/.test(msg)) {
     const selections = msg.split(',');
+    // Check if all selected item IDs exist in the session.items list
+    const invalidSelections = selections.filter((pair: { split: (arg0: string) => [any]; }) => {
+      const [idStr] = pair.split('*');
+      const id = parseInt(idStr);
+      return !session.items.some((i: { id: number }) => i.id === id);
+    });
+
+    if (invalidSelections.length > 0) {
+      reply = `⚠️ Invalid item number(s): ${invalidSelections.map((pair: string) => pair.split('*')[0]).join(', ')}. Please select valid item numbers from the list above.`;
+      await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
+      return;
+    }
     for (const pair of selections) {
       const [idStr, qtyStr] = pair.split('*');
       const id = parseInt(idStr);
