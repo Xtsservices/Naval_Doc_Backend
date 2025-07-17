@@ -1069,7 +1069,7 @@ export const CashfreePaymentLinkDetails = async (
             const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
             const qrCode = await QRCode.toDataURL(qrCodeData);
             order.qrCode = qrCode; // Generate and set the QR code if it's not already set
-            const { base64, filePath } = await generateOrderQRCode(order, transaction);
+            const { filePath } = await generateOrderQRCode(order, transaction);
             await order.save({ transaction });
             if(sendWhatsAppMessage) {
                if (filePath) {
@@ -1085,7 +1085,7 @@ export const CashfreePaymentLinkDetails = async (
 
             if (sendWhatsAppMessage) {
 
-              const { base64, filePath } = await generateOrderQRCode(order, transaction);
+              const { filePath } = await generateOrderQRCode(order, transaction);
 
               if (filePath) {
                 let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
