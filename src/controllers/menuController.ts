@@ -711,34 +711,37 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
     }
 
     // Fetch the menu by ID with related data
-    const menu = await Menu.findByPk(id as string, {
+    const menu = await Menu.findOne({
+      where: { id: id as string, status: 'active' }, // Only fetch active menus
       include: [
+      {
+        model: MenuConfiguration,
+        as: 'menuMenuConfiguration', // Include menu configuration details
+        attributes: ['id', 'name', 'defaultStartTime', 'defaultEndTime'], // Fetch necessary fields
+        where: { status: 'active' }, // Only include active menu configurations
+      },
+      {
+        model: MenuItem,
+        as: 'menuItems', // Include menu items
+        where: { status: 'active' }, // Only include active menu items
+        include: [
         {
-          model: MenuConfiguration,
-          as: 'menuMenuConfiguration', // Include menu configuration details
-          attributes: ['id', 'name', 'defaultStartTime', 'defaultEndTime'], // Fetch necessary fields
-        },
-        {
-          model: MenuItem,
-          as: 'menuItems', // Include menu items
+          model: Item,
+          as: 'menuItemItem', // Include item details
+          attributes: ['id', 'name', 'description', 'image','type','status'], // Fetch necessary fields
+          where: { status: 'active' }, // Fetch only items with status 'active'
           include: [
-            {
-              model: Item,
-              as: 'menuItemItem', // Include item details
-              attributes: ['id', 'name', 'description', 'image','type','status'], // Fetch necessary fields
-              where: { status: 'active' }, // Fetch only items with status 'active'
-              include: [
-                {
-                  model: Pricing,
-                  as: 'pricing', // Include pricing details
-                  attributes: ['id', 'price', 'currency'], // Fetch necessary fields
-                },
-              ],
-            },
+          {
+            model: Pricing,
+            as: 'pricing', // Include pricing details
+            attributes: ['id', 'price', 'currency'], // Fetch necessary fields
+          },
           ],
         },
+        ],
+      },
       ],
-      attributes: ['id', 'name', 'description', 'startTime', 'endTime', 'createdAt', 'updatedAt'], // Fetch necessary menu fields
+      attributes: ['id', 'name', 'description', 'startTime', 'endTime', 'createdAt', 'updatedAt',"status"], // Fetch necessary menu fields
     });
 
     // If the menu is not found, return a 404 response
