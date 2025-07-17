@@ -167,15 +167,47 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
 
 export const updateMenuWithItems = async (req: Request, res: Response): Promise<Response> => {
   const { menuId } = req.params;
-  const { items, startTime, endTime } = req.body; // Accept startTime and endTime from body
+  const { items, startDate, endDate, description, menuConfigurationId, name } = req.body;
   const userId = req.user?.id;
-
+  console.log(`Updating menu with ID: ${menuId}`);
+  console.log("startDate:", startDate);
+  console.log("endDate:", endDate);
   if (!items || !Array.isArray(items) || items.length === 0) {
     logger.error('Validation error: items must be provided and must be an array');
     return res.status(statusCodes.BAD_REQUEST).json({
       message: getMessage('validation.validationError'),
     });
   }
+
+  // --- Start & End Date Validation ---
+  let parsedStart: moment.Moment | undefined;
+  let parsedEnd: moment.Moment | undefined;
+
+  if (startDate) {
+    parsedStart = moment.tz(startDate, ['DD-MM-YYYY', 'DD-MM-YYYY HH:mm A'], 'Asia/Kolkata').startOf('day');
+    if (!parsedStart.isValid()) {
+      logger.error('Validation error: startTime must be in the format DD-MM-YYYY or DD-MM-YYYY HH:mm A');
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.invalidStartTime'),
+      });
+    }
+  }
+  if (endDate) {
+    parsedEnd = moment.tz(endDate, ['DD-MM-YYYY', 'DD-MM-YYYY HH:mm A'], 'Asia/Kolkata').endOf('day');
+    if (!parsedEnd.isValid()) {
+      logger.error('Validation error: endTime must be in the format DD-MM-YYYY or DD-MM-YYYY HH:mm A');
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.invalidEndTime'),
+      });
+    }
+  }
+  if (parsedStart && parsedEnd && !parsedStart.isBefore(parsedEnd)) {
+    logger.error('Validation error: startTime must be before endTime');
+    return res.status(statusCodes.BAD_REQUEST).json({
+      message: getMessage('validation.startTimeBeforeEndTime'),
+    });
+  }
+  // --- End Start & End Date Validation ---
 
   const transaction: Transaction = await sequelize.transaction();
 
@@ -188,21 +220,19 @@ export const updateMenuWithItems = async (req: Request, res: Response): Promise<
       });
     }
 
-    // If startTime or endTime are provided, update them
+    // Prepare update fields
     let updateFields: any = {};
-    if (startTime) {
-      // Parse and convert to moment object, then to unix timestamp
-      const parsedStart = moment.tz(startTime, 'DD-MM-YYYY', 'Asia/Kolkata').startOf('day');
-      updateFields.startTime = parsedStart.unix();
-    }
-    if (endTime) {
-      const parsedEnd = moment.tz(endTime, 'DD-MM-YYYY', 'Asia/Kolkata').endOf('day');
-      updateFields.endTime = parsedEnd.unix();
-    }
+    if (parsedStart) updateFields.startTime = parsedStart.unix();
+    if (parsedEnd) updateFields.endTime = parsedEnd.unix();
+    if (description !== undefined) updateFields.description = description;
+    if (menuConfigurationId !== undefined) updateFields.menuConfigurationId = menuConfigurationId;
+    if (name !== undefined) updateFields.name = name;
+
+    console.log(`Update fields: ${JSON.stringify(updateFields)}`);
     if (Object.keys(updateFields).length > 0) {
       updateFields.updatedById = userId;
-      await menu.update(updateFields, { transaction });
-      logger.info(`Menu startTime/endTime updated for menu ID ${menuId}`);
+      await Menu.update(updateFields, { where: { id: menuId }, transaction });
+      logger.info(`Menu fields updated for menu ID ${menuId}`);
     }
 
     const incomingItemIds = items.map(item => item.itemId);
@@ -278,7 +308,7 @@ export const updateMenuWithItems = async (req: Request, res: Response): Promise<
 
     return res.status(statusCodes.SUCCESS).json({
       message: getMessage('success.menuUpdatedWithItems'),
-      data: menu,
+      data: await Menu.findByPk(menuId, { transaction: undefined }), // Return updated menu
     });
   } catch (error: unknown) {
     await transaction.rollback();
