@@ -1065,41 +1065,24 @@ export const CashfreePaymentLinkDetails = async (
         const order = await Order.findByPk(payment.orderId, { transaction });
         if (order) {
           order.status = "placed";
+          // First, check if we need to generate a QR code
           if (order.qrCode === null || order.qrCode === undefined) {
             const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
             const qrCode = await QRCode.toDataURL(qrCodeData);
             order.qrCode = qrCode; // Generate and set the QR code if it's not already set
+          }
+
+          // Save the order first
+          await order.save({ transaction });
+
+          // Now handle WhatsApp message if needed, regardless of whether QR was just generated
+          if (sendWhatsAppMessage) {
             const { filePath } = await generateOrderQRCode(order, transaction);
-            await order.save({ transaction });
-            if(sendWhatsAppMessage) {
-               if (filePath) {
-              let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
-              console.log("if whatsappuploadedid", whatsappuploadedid);
-              sendWhatsQrAppMessage(order, whatsappuploadedid)
+            if (filePath) {
+              let whatsappuploadedid = await uploadImageToAirtelAPI(filePath);
+              console.log("whatsappuploadedid", whatsappuploadedid);
+              sendWhatsQrAppMessage(order, whatsappuploadedid);
             }
-
-            }
-           
-
-          } else {
-
-            if (sendWhatsAppMessage) {
-
-              const { filePath } = await generateOrderQRCode(order, transaction);
-
-              if (filePath) {
-                let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
-                console.log("else  whatsappuploadedid", whatsappuploadedid);
-                sendWhatsQrAppMessage(order, whatsappuploadedid)
-              }
-
-            }
-
-              await order.save({ transaction });
-
-
-
-
           }
         }
       }
