@@ -1025,7 +1025,6 @@ export const CashfreePaymentLinkDetails = async (
         },
       });
     }
-      sendWhatsAppMessage = false; // Set to true if payment is already pending
 
     // Cashfree API credentials
     const CASHFREE_APP_ID = process.env.pgAppID;
