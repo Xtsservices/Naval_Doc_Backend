@@ -442,7 +442,9 @@ export const getTodaysOrders = async (
   res: Response
 ): Promise<Response> => {
   try {
-    const canteenId = req.params.canteenId;
+    const canteenId = req.params.canteenId; // Extract canteenId from the request parameters
+    // const { canteenId } = req.user as unknown as { canteenId: string }; // Extract canteenId from the token
+    console.log("canteenId", canteenId);
     if (!canteenId) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage("validation.validationError"),
@@ -450,16 +452,17 @@ export const getTodaysOrders = async (
       });
     }
 
-    // Use Unix timestamps for integer columns
-    const startOfDay = moment().startOf("day").unix();
-    const endOfDay = moment().endOf("day").unix();
+    // Get today's date range
+    const startOfDay = moment().startOf("day").toDate();
+    const endOfDay = moment().endOf("day").toDate();
 
+    // Fetch today's orders for the specified canteen
     const orders = await Order.findAll({
       where: {
         status: "placed",
         canteenId,
         orderDate: {
-          [Op.between]: [startOfDay, endOfDay],
+          [Op.between]: [startOfDay, endOfDay], // Filter orders created today
         },
       },
       include: [
@@ -469,19 +472,22 @@ export const getTodaysOrders = async (
           include: [
             {
               model: Item,
-              as: "menuItemItem",
-              attributes: ["id", "name"],
+              as: "menuItemItem", // Ensure this matches the alias in the OrderItem -> Item association
+              attributes: ["id", "name"], // Fetch item name and ID
             },
           ],
         },
         {
           model: Payment,
           as: "payment",
-          attributes: ["id", "amount", "status", "paymentMethod"],
+          attributes: ["id", "amount", "status", "paymentMethod"], // Fetch necessary payment fields
         },
       ],
-      order: [["createdAt", "DESC"]],
+      order: [["createdAt", "DESC"]], // Sort by most recent orders
     });
+
+    console.log("canteenIdu", orders);
+
 
     if (!orders || orders.length === 0) {
       return res.status(statusCodes.SUCCESS).json({
@@ -495,6 +501,7 @@ export const getTodaysOrders = async (
       data: orders,
     });
   } catch (error: unknown) {
+
     logger.error(
       `Error fetching today's orders: ${error instanceof Error ? error.message : error
       }`
@@ -1006,6 +1013,19 @@ export const CashfreePaymentLinkDetails = async (
     if (payment.status === "success") {
       sendWhatsAppMessage = false; // Set to true if payment is already successful
     }
+    if(payment.status === "success"){
+      const orderdetails = await Order.findOne({
+        where: { id: payment.orderId },
+      });
+      return res.status(200).json({
+        message: "Payment already successful.",
+        data: {
+          payment,
+          orderdetails,
+        },
+      });
+    }
+      sendWhatsAppMessage = false; // Set to true if payment is already pending
 
     // Cashfree API credentials
     const CASHFREE_APP_ID = process.env.pgAppID;
@@ -1052,12 +1072,15 @@ export const CashfreePaymentLinkDetails = async (
             order.qrCode = qrCode; // Generate and set the QR code if it's not already set
             const { base64, filePath } = await generateOrderQRCode(order, transaction);
             await order.save({ transaction });
-
-            if (filePath) {
+            if(sendWhatsAppMessage) {
+               if (filePath) {
               let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
-              console.log("whatsappuploadedid", whatsappuploadedid);
+              console.log("if whatsappuploadedid", whatsappuploadedid);
               sendWhatsQrAppMessage(order, whatsappuploadedid)
             }
+
+            }
+           
 
           } else {
 
@@ -1067,7 +1090,7 @@ export const CashfreePaymentLinkDetails = async (
 
               if (filePath) {
                 let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
-                console.log("whatsappuploadedid", whatsappuploadedid);
+                console.log("else  whatsappuploadedid", whatsappuploadedid);
                 sendWhatsQrAppMessage(order, whatsappuploadedid)
               }
 
