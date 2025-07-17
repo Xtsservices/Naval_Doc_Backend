@@ -167,7 +167,7 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
 
 export const updateMenuWithItems = async (req: Request, res: Response): Promise<Response> => {
   const { menuId } = req.params;
-  const { items } = req.body;
+  const { items, startTime, endTime } = req.body; // Accept startTime and endTime from body
   const userId = req.user?.id;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
@@ -186,6 +186,23 @@ export const updateMenuWithItems = async (req: Request, res: Response): Promise<
       return res.status(statusCodes.NOT_FOUND).json({
         message: getMessage('menu.notFound'),
       });
+    }
+
+    // If startTime or endTime are provided, update them
+    let updateFields: any = {};
+    if (startTime) {
+      // Parse and convert to moment object, then to unix timestamp
+      const parsedStart = moment.tz(startTime, 'DD-MM-YYYY', 'Asia/Kolkata').startOf('day');
+      updateFields.startTime = parsedStart.unix();
+    }
+    if (endTime) {
+      const parsedEnd = moment.tz(endTime, 'DD-MM-YYYY', 'Asia/Kolkata').endOf('day');
+      updateFields.endTime = parsedEnd.unix();
+    }
+    if (Object.keys(updateFields).length > 0) {
+      updateFields.updatedById = userId;
+      await menu.update(updateFields, { transaction });
+      logger.info(`Menu startTime/endTime updated for menu ID ${menuId}`);
     }
 
     const incomingItemIds = items.map(item => item.itemId);
