@@ -983,6 +983,7 @@ export const CashfreePaymentLinkDetails = async (
     const { linkId } = req.body; // Extract linkId from the request body
 
     if (!linkId) {
+      await transaction.rollback(); // Rollback if no linkId provided
       return res.status(400).json({
         message: "linkId is required to fetch payment details.",
       });
@@ -991,6 +992,7 @@ export const CashfreePaymentLinkDetails = async (
     // Extract the numeric part from the linkId
     const numericPart = linkId.split("_").pop(); // Extracts the part after the last underscore
     if (!numericPart || isNaN(Number(numericPart))) {
+      await transaction.rollback(); // Rollback if linkId format is invalid
       return res.status(400).json({
         message:
           "Invalid linkId format. Expected format: testcash_link_<number>",
@@ -1009,14 +1011,17 @@ export const CashfreePaymentLinkDetails = async (
         message: `No payment record found for numericPart: ${numericPart}`,
       });
     }
+    
     let sendWhatsAppMessage = true;
     if (payment.status === "success") {
-      sendWhatsAppMessage = false; // Set to true if payment is already successful
-    }
-    if(payment.status === "success"){
+      sendWhatsAppMessage = false; // Don't send WhatsApp message if payment is already successful
+      
+      await transaction.commit(); // Commit the transaction here since we're returning early
+      
       const orderdetails = await Order.findOne({
         where: { id: payment.orderId },
       });
+      
       return res.status(200).json({
         message: "Payment already successful.",
         data: {
@@ -1047,10 +1052,6 @@ export const CashfreePaymentLinkDetails = async (
       const paymentDetails = response.data;
 
       // Update the payment record in the database
-      payment.status =
-        paymentDetails.link_status === "PAID" ? "success" : "pending";
-      payment.transactionId =
-        paymentDetails.transaction_id || payment.transactionId;
       await payment.update(
         {
           status: paymentDetails.link_status === "PAID" ? "success" : "pending",
@@ -1058,10 +1059,9 @@ export const CashfreePaymentLinkDetails = async (
           updatedAt: new Date(),
         },
         { transaction }
-      ); // Update the status, transactionId, and timestamp within the transaction
+      );
 
       // Update the order status based on payment success
-      
       if (paymentDetails.link_status === "PAID") {
         const order = await Order.findByPk(payment.orderId, { transaction });
         if (order) {
@@ -1078,15 +1078,21 @@ export const CashfreePaymentLinkDetails = async (
 
           // Now handle WhatsApp message if needed, regardless of whether QR was just generated
           if (sendWhatsAppMessage) {
-            const { filePath } = await generateOrderQRCode(order, transaction);
-            if (filePath) {
-              let whatsappuploadedid = await uploadImageToAirtelAPI(filePath);
-              console.log("whatsappuploadedid", whatsappuploadedid);
-              sendWhatsQrAppMessage(order, whatsappuploadedid);
+            try {
+              const { filePath } = await generateOrderQRCode(order, transaction);
+              if (filePath) {
+                let whatsappuploadedid = await uploadImageToAirtelAPI(filePath);
+                console.log("whatsappuploadedid", whatsappuploadedid);
+                await sendWhatsQrAppMessage(order, whatsappuploadedid);
+              }
+            } catch (whatsappError) {
+              // Log the error but don't fail the transaction
+              console.error("Error sending WhatsApp message:", whatsappError);
             }
           }
         }
       }
+      
       // Commit the transaction
       await transaction.commit();
 
@@ -1095,7 +1101,6 @@ export const CashfreePaymentLinkDetails = async (
       const orderdetails = await Order.findOne({
         where: { id: payment.orderId },
       });
-      // console.log('Payment details updated successfully:', orderdetails);
 
       return res.status(200).json({
         message: "Payment details updated successfully.",
@@ -1122,6 +1127,7 @@ export const CashfreePaymentLinkDetails = async (
     return res.status(500).json({
       message:
         "An error occurred while fetching or updating payment details from Cashfree.",
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 };
