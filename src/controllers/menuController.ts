@@ -355,7 +355,7 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
     const { canteenId } = req.query;
     const now = moment().tz('Asia/Kolkata');
     const today = now.clone().startOf('day');
-    const tomorrow = now.clone().add(2, 'day').startOf('day');
+    const tomorrow = now.clone().add(1, 'day').startOf('day');
     
     // Prepare date keys
     const dateKeys = [
