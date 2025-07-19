@@ -635,10 +635,10 @@ export const processCashfreePayment = async (
     const CASHFREE_BASE_URL =
       process.env.CASHFREE_BASE_URL || "https://sandbox.cashfree.com/pg";
 
-    console.log("CASHFREE_APP_ID", CASHFREE_APP_ID);
-    console.log("CASHFREE_SECRET_KEY", CASHFREE_SECRET_KEY);
+    // console.log("CASHFREE_APP_ID", CASHFREE_APP_ID);
+    // console.log("CASHFREE_SECRET_KEY", CASHFREE_SECRET_KEY);
 
-    console.log("CASHFREE_BASE_URL", CASHFREE_BASE_URL);
+    // console.log("CASHFREE_BASE_URL", CASHFREE_BASE_URL);
 
     if (!CASHFREE_APP_ID || !CASHFREE_SECRET_KEY) {
       return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -733,13 +733,13 @@ export const cashfreeCallback = async (
     const transaction_id =
       req.method === "GET" ? req.query.transaction_id : req.body.transaction_id;
 
-    console.log(
-      order_id,
-      payment_status,
-      payment_amount,
-      payment_currency,
-      transaction_id
-    );
+    // console.log(
+    //   order_id,
+    //   payment_status,
+    //   payment_amount,
+    //   payment_currency,
+    //   transaction_id
+    // );
 
     // Return a placeholder response for now
     return res.status(statusCodes.SUCCESS).json({
@@ -995,7 +995,7 @@ export const CashfreePaymentLinkDetails = async (
 
   try {
     const { linkId } = req.body; // Extract linkId from the request body
-    console.log("linkId", linkId);
+    // console.log("linkId", linkId);
     if (!linkId) {
       await transaction.rollback(); // Rollback if no linkId provided
       return res.status(400).json({
@@ -1005,7 +1005,7 @@ export const CashfreePaymentLinkDetails = async (
 
     // Extract the numeric part from the linkId
     const numericPart = linkId.split("_").pop(); // Extracts the part after the last underscore
-        console.log("numericPart", numericPart);
+        // console.log("numericPart", numericPart);
 
     if (!numericPart || isNaN(Number(numericPart))) {
       await transaction.rollback(); // Rollback if linkId format is invalid
@@ -1030,7 +1030,7 @@ export const CashfreePaymentLinkDetails = async (
     }
     
     let sendWhatsAppMessage = true;
-    console.log("payment status", payment.status);
+    // console.log("payment status", payment.status);
     if (payment.status === "success") {
       sendWhatsAppMessage = false; // Don't send WhatsApp message if payment is already successful
       
@@ -1045,7 +1045,7 @@ export const CashfreePaymentLinkDetails = async (
         await orderdetails.save({ transaction });
       }
 
-      console.log("orderdetails", orderdetails?.status);
+      // console.log("orderdetails", orderdetails?.status);
       
       return res.status(200).json({
         message: "Payment already successful.",
@@ -1056,7 +1056,7 @@ export const CashfreePaymentLinkDetails = async (
       });
     }
 
-    console.log("Fetching payment details from Cashfree for linkId:", linkId);
+    // console.log("Fetching payment details from Cashfree for linkId:", linkId);
     // Cashfree API credentials
     const CASHFREE_APP_ID = process.env.pgAppID;
     const CASHFREE_SECRET_KEY = process.env.pgSecreteKey;
@@ -1074,12 +1074,12 @@ export const CashfreePaymentLinkDetails = async (
     });
 
     // Handle Cashfree response
-    console.log("response", response.data);
-    console.log("response status", response.status);
+    // console.log("response", response.data);
+    // console.log("response status", response.status);
     if (response.status === 200 && response.data) {
       const paymentDetails = response.data;
 
-      console.log("paymentDetails", paymentDetails.link_status);
+      // console.log("paymentDetails", paymentDetails.link_status);
       // Update the payment record in the database
       await payment.update(
         {
@@ -1091,13 +1091,13 @@ export const CashfreePaymentLinkDetails = async (
       );
 
       // Update the order status based on payment success
-      console.log("paymentDetails.link_status ",paymentDetails.link_status)
+      // console.log("paymentDetails.link_status ",paymentDetails.link_status)
       if (paymentDetails.link_status === "PAID") {
         const order = await Order.findByPk(payment.orderId, { transaction });
-          console.log("order ",order)
+          // console.log("order ",order)
 
         if (order) {
-          console.log("order status ",order.status)
+          // console.log("order status ",order.status)
           order.status = "placed";
           // First, check if we need to generate a QR code
           if (order.qrCode === null || order.qrCode === undefined) {
