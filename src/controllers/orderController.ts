@@ -981,7 +981,7 @@ export const CashfreePaymentLinkDetails = async (
 
   try {
     const { linkId } = req.body; // Extract linkId from the request body
-
+    console.log("linkId", linkId);
     if (!linkId) {
       await transaction.rollback(); // Rollback if no linkId provided
       return res.status(400).json({
@@ -991,6 +991,8 @@ export const CashfreePaymentLinkDetails = async (
 
     // Extract the numeric part from the linkId
     const numericPart = linkId.split("_").pop(); // Extracts the part after the last underscore
+        console.log("numericPart", numericPart);
+
     if (!numericPart || isNaN(Number(numericPart))) {
       await transaction.rollback(); // Rollback if linkId format is invalid
       return res.status(400).json({
@@ -1005,6 +1007,8 @@ export const CashfreePaymentLinkDetails = async (
       transaction, // Use the transaction
     });
 
+    console.log("payment", payment);
+
     if (!payment) {
       await transaction.rollback(); // Rollback the transaction if no payment is found
       return res.status(404).json({
@@ -1013,6 +1017,7 @@ export const CashfreePaymentLinkDetails = async (
     }
     
     let sendWhatsAppMessage = true;
+    console.log("payment status", payment.status);
     if (payment.status === "success") {
       sendWhatsAppMessage = false; // Don't send WhatsApp message if payment is already successful
       
@@ -1031,6 +1036,7 @@ export const CashfreePaymentLinkDetails = async (
       });
     }
 
+    console.log("Fetching payment details from Cashfree for linkId:", linkId);
     // Cashfree API credentials
     const CASHFREE_APP_ID = process.env.pgAppID;
     const CASHFREE_SECRET_KEY = process.env.pgSecreteKey;
