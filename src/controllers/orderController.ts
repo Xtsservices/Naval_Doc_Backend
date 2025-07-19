@@ -25,6 +25,7 @@ import { sendWhatsAppMessage, sendImageWithoutAttachment, uploadImageToAirtelAPI
 import { Op } from "sequelize"; // Import Sequelize operators
 import fs from 'fs';
 import path from 'path';
+import { constants } from "buffer";
 dotenv.config();
 
 export const placeOrder = async (
@@ -1273,7 +1274,7 @@ export const cancelOrder = async (
 
   try {
     const { orderId } = req.body; // Extract orderId from the request body
-
+    console.log("orderId", orderId);
     if (!orderId) {
       return res.status(400).json({
         message: "Order ID is required to cancel the order.",
@@ -1293,6 +1294,7 @@ export const cancelOrder = async (
     });
 
     if (!order) {
+      console.log("No valid order found with ID:", orderId);
       await transaction.rollback(); // Rollback the transaction if no valid order is found
       return res.status(404).json({
         message: "No valid order found with the provided ID.",
@@ -1301,12 +1303,18 @@ export const cancelOrder = async (
 
     // Update the order status to 'canceled'
     order.status = "canceled";
-    await order.save({ transaction });
+    await Order.update(
+      { status: "canceled" },
+      { 
+      where: { id: order.id },
+      transaction 
+      }
+    );
 
     // Process all associated payments using map
     const payments = order.payment; // Fetch all payments associated with the order
     let totalRefundAmount = 0;
-   // console.log("payments", payments);
+   console.log("payments", payments.length);
     await Promise.all(
       payments.map(async (payment: any) => {
         if (payment.status === "success") {
