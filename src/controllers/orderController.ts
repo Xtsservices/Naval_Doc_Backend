@@ -47,6 +47,8 @@ export const placeOrder = async (
       });
     }
 
+    console.log(1)
+
 
     // Ensure userId is a string
     const userIdString = String(userId);
@@ -64,6 +66,8 @@ export const placeOrder = async (
       });
     }
 
+    console.log("2");
+
     const amount = cart.totalAmount;
     const gatewayPercentage = 0;
     const gatewayCharges = (amount * gatewayPercentage) / 100;
@@ -78,6 +82,8 @@ export const placeOrder = async (
     if (platform && platform === "mobile") {
       oderStatus = "placed";
     }
+
+    console.log("3:");
     // Generate a unique order number (e.g., NV + order timestamp + random 4 digits)
     // Generate a unique order number (e.g., NV + order timestamp + random 4 digits)
     // Ensure uniqueness by checking the database and retrying if necessary
@@ -89,6 +95,9 @@ export const placeOrder = async (
         message: "Failed to generate a unique order number. Please try again.",
       });
     }
+
+        console.log("4");
+
     console.log("oderStatus:", oderStatus);
     const order = await Order.create(
       {
@@ -104,9 +113,14 @@ export const placeOrder = async (
       { transaction }
     );
 
+      console.log("5");
+
+
     // Generate QR Code
     const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
     const qrCode = await QRCode.toDataURL(qrCodeData);
+
+      console.log("6");
 
     // Update the order with the QR code
     order.qrCode = qrCode;
@@ -118,6 +132,8 @@ export const placeOrder = async (
       }
     );
 
+    console.log("7");
+
     // Create order items
     const orderItems = cart.cartItems.map((cartItem: any) => ({
       orderId: order.id,
@@ -128,6 +144,7 @@ export const placeOrder = async (
       createdById: userIdString,
     }));
     await OrderItem.bulkCreate(orderItems, { transaction });
+        console.log("8");
 
     // Handle wallet payment
     let walletPaymentAmount = 0;
@@ -228,6 +245,7 @@ export const placeOrder = async (
 
       // Create a payment record for the remaining amount
     }
+    console.log("9");
 
     // Clear the cart
     await CartItem.destroy({ where: { cartId: cart.id }, transaction });
