@@ -58,7 +58,7 @@ export const loginWithMobile = async (req: Request, res: Response) => {
 
     await transaction.commit(); // Commit the transaction
 
-    sendOTPSMS(mobile,otp)
+    let smsres = await sendOTPSMS(mobile,otp)
 
     logger.info(`OTP generated for mobile ${mobile}: ${otp}`);
     res

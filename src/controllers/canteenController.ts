@@ -351,9 +351,10 @@ export const getMenusByCanteen = async (
     // Fetch menus filtered by canteenId and current time
     const menus = await Menu.findAll({
       where: {
-        canteenId,
-        startTime: { [Op.lte]: currentTime }, // Menus that have started
-        endTime: { [Op.gte]: currentTime }, // Menus that haven't ended yet
+      canteenId,
+      status: 'active', // Only return active menus
+      startTime: { [Op.lte]: currentTime }, // Menus that have started
+      endTime: { [Op.gte]: currentTime }, // Menus that haven't ended yet
       },
       attributes: ["id", "name", "startTime", "endTime"], // Select id, name, startTime, and endTime fields
       order: [["startTime", "ASC"]], // Order by startTime

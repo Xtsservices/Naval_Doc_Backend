@@ -805,21 +805,25 @@ export const getMenuByIdforwhatsapp = async (req: Request, res: Response): Promi
 
     // Fetch menu items and their pricing from the Item table
     const menuItems = await MenuItem.findAll({
-      where: { menuId },
+      where: { 
+      menuId,
+      status: 'active' // Only fetch active menu items
+      },
       attributes: ['minQuantity', 'maxQuantity'], // Include minQuantity and maxQuantity from MenuItem
       include: [
+      {
+        model: Item,
+        as: 'menuItemItem', // Ensure this matches the alias in the MenuItem -> Item association
+        attributes: ['id', 'name', 'description'], // Fetch necessary item fields
+        where: { status: 'active' }, // Only fetch active items
+        include: [
         {
-          model: Item,
-          as: 'menuItemItem', // Ensure this matches the alias in the MenuItem -> Item association
-          attributes: ['id', 'name', 'description'], // Fetch necessary item fields
-          include: [
-            {
-              model: Pricing,
-              as: 'pricing', // Ensure this matches the alias in the Item -> Pricing association
-              attributes: ['price', 'currency'], // Fetch necessary pricing fields
-            },
-          ],
+          model: Pricing,
+          as: 'pricing', // Ensure this matches the alias in the Item -> Pricing association
+          attributes: ['price', 'currency'], // Fetch necessary pricing fields
         },
+        ],
+      },
       ],
     });
 
