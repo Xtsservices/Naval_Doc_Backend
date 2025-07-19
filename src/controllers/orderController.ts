@@ -351,7 +351,9 @@ export const listOrders = async (
           attributes: ["id", "amount", "status", "paymentMethod"], // Fetch necessary payment fields
         },
       ],
-      order: [["createdAt", "DESC"]], // Sort by most recent orders
+      order: [
+        [sequelize.fn('CAST', sequelize.col('Order.createdAt'), 'AS', 'INTEGER'), 'DESC']
+      ], // Convert to integer and sort by most recent orders
     });
 
     if (!orders || orders.length === 0) {
