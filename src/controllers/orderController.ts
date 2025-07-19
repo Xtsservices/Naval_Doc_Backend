@@ -69,7 +69,7 @@ export const placeOrder = async (
     const totalAmount = amount + gatewayCharges;
 
     // Create the order
-    let oderStatus = "placed";
+    let oderStatus = "initiated";
     if (paymentMethod.includes("online")) {
       oderStatus = "initiated";
     }
@@ -88,7 +88,7 @@ export const placeOrder = async (
         message: "Failed to generate a unique order number. Please try again.",
       });
     }
-
+    console.log("oderStatus:", oderStatus);
     const order = await Order.create(
       {
         userId: userIdString,
@@ -109,7 +109,13 @@ export const placeOrder = async (
 
     // Update the order with the QR code
     order.qrCode = qrCode;
-    await order.save({ transaction });
+    await Order.update(
+      { qrCode },
+      { 
+        where: { id: order.id },
+        transaction
+      }
+    );
 
     // Create order items
     const orderItems = cart.cartItems.map((cartItem: any) => ({
@@ -178,7 +184,15 @@ export const placeOrder = async (
     let linkResponse = null;
     // Handle remaining payment
     if (remainingAmount > 0) {
-      let status = "success";
+      let status = "pending"; // Default status for online payments
+
+      if(paymentMethod.includes("online")){
+         status = "pending"; // Default status for online payments
+      }
+
+       if(platform && platform ==="mobile"){
+          status = "placed";
+        }
 
       let newpayment = await Payment.create(
         {
