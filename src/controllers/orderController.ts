@@ -197,6 +197,20 @@ export const placeOrder = async (
           },
           { transaction }
         );
+
+        if(remainingAmount == 0) {
+          oderStatus = "placed"; // If wallet covers the total amount, mark order as placed
+          order.status = oderStatus;
+          await Order.update(
+            { status: oderStatus },
+            {
+              where: { id: order.id },
+              transaction
+            }
+          );
+
+        }
+
       }
     }
     let linkResponse = null;
