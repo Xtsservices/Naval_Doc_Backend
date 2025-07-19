@@ -72,6 +72,27 @@ export const placeOrder = async (
     const gatewayPercentage = 0;
     const gatewayCharges = (amount * gatewayPercentage) / 100;
     const totalAmount = amount + gatewayCharges;
+     const creditSum = await Wallet.sum("amount", {
+        where: { userId: userIdString, type: "credit" },
+        transaction,
+      });
+
+      const debitSum = await Wallet.sum("amount", {
+        where: { userId: userIdString, type: "debit" },
+        transaction,
+      });
+
+      const walletBalance = (creditSum || 0) - (debitSum || 0);
+    if(paymentMethod.includes("wallet")){
+       
+
+      if (walletBalance <= 0) {
+        await transaction.rollback();
+        return res.status(statusCodes.BAD_REQUEST).json({
+          message: "in sufficient wallet balance",
+        });
+      }
+    }
 
     // Create the order
     let oderStatus = "initiated";
@@ -150,17 +171,7 @@ export const placeOrder = async (
     let walletPaymentAmount = 0;
     let remainingAmount = totalAmount;
     if (paymentMethod.includes("wallet")) {
-      const creditSum = await Wallet.sum("amount", {
-        where: { userId: userIdString, type: "credit" },
-        transaction,
-      });
-
-      const debitSum = await Wallet.sum("amount", {
-        where: { userId: userIdString, type: "debit" },
-        transaction,
-      });
-
-      const walletBalance = (creditSum || 0) - (debitSum || 0);
+      
 
       if (walletBalance > 0) {
         walletPaymentAmount = Math.min(walletBalance, totalAmount);
