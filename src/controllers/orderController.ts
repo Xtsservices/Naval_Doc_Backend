@@ -490,8 +490,7 @@ export const getTodaysOrders = async (
 ): Promise<Response> => {
   try {
     const canteenId = req.params.canteenId; // Extract canteenId from the request parameters
-    // const { canteenId } = req.user as unknown as { canteenId: string }; // Extract canteenId from the token
-    console.log("canteenId", canteenId);
+    
     if (!canteenId) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage("validation.validationError"),
@@ -499,9 +498,9 @@ export const getTodaysOrders = async (
       });
     }
 
-    // Get today's date range
-    const startOfDay = moment().startOf("day").toDate();
-    const endOfDay = moment().endOf("day").toDate();
+    // Get today's date range as Unix timestamps
+    const startOfDay = moment().startOf("day").unix();
+    const endOfDay = moment().endOf("day").unix();
 
     // Fetch today's orders for the specified canteen
     const orders = await Order.findAll({
@@ -509,7 +508,7 @@ export const getTodaysOrders = async (
         status: "placed",
         canteenId,
         orderDate: {
-          [Op.between]: [startOfDay, endOfDay], // Filter orders created today
+          [Op.between]: [startOfDay, endOfDay], // Use Unix timestamps for comparison
         },
       },
       include: [
@@ -519,22 +518,19 @@ export const getTodaysOrders = async (
           include: [
             {
               model: Item,
-              as: "menuItemItem", // Ensure this matches the alias in the OrderItem -> Item association
-              attributes: ["id", "name"], // Fetch item name and ID
+              as: "menuItemItem",
+              attributes: ["id", "name"],
             },
           ],
         },
         {
           model: Payment,
           as: "payment",
-          attributes: ["id", "amount", "status", "paymentMethod"], // Fetch necessary payment fields
+          attributes: ["id", "amount", "status", "paymentMethod"],
         },
       ],
-      order: [["createdAt", "DESC"]], // Sort by most recent orders
+      order: [["createdAt", "DESC"]],
     });
-
-    console.log("canteenIdu", orders);
-
 
     if (!orders || orders.length === 0) {
       return res.status(statusCodes.SUCCESS).json({
@@ -548,10 +544,8 @@ export const getTodaysOrders = async (
       data: orders,
     });
   } catch (error: unknown) {
-
     logger.error(
-      `Error fetching today's orders: ${error instanceof Error ? error.message : error
-      }`
+      `Error fetching today's orders: ${error instanceof Error ? error.message : error}`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage("error.internalServerError"),
