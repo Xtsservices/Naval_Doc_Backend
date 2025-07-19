@@ -21,8 +21,8 @@ export const adminDashboard = async (req: Request, res: Response): Promise<Respo
   try {
 
     const { canteenId } = req.query; // Extract canteenId from query parameters
-
     // Add condition if canteenId is provided
+    console.log("canteenId", canteenId)
     const whereCondition: any = {};
     if (canteenId) {
       whereCondition.canteenId = canteenId;
