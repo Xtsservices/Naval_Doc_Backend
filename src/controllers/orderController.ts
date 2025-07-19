@@ -1317,9 +1317,11 @@ export const cancelOrder = async (
    console.log("payments", payments.length);
     await Promise.all(
       payments.map(async (payment: any) => {
+                  console.log("Processing refund for payment ID:", payment.id);
+
+        console.log("Processing payment ID:", payment.status);
         if (payment.status === "success") {
           totalRefundAmount += payment.amount;
-          console.log("Processing refund for payment ID:", payment.id);
           console.log("Refund amount:", payment.amount);
           console.log("Payment method:", payment.paymentMethod);
           // Handle wallet payment refund
