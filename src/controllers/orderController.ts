@@ -1007,7 +1007,6 @@ export const CashfreePaymentLinkDetails = async (
       transaction, // Use the transaction
     });
 
-    console.log("payment", payment);
 
     if (!payment) {
       await transaction.rollback(); // Rollback the transaction if no payment is found
@@ -1023,9 +1022,16 @@ export const CashfreePaymentLinkDetails = async (
       
       await transaction.commit(); // Commit the transaction here since we're returning early
       
-      const orderdetails = await Order.findOne({
+      let orderdetails = await Order.findOne({
         where: { id: payment.orderId },
       });
+
+      if(orderdetails && orderdetails.status === "initiated"){
+        orderdetails.status = "placed";
+        await orderdetails.save({ transaction });
+      }
+
+      console.log("orderdetails", orderdetails?.status);
       
       return res.status(200).json({
         message: "Payment already successful.",
@@ -1071,7 +1077,7 @@ export const CashfreePaymentLinkDetails = async (
       );
 
       // Update the order status based on payment success
-      console.log("Paymrnt status ",paymentDetails.link_status)
+      console.log("paymentDetails.link_status ",paymentDetails.link_status)
       if (paymentDetails.link_status === "PAID") {
         const order = await Order.findByPk(payment.orderId, { transaction });
           console.log("order ",order)
