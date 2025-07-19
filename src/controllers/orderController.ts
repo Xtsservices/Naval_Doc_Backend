@@ -1327,7 +1327,7 @@ export const cancelOrder = async (
           // Handle wallet payment refund
           if (
             payment.paymentMethod === "wallet" ||
-            payment.paymentMethod === "online"
+            payment.paymentMethod === "online" ||  payment.paymentMethod === "cash"
           ) {
             await Wallet.create(
               {

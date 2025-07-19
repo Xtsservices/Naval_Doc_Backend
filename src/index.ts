@@ -247,6 +247,35 @@ app.use('/api/voice', voiceRoutes);
 //payment method sdk
 app.use('/api/paymentsdk', paymentSdkRoutes);
 
+// GET endpoint to fetch payment method counts
+// Self-invoked function to get payment method counts
+(async () => {
+  try {
+    const results = await Payment.findAll({
+      attributes: [
+        'paymentMethod',
+        [sequelize.fn('COUNT', sequelize.col('paymentMethod')), 'count']
+      ],
+      
+      group: ['paymentMethod'],
+      raw: true
+    });
+
+
+    // Format the results
+    const paymentMethodCounts = results.map((result: any) => ({
+      method: result.paymentMethod,
+      count: parseInt(result.count)
+    }));
+
+    console.log('Payment method counts:', paymentMethodCounts);
+    // You can do something with the results here
+    return paymentMethodCounts;
+  } catch (error) {
+    console.error('Error fetching payment method counts:', error);
+  }
+})();
+
 
 //  const AIRTEL_API_URL = process.env.AIRTEL_API_URL!;
 // const AIRTEL_TOKEN = process.env.AIRTEL_TOKEN!;
@@ -256,6 +285,8 @@ const AIRTEL_API_URL = "https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basi
 
 const FROM_NUMBER = 917337068888
 const AIRTEL_TOKEN = 'T7W9&w3396Y"';
+
+
 
 interface UserSession {
   items: string[];
