@@ -1048,9 +1048,12 @@ export const CashfreePaymentLinkDetails = async (
     });
 
     // Handle Cashfree response
+    console.log("response", response.data);
+    console.log("response status", response.status);
     if (response.status === 200 && response.data) {
       const paymentDetails = response.data;
 
+      console.log("paymentDetails", paymentDetails.link_status);
       // Update the payment record in the database
       await payment.update(
         {
