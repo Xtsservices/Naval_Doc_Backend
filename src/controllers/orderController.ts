@@ -209,7 +209,7 @@ export const placeOrder = async (
       }
 
       if (platform && platform === "mobile") {
-        status = "placed";
+        status = "success";
       }
 
       let newpayment = await Payment.create(
