@@ -47,7 +47,7 @@ export const placeOrder = async (
       });
     }
 
-    
+
     // Ensure userId is a string
     const userIdString = String(userId);
 
@@ -75,7 +75,7 @@ export const placeOrder = async (
       oderStatus = "initiated";
     }
 
-    if(platform && platform ==="mobile"){
+    if (platform && platform === "mobile") {
       oderStatus = "placed";
     }
     // Generate a unique order number (e.g., NV + order timestamp + random 4 digits)
@@ -112,7 +112,7 @@ export const placeOrder = async (
     order.qrCode = qrCode;
     await Order.update(
       { qrCode },
-      { 
+      {
         where: { id: order.id },
         transaction
       }
@@ -187,13 +187,13 @@ export const placeOrder = async (
     if (remainingAmount > 0) {
       let status = "pending"; // Default status for online payments
 
-      if(paymentMethod.includes("online")){
-         status = "pending"; // Default status for online payments
+      if (paymentMethod.includes("online")) {
+        status = "pending"; // Default status for online payments
       }
 
-       if(platform && platform ==="mobile"){
-          status = "placed";
-        }
+      if (platform && platform === "mobile") {
+        status = "placed";
+      }
 
       let newpayment = await Payment.create(
         {
@@ -217,11 +217,11 @@ export const placeOrder = async (
       } else if (paymentMethod.includes("online")) {
         status = "pending";
 
-        if(platform && platform ==="mobile"){
+        if (platform && platform === "mobile") {
           status = "placed";
         }
-        if(status === "pending"){
-        linkResponse = await PaymentLink(order, newpayment, req.user);
+        if (status === "pending") {
+          linkResponse = await PaymentLink(order, newpayment, req.user);
         }
 
       }
@@ -1006,7 +1006,7 @@ export const CashfreePaymentLinkDetails = async (
 
     // Extract the numeric part from the linkId
     const numericPart = linkId.split("_").pop(); // Extracts the part after the last underscore
-        // console.log("numericPart", numericPart);
+    // console.log("numericPart", numericPart);
 
     if (!numericPart || isNaN(Number(numericPart))) {
       await transaction.rollback(); // Rollback if linkId format is invalid
@@ -1029,25 +1029,25 @@ export const CashfreePaymentLinkDetails = async (
         message: `No payment record found for numericPart: ${numericPart}`,
       });
     }
-    
+
     let sendWhatsAppMessage = true;
     // console.log("payment status", payment.status);
     if (payment.status === "success") {
       sendWhatsAppMessage = false; // Don't send WhatsApp message if payment is already successful
-      
+
       await transaction.commit(); // Commit the transaction here since we're returning early
-      
+
       let orderdetails = await Order.findOne({
         where: { id: payment.orderId },
       });
 
-      if(orderdetails && orderdetails.status === "initiated"){
+      if (orderdetails && orderdetails.status === "initiated") {
         orderdetails.status = "placed";
         await orderdetails.save({ transaction });
       }
 
       // console.log("orderdetails", orderdetails?.status);
-      
+
       return res.status(200).json({
         message: "Payment already successful.",
         data: {
@@ -1095,7 +1095,7 @@ export const CashfreePaymentLinkDetails = async (
       // console.log("paymentDetails.link_status ",paymentDetails.link_status)
       if (paymentDetails.link_status === "PAID") {
         const order = await Order.findByPk(payment.orderId, { transaction });
-          // console.log("order ",order)
+        // console.log("order ",order)
 
         if (order) {
           // console.log("order status ",order.status)
@@ -1109,13 +1109,13 @@ export const CashfreePaymentLinkDetails = async (
 
           // Save the order first
           await Order.update(
-            { 
+            {
               status: "placed",
-              qrCode: order.qrCode 
+              qrCode: order.qrCode
             },
-            { 
+            {
               where: { id: order.id },
-              transaction 
+              transaction
             }
           );
 
@@ -1135,7 +1135,7 @@ export const CashfreePaymentLinkDetails = async (
           }
         }
       }
-      
+
       // Commit the transaction
       await transaction.commit();
 
@@ -1305,19 +1305,19 @@ export const cancelOrder = async (
     order.status = "canceled";
     await Order.update(
       { status: "canceled" },
-      { 
-      where: { id: order.id },
-      transaction 
+      {
+        where: { id: order.id },
+        transaction
       }
     );
 
     // Process all associated payments using map
     const payments = order.payment; // Fetch all payments associated with the order
     let totalRefundAmount = 0;
-   console.log("payments", payments.length);
+    console.log("payments", payments.length);
     await Promise.all(
       payments.map(async (payment: any) => {
-                  console.log("Processing refund for payment ID:", payment.id);
+        console.log("Processing refund for payment ID:", payment.id);
 
         console.log("Processing payment ID:", payment.status);
         if (payment.status === "success") {
@@ -1327,7 +1327,7 @@ export const cancelOrder = async (
           // Handle wallet payment refund
           if (
             payment.paymentMethod === "wallet" ||
-            payment.paymentMethod === "online" 
+            payment.paymentMethod === "online"
           ) {
             await Wallet.create(
               {
@@ -1344,7 +1344,13 @@ export const cancelOrder = async (
 
           // Update the payment status to 'refunded'
           payment.status = "refunded";
-          await payment.save({ transaction });
+          await Payment.update(
+            { status: "refunded" },
+            {
+              where: { id: payment.id },
+              transaction
+            }
+          );
         }
       })
     );
