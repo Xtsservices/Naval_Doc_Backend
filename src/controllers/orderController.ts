@@ -89,7 +89,7 @@ export const placeOrder = async (
       if (walletBalance <= 0) {
         await transaction.rollback();
         return res.status(statusCodes.BAD_REQUEST).json({
-          message: "in sufficient wallet balance",
+          message: "Insufficient wallet balance",
         });
       }
     }
