@@ -1306,7 +1306,7 @@ export const cancelOrder = async (
     // Process all associated payments using map
     const payments = order.payment; // Fetch all payments associated with the order
     let totalRefundAmount = 0;
-    console.log("payments", payments);
+   // console.log("payments", payments);
     await Promise.all(
       payments.map(async (payment: any) => {
         if (payment.status === "success") {
@@ -1317,8 +1317,7 @@ export const cancelOrder = async (
           // Handle wallet payment refund
           if (
             payment.paymentMethod === "wallet" ||
-            payment.paymentMethod === "online" ||
-            payment.paymentMethod === "cash"
+            payment.paymentMethod === "online" 
           ) {
             await Wallet.create(
               {
