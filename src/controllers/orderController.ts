@@ -1311,7 +1311,9 @@ export const cancelOrder = async (
       payments.map(async (payment: any) => {
         if (payment.status === "success") {
           totalRefundAmount += payment.amount;
-
+          console.log("Processing refund for payment ID:", payment.id);
+          console.log("Refund amount:", payment.amount);
+          console.log("Payment method:", payment.paymentMethod);
           // Handle wallet payment refund
           if (
             payment.paymentMethod === "wallet" ||
