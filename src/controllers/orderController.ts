@@ -1062,9 +1062,13 @@ export const CashfreePaymentLinkDetails = async (
       );
 
       // Update the order status based on payment success
+      console.log("Paymrnt status ",paymentDetails.link_status)
       if (paymentDetails.link_status === "PAID") {
         const order = await Order.findByPk(payment.orderId, { transaction });
+          console.log("order ",order)
+
         if (order) {
+          console.log("order status ",order.status)
           order.status = "placed";
           // First, check if we need to generate a QR code
           if (order.qrCode === null || order.qrCode === undefined) {
@@ -1074,7 +1078,16 @@ export const CashfreePaymentLinkDetails = async (
           }
 
           // Save the order first
-          await order.save({ transaction });
+          await Order.update(
+            { 
+              status: "placed",
+              qrCode: order.qrCode 
+            },
+            { 
+              where: { id: order.id },
+              transaction 
+            }
+          );
 
           // Now handle WhatsApp message if needed, regardless of whether QR was just generated
           if (sendWhatsAppMessage) {
