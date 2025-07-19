@@ -11,8 +11,12 @@ const sequelize = new Sequelize(process.env.DATABASE_URL || '', {
     max: 15,         // Maximum number of connections in pool
     min: 2,          // Minimum number of connections in pool
     acquire: 60000,  // Max time (ms) that pool will try to get connection before throwing error
-    idle: 10000      // Max time (ms) that a connection can be idle before being released
-  }
+    idle: 10000,
+    evict: 1000, // Helps clean idle ones
+  },
+  retry: {
+    max: 3 // Retry connection 3 times if it fails
+  },
 });
 
 // Import models
