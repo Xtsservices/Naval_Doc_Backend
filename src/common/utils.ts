@@ -83,7 +83,7 @@ export const getCustomerDetails = async (userId: number): Promise<any> => {
 
 export const generateToken = (
   payload: object,
-  expiresIn: string = "12h"
+  expiresIn: string = "365d"
 ): string => {
   const secret = process.env.JWT_SECRET || "default_secret_for_dev";
   if (!process.env.JWT_SECRET) {
