@@ -1,5 +1,5 @@
 import { sequelize } from "../config/database";
-import { Request, Response } from "express"; // Added Response import
+import e, { Request, Response } from "express"; // Added Response import
 import Cart from "../models/cart";
 import CartItem from "../models/cartItem";
 import Order from "../models/order";
@@ -16,6 +16,8 @@ import Item from "../models/item";
 import axios from "axios";
 import { PaymentLink } from "../common/utils";
 import Wallet from "../models/wallet";
+import menuConfiguration from "../models/menuConfiguration";
+
 import moment from "moment-timezone"; // Import moment-timezone
 moment.tz("Asia/Kolkata");
 import { v4 as uuidv4 } from "uuid";
@@ -26,6 +28,7 @@ import { Op } from "sequelize"; // Import Sequelize operators
 import fs from 'fs';
 import path from 'path';
 import { constants } from "buffer";
+import { combineTableNames } from "sequelize/types/utils";
 dotenv.config();
 
 export const placeOrder = async (
@@ -72,21 +75,21 @@ export const placeOrder = async (
     const gatewayPercentage = 0;
     const gatewayCharges = (amount * gatewayPercentage) / 100;
     const totalAmount = amount + gatewayCharges;
-     const creditSum = await Wallet.sum("amount", {
-        where: { userId: userIdString, type: "credit" },
-        transaction,
-      });
+    const creditSum = await Wallet.sum("amount", {
+      where: { userId: userIdString, type: "credit" },
+      transaction,
+    });
 
-      const debitSum = await Wallet.sum("amount", {
-        where: { userId: userIdString, type: "debit" },
-        transaction,
-      });
+    const debitSum = await Wallet.sum("amount", {
+      where: { userId: userIdString, type: "debit" },
+      transaction,
+    });
 
-      const walletBalance = (creditSum || 0) - (debitSum || 0);
-    if(paymentMethod.includes("wallet")){
-       
+    const walletBalance = (creditSum || 0) - (debitSum || 0);
+    if (paymentMethod.includes("wallet")) {
 
-      if (walletBalance <= 0) {
+
+      if (walletBalance <= 0 || walletBalance < totalAmount) {
         await transaction.rollback();
         return res.status(statusCodes.BAD_REQUEST).json({
           message: "Insufficient wallet balance",
@@ -117,7 +120,7 @@ export const placeOrder = async (
       });
     }
 
-        console.log("4");
+    console.log("4");
 
     console.log("oderStatus:", oderStatus);
     const order = await Order.create(
@@ -134,14 +137,14 @@ export const placeOrder = async (
       { transaction }
     );
 
-      console.log("5");
+    console.log("5");
 
 
     // Generate QR Code
     const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
     const qrCode = await QRCode.toDataURL(qrCodeData);
 
-      console.log("6");
+    console.log("6");
 
     // Update the order with the QR code
     order.qrCode = qrCode;
@@ -165,13 +168,13 @@ export const placeOrder = async (
       createdById: userIdString,
     }));
     await OrderItem.bulkCreate(orderItems, { transaction });
-        console.log("8");
+    console.log("8");
 
     // Handle wallet payment
     let walletPaymentAmount = 0;
     let remainingAmount = totalAmount;
     if (paymentMethod.includes("wallet")) {
-      
+
 
       if (walletBalance > 0) {
         walletPaymentAmount = Math.min(walletBalance, totalAmount);
@@ -209,7 +212,7 @@ export const placeOrder = async (
           { transaction }
         );
 
-        if(remainingAmount == 0) {
+        if (remainingAmount == 0) {
           oderStatus = "placed"; // If wallet covers the total amount, mark order as placed
           order.status = oderStatus;
           await Order.update(
@@ -503,7 +506,7 @@ export const getTodaysOrders = async (
 ): Promise<Response> => {
   try {
     const canteenId = req.params.canteenId; // Extract canteenId from the request parameters
-    
+
     if (!canteenId) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage("validation.validationError"),
@@ -1333,12 +1336,79 @@ export const cancelOrder = async (
     });
 
     if (!order) {
-      console.log("No valid order found with ID:", orderId);
       await transaction.rollback(); // Rollback the transaction if no valid order is found
       return res.status(404).json({
         message: "No valid order found with the provided ID.",
       });
     }
+
+
+    // If the order is already canceled or completed, return an error
+    if (order.status === "canceled" || order.status === "completed") {
+      return res.status(400).json({
+        message: "Order is already canceled or completed.",
+      });
+    }
+
+
+
+    // Check if the order has a menuConfigurationId
+    if (order.menuConfigurationId) {
+      // Fetch the menu configuration details
+      const menuConfigurationdetails = await menuConfiguration.findOne({
+        where: { id: order.menuConfigurationId },
+        transaction,
+      });
+
+      if (menuConfigurationdetails) {
+
+
+        const orderDateUnix = order.orderDate || moment().startOf('day').unix();
+        const menuEndTimeUnix = menuConfigurationdetails.defaultEndTime || 0;
+
+        // Get the year, month, day from the order date
+        const orderDateObj = moment.unix(orderDateUnix);
+        const orderYear = orderDateObj.year();
+        const orderMonth = orderDateObj.month();
+        const orderDay = orderDateObj.date();
+
+
+        const menuEndTimeObj = moment.unix(menuEndTimeUnix);
+        const menuEndHour = menuEndTimeObj.hour();
+        const menuEndMinute = menuEndTimeObj.minute();
+
+        // Create a full timestamp for the cancellation deadline (order date + menu end time)
+        const cancellationDeadline = moment()
+          .year(orderYear)
+          .month(orderMonth)
+          .date(orderDay)
+          .hour(menuEndHour)
+          .minute(menuEndMinute)
+          .unix();
+
+        // Check if current time is before the cancellation deadline
+        const isWithinCancellationWindow = moment().unix() < cancellationDeadline;
+
+        if (isWithinCancellationWindow) {
+          console.log("Cancellation window is still open.");
+        } else {
+          return res.status(400).json({
+            message: "Cancellation window has closed for this order.",
+          });
+        }
+      }
+      else{
+        return res.status(404).json({
+          message: "No menu configuration found for this order.",
+        });
+      }
+    } else {  
+      return res.status(400).json({
+        message: "Order does not have a menuConfigurationId, cannot check cancellation time.",
+      });
+    }
+  
+
 
     // Update the order status to 'canceled'
     order.status = "canceled";
@@ -1353,12 +1423,8 @@ export const cancelOrder = async (
     // Process all associated payments using map
     const payments = order.payment; // Fetch all payments associated with the order
     let totalRefundAmount = 0;
-    console.log("payments", payments.length);
     await Promise.all(
       payments.map(async (payment: any) => {
-        console.log("Processing refund for payment ID:", payment.id);
-
-        console.log("Processing payment ID:", payment.status);
         if (payment.status === "success") {
           totalRefundAmount += payment.amount;
           console.log("Refund amount:", payment.amount);
@@ -1366,7 +1432,7 @@ export const cancelOrder = async (
           // Handle wallet payment refund
           if (
             payment.paymentMethod === "wallet" ||
-            payment.paymentMethod === "online" ||  payment.paymentMethod === "cash" ||  payment.paymentMethod === "UPI"
+            payment.paymentMethod === "online" || payment.paymentMethod === "cash" || payment.paymentMethod === "UPI"
           ) {
             await Wallet.create(
               {

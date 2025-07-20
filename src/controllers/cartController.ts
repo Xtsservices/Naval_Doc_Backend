@@ -320,8 +320,8 @@ export const updateCartItem = async (
 
     if (quantity > menuItem.maxQuantity) {
       await transaction.rollback();
-      return res.status(statusCodes.SUCCESS).json({
-        message: getMessage("menu.itemAboveMaxQuantity"),
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: `Maximum quantity for this item is ${menuItem.maxQuantity}`,
         errors: [`Maximum quantity for this item is ${menuItem.maxQuantity}`],
       });
     }

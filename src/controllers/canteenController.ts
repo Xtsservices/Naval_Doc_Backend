@@ -286,15 +286,19 @@ export const updateCanteen = async (
       transaction,
     });
     if (adminUser) {
-      await adminUser.update(
-        {
-          firstName: firstName ?? adminUser.firstName,
-          lastName: lastName ?? adminUser.lastName,
-          email: email ?? adminUser.email,
-          mobile: mobile ?? adminUser.mobile,
-        },
-        { transaction }
-      );
+      const userUpdateData: any = {};
+      if (firstName !== undefined) userUpdateData.firstName = firstName;
+      if (lastName !== undefined) userUpdateData.lastName = lastName;
+      if (email !== undefined) userUpdateData.email = email;
+      if (mobile !== undefined) userUpdateData.mobile = mobile;
+
+      // Only update if there are fields to update
+      if (Object.keys(userUpdateData).length > 0) {
+        await User.update(userUpdateData, { 
+          where: { id: adminUser.id },
+          transaction 
+        });
+      }
       logger.info(`Admin user updated for canteen ID: ${canteenId}`);
     }
 
@@ -351,10 +355,9 @@ export const getMenusByCanteen = async (
     // Fetch menus filtered by canteenId and current time
     const menus = await Menu.findAll({
       where: {
-      canteenId,
-      status: 'active', // Only return active menus
-      startTime: { [Op.lte]: currentTime }, // Menus that have started
-      endTime: { [Op.gte]: currentTime }, // Menus that haven't ended yet
+        canteenId,
+        startTime: { [Op.lte]: currentTime }, // Menus that have started
+        endTime: { [Op.gte]: currentTime }, // Menus that haven't ended yet
       },
       attributes: ["id", "name", "startTime", "endTime"], // Select id, name, startTime, and endTime fields
       order: [["startTime", "ASC"]], // Order by startTime
