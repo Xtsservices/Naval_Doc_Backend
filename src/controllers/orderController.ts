@@ -545,6 +545,9 @@ export const getTodaysOrders = async (
       order: [["createdAt", "DESC"]],
     });
 
+    console.log("orders no error", orders)
+
+
     if (!orders || orders.length === 0) {
       return res.status(statusCodes.SUCCESS).json({
         data: [],
