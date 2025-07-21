@@ -262,6 +262,7 @@ app.use('/api/paymentsdk', paymentSdkRoutes);
     });
 
 
+    
     // Format the results
     const paymentMethodCounts = results.map((result: any) => ({
       method: result.paymentMethod,
