@@ -22,7 +22,6 @@ export const adminDashboard = async (req: Request, res: Response): Promise<Respo
 
     const { canteenId } = req.query; // Extract canteenId from query parameters
     // Add condition if canteenId is provided
-    console.log
     const whereCondition: any = {};
     if (canteenId) {
       whereCondition.canteenId = canteenId;
@@ -96,7 +95,6 @@ export const getTotalMenus = async (req: Request, res: Response): Promise<Respon
     const whereCondition = canteenId
       ? { canteenId, status: 'active' }
       : { status: 'active' }; // Add condition if canteenId is provided and status is 'active'
-console.log("whereCondition",whereCondition)
     const totalMenus = await Menu.findAll({
       where: whereCondition, // Apply the condition to filter by canteenId
       include: [

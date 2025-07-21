@@ -42,7 +42,6 @@ export const addToCart = async (
       menuConfigurationId,
       orderDate,
     } = req.body; // Include orderDate in the request body
-    console.log("Adding item to cart:", itemId, quantity, menuId, canteenId);
     // Validate required fields
     if (
       !userId ||
@@ -84,10 +83,7 @@ export const addToCart = async (
           errors: ["Invalid order placed"],
         });
       }
-      console.log("mycart", mycart.toJSON());
-    } else {
-      console.log("No active cart found.");
-    }
+    } 
 
     // Convert orderDate to Unix timestamp
     const formattedOrderDate = moment(orderDate, "DD-MM-YYYY"); // Parse the orderDate in dd-mm-yyyy format
@@ -248,7 +244,6 @@ export const updateCartItem = async (
 
   try {
     const { cartId, cartItemId, quantity } = req.body; // Extract values from the request body
-    console.log("step 1", quantity, cartId, cartItemId);
     // Validate required fields
     if (!cartId || !cartItemId || !quantity) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -256,7 +251,6 @@ export const updateCartItem = async (
         errors: ["cartId, cartItemId, and quantity are required"],
       });
     }
-    console.log("step 2", quantity <= 0);
 
     if (quantity <= 0) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -267,7 +261,6 @@ export const updateCartItem = async (
 
     // Verify the cart exists
     const cart = await Cart.findByPk(cartId, { transaction });
-    console.log("step 3");
 
     if (!cart) {
       await transaction.rollback();
@@ -289,7 +282,6 @@ export const updateCartItem = async (
       transaction,
     });
 
-    console.log("step 4", cartItem);
 
     if (!cartItem) {
       await transaction.rollback();
@@ -297,7 +289,6 @@ export const updateCartItem = async (
         message: getMessage("cart.itemNotFound"),
       });
     }
-    console.log("step 5", cartItem.menuItem);
 
     // Check for minimum and maximum quantity constraints
     const menuItem = cartItem.menuItem;
@@ -307,7 +298,6 @@ export const updateCartItem = async (
         message: getMessage("menu.itemNotFound"),
       });
     }
-    console.log("step 6", quantity, menuItem.minQuantity, menuItem.maxQuantity);
 
     if (quantity < menuItem.minQuantity) {
       await transaction.rollback();
@@ -316,7 +306,6 @@ export const updateCartItem = async (
         errors: [`Minimum quantity for this item is ${menuItem.minQuantity}`],
       });
     }
-    console.log("step 7", quantity, menuItem.maxQuantity);
 
     if (quantity > menuItem.maxQuantity) {
       await transaction.rollback();
@@ -338,7 +327,6 @@ export const updateCartItem = async (
     });
     cart.totalAmount = cartItems.reduce((sum, item) => sum + item.total, 0);
     await cart.save({ transaction });
-    console.log("step 8", cart.totalAmount);
 
     // Commit transaction
     await transaction.commit();
@@ -373,7 +361,6 @@ export const removeCartItem = async (
   });
   try {
     const { cartId, cartItemId } = req.body; // Extract cartId and cartItemId from the request body
-    console.log("Removing item from cart:", cartId, cartItemId);
 
     // Validate required fields
     if (!cartId || !cartItemId) {
@@ -554,14 +541,12 @@ export const clearCart = async (
     }
 
     // Find the active cart for the user
-    console.log("Fetching active cart for userId:", userId);
     const cart = await Cart.findOne({
       where: { userId, status: "active" },
       transaction,
     });
 
     if (!cart) {
-      console.log("No active cart found for userId:", userId);
       await transaction.rollback();
       return res.status(statusCodes.NOT_FOUND).json({
         message: getMessage("cart.notFound"),
@@ -569,15 +554,12 @@ export const clearCart = async (
     }
 
     // Clear all items in the cart
-    console.log("Clearing all items in the cart with ID:", cart.id);
     await CartItem.destroy({ where: { cartId: cart.id }, transaction });
 
     // Remove the cart itself
-    console.log("Removing the cart with ID:", cart.id);
     await cart.destroy({ transaction });
 
     // Commit the transaction
-    console.log("Committing transaction for clearing cart with ID:", cart.id);
     await transaction.commit();
 
     return res.status(statusCodes.SUCCESS).json({

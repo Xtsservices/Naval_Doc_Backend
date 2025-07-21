@@ -169,9 +169,7 @@ export const updateMenuWithItems = async (req: Request, res: Response): Promise<
   const { menuId } = req.params;
   const { items, startDate, endDate, description, menuConfigurationId, name } = req.body;
   const userId = req.user?.id;
-  console.log(`Updating menu with ID: ${menuId}`);
-  console.log("startDate:", startDate);
-  console.log("endDate:", endDate);
+
   if (!items || !Array.isArray(items) || items.length === 0) {
     logger.error('Validation error: items must be provided and must be an array');
     return res.status(statusCodes.BAD_REQUEST).json({
@@ -228,7 +226,6 @@ export const updateMenuWithItems = async (req: Request, res: Response): Promise<
     if (menuConfigurationId !== undefined) updateFields.menuConfigurationId = menuConfigurationId;
     if (name !== undefined) updateFields.name = name;
 
-    console.log(`Update fields: ${JSON.stringify(updateFields)}`);
     if (Object.keys(updateFields).length > 0) {
       updateFields.updatedById = userId;
       await Menu.update(updateFields, { where: { id: menuId }, transaction });
@@ -541,7 +538,6 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
   try {
     const { canteenId, date } = req.query; // Extract canteenId and optional date
 
-    console.log(`Canteen ID: ${canteenId}, Date: ${date}`);
     if (!canteenId) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: 'Canteen ID is required.',
@@ -595,23 +591,17 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       ],
     });
 
-    console.log(`Menus found: ${menus.length}`);
     if (menus.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
         message: 'No menus available for the specified canteen.',
         data: []
       });
     }
-    console.log(`Menus found: ${menus.length}, isToday: ${isToday}, targetDateFormatted: ${targetDateFormatted}`);
 
     // Filter menus based on menu configuration times and current time
     const validMenus = menus.filter((menu) => {
       const menuData = menu.toJSON();
       const config = menuData.menuMenuConfiguration;
-      // console.log(`Processing menu: ${menuData.name}, Configuration: ${config?.name}`);
-      // console.log(`Menu Start: ${menuData.startTime}, Menu End: ${menuData.endTime}`);
-      // console.log(`Target Date Start: ${targetDateStart.unix()}, Target Date End: ${targetDateEnd.unix()}`);
-      // console.log(`Config Start: ${config?.defaultStartTime}, Config End: ${config?.defaultEndTime}`);
       if (!config || !config.defaultStartTime || !config.defaultEndTime) {
         return false;
       }
@@ -620,16 +610,12 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       const configStartTime = moment.unix(config.defaultStartTime).tz('Asia/Kolkata');
       const configEndTime = moment.unix(config.defaultEndTime).tz('Asia/Kolkata');
 
-      console.log(configStartTime.format('HH:mm'), configEndTime.format('HH:mm'));
       
       // Create target date's datetime objects with these hours and minutes
       const menuEndTime = targetDateStart.clone()
         .hour(configEndTime.hour())
         .minute(configEndTime.minute());
-      // console.log(`Menu End Time: ${menuEndTime.format('DD-MM-YYYY HH:mm')}`);
-
-      // console.log(`Current Time: ${now.format('DD-MM-YYYY HH:mm')}`);
-      // console.log(`Menu Start Time: ${targetDateStart.format('DD-MM-YYYY HH:mm')}`);
+      
       if (isToday) {
         // For today, check if current time is before the end time
         // Menu is either currently active or will be active later today
@@ -640,7 +626,6 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       }
     });
 
-    console.log(`Valid menus after filtering: ${validMenus.length}`);
 
     if (validMenus.length === 0) {
       return res.status(statusCodes.NOT_FOUND).json({
@@ -649,7 +634,6 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       });
     }
 
-    console.log(`Valid menus found: ${validMenus.length}, targetDateFormatted: ${targetDateFormatted}`);
 
     // Format menus for response
     const formattedMenus = validMenus.map((menu) => {
@@ -684,7 +668,6 @@ export const getMenusByCanteen = async (req: Request, res: Response): Promise<Re
       return menuData;
     });
 
-    console.log(`Formatted menus: ${formattedMenus.length}`);
 
     return res.status(statusCodes.SUCCESS).json({
       message: `Menus fetched successfully for ${targetDateFormatted}.`,

@@ -268,7 +268,6 @@ app.use('/api/paymentsdk', paymentSdkRoutes);
       count: parseInt(result.count)
     }));
 
-    console.log('Payment method counts:', paymentMethodCounts);
     // You can do something with the results here
     return paymentMethodCounts;
   } catch (error) {
@@ -435,7 +434,7 @@ const processSpecialRecipient = async (body: any) => {
   const { messageParameters, sourceAddress: userId } = body;
 
   if (!messageParameters?.text?.body || !userId) {
-    console.error('Invalid payload for special recipient:', body);
+    // console.error('Invalid payload for special recipient:', body);
     return;
   }
 
@@ -616,7 +615,7 @@ if (session.stage === 'cart_selection' && /^\d+\*\d+(,\d+\*\d+)*$/.test(msg)) {
   if (session.stage === 'cart_review') {
     if (msg === '✅' || msg === '1' || msg === 'confirm') {
       delete sessions[userId]; // Clear session
-      console.log('session', session);
+      // console.log('session', session);
 
     
       const transaction = await sequelize.transaction(); // Start a transaction
@@ -859,14 +858,14 @@ export const uploadImageToAirtelAPI = async (filePath: string): Promise<string> 
     // Check if directory exists, if not create it
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
-      console.log(`Created directory: ${uploadDir}`);
+      // console.log(`Created directory: ${uploadDir}`);
     }
     
     const fullPath = filePath || path.join(uploadDir, 'default.png');
     
     // Check if file exists
     if (!fs.existsSync(fullPath)) {
-      console.log(`File not found: ${fullPath}`);
+      // console.log(`File not found: ${fullPath}`);
       
       // Use a default image instead - create a simple 1x1 pixel PNG
       const defaultImagePath = path.join(uploadDir, 'default.png');
@@ -876,17 +875,17 @@ export const uploadImageToAirtelAPI = async (filePath: string): Promise<string> 
         // This is a minimal valid PNG file (1x1 transparent pixel)
         const minimalPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
         fs.writeFileSync(defaultImagePath, minimalPng);
-        console.log(`Created default image: ${defaultImagePath}`);
+        // console.log(`Created default image: ${defaultImagePath}`);
       }
       
       formData.append('file', fs.createReadStream(defaultImagePath));
-      console.log(`Using default image instead: ${defaultImagePath}`);
+      // console.log(`Using default image instead: ${defaultImagePath}`);
     } else {
       formData.append('file', fs.createReadStream(fullPath));
-      console.log(`Using original image: ${fullPath}`);
+      // console.log(`Using original image: ${fullPath}`);
     }
 
-    console.log('Uploading image to Airtel API...');  
+    // console.log('Uploading image to Airtel API...');  
 
     const response = await axios.post(url, formData, {
       headers: {
@@ -951,7 +950,7 @@ export const sendImageWithoutAttachment = async (
     Authorization: `Basic ${auth}`,
     'Content-Type': 'application/json',
   };
-  console.log("to number",to)
+  // console.log("to number",to)
   // Payload for the API
   const payloadData = {
     templateId,

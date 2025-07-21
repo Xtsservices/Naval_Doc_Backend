@@ -50,7 +50,6 @@ export const placeOrder = async (
       });
     }
 
-    console.log(1)
 
 
     // Ensure userId is a string
@@ -69,7 +68,6 @@ export const placeOrder = async (
       });
     }
 
-    console.log("2");
 
     const amount = cart.totalAmount;
     const gatewayPercentage = 0;
@@ -107,7 +105,6 @@ export const placeOrder = async (
       oderStatus = "placed";
     }
 
-    console.log("3:");
     // Generate a unique order number (e.g., NV + order timestamp + random 4 digits)
     // Generate a unique order number (e.g., NV + order timestamp + random 4 digits)
     // Ensure uniqueness by checking the database and retrying if necessary
@@ -120,9 +117,7 @@ export const placeOrder = async (
       });
     }
 
-    console.log("4");
 
-    console.log("oderStatus:", oderStatus);
     const order = await Order.create(
       {
         userId: userIdString,
@@ -137,14 +132,12 @@ export const placeOrder = async (
       { transaction }
     );
 
-    console.log("5");
 
 
     // Generate QR Code
     const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
     const qrCode = await QRCode.toDataURL(qrCodeData);
 
-    console.log("6");
 
     // Update the order with the QR code
     order.qrCode = qrCode;
@@ -156,7 +149,6 @@ export const placeOrder = async (
       }
     );
 
-    console.log("7");
 
     // Create order items
     const orderItems = cart.cartItems.map((cartItem: any) => ({
@@ -168,7 +160,6 @@ export const placeOrder = async (
       createdById: userIdString,
     }));
     await OrderItem.bulkCreate(orderItems, { transaction });
-    console.log("8");
 
     // Handle wallet payment
     let walletPaymentAmount = 0;
@@ -273,7 +264,6 @@ export const placeOrder = async (
 
       // Create a payment record for the remaining amount
     }
-    console.log("9");
 
     // Clear the cart
     await CartItem.destroy({ where: { cartId: cart.id }, transaction });
@@ -283,12 +273,10 @@ export const placeOrder = async (
     await transaction.commit();
 
     if (order.status === "placed") {
-      console.log(`Order placed successfully: ${order.id}`);
       const { base64, filePath } = await generateOrderQRCode(order, transaction);
 
       if (filePath) {
         let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
-        console.log("whatsappuploadedid", whatsappuploadedid);
         sendWhatsQrAppMessage(order, whatsappuploadedid)
       }
 
@@ -307,8 +295,6 @@ export const placeOrder = async (
       },
     });
   } catch (error: unknown) {
-    console.log("placeordererror", error);
-
     await transaction.rollback();
     logger.error(
       `Error placing order: ${error instanceof Error ? error.message : error}`
@@ -678,11 +664,6 @@ export const processCashfreePayment = async (
     const CASHFREE_BASE_URL =
       process.env.CASHFREE_BASE_URL || "https://sandbox.cashfree.com/pg";
 
-    // console.log("CASHFREE_APP_ID", CASHFREE_APP_ID);
-    // console.log("CASHFREE_SECRET_KEY", CASHFREE_SECRET_KEY);
-
-    // console.log("CASHFREE_BASE_URL", CASHFREE_BASE_URL);
-
     if (!CASHFREE_APP_ID || !CASHFREE_SECRET_KEY) {
       return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
         message: "Cashfree credentials are not configured",
@@ -775,14 +756,6 @@ export const cashfreeCallback = async (
         : req.body.payment_currency;
     const transaction_id =
       req.method === "GET" ? req.query.transaction_id : req.body.transaction_id;
-
-    // console.log(
-    //   order_id,
-    //   payment_status,
-    //   payment_amount,
-    //   payment_currency,
-    //   transaction_id
-    // );
 
     // Return a placeholder response for now
     return res.status(statusCodes.SUCCESS).json({
@@ -1038,7 +1011,6 @@ export const CashfreePaymentLinkDetails = async (
 
   try {
     const { linkId } = req.body; // Extract linkId from the request body
-    // console.log("linkId", linkId);
     if (!linkId) {
       await transaction.rollback(); // Rollback if no linkId provided
       return res.status(400).json({
@@ -1048,7 +1020,6 @@ export const CashfreePaymentLinkDetails = async (
 
     // Extract the numeric part from the linkId
     const numericPart = linkId.split("_").pop(); // Extracts the part after the last underscore
-    // console.log("numericPart", numericPart);
 
     if (!numericPart || isNaN(Number(numericPart))) {
       await transaction.rollback(); // Rollback if linkId format is invalid
@@ -1073,7 +1044,6 @@ export const CashfreePaymentLinkDetails = async (
     }
 
     let sendWhatsAppMessage = true;
-    // console.log("payment status", payment.status);
     if (payment.status === "success") {
       sendWhatsAppMessage = false; // Don't send WhatsApp message if payment is already successful
 
@@ -1088,7 +1058,6 @@ export const CashfreePaymentLinkDetails = async (
         await orderdetails.save({ transaction });
       }
 
-      // console.log("orderdetails", orderdetails?.status);
 
       return res.status(200).json({
         message: "Payment already successful.",
@@ -1099,7 +1068,6 @@ export const CashfreePaymentLinkDetails = async (
       });
     }
 
-    // console.log("Fetching payment details from Cashfree for linkId:", linkId);
     // Cashfree API credentials
     const CASHFREE_APP_ID = process.env.pgAppID;
     const CASHFREE_SECRET_KEY = process.env.pgSecreteKey;
@@ -1117,12 +1085,10 @@ export const CashfreePaymentLinkDetails = async (
     });
 
     // Handle Cashfree response
-    // console.log("response", response.data);
-    // console.log("response status", response.status);
+
     if (response.status === 200 && response.data) {
       const paymentDetails = response.data;
 
-      // console.log("paymentDetails", paymentDetails.link_status);
       // Update the payment record in the database
       await payment.update(
         {
@@ -1134,13 +1100,10 @@ export const CashfreePaymentLinkDetails = async (
       );
 
       // Update the order status based on payment success
-      // console.log("paymentDetails.link_status ",paymentDetails.link_status)
       if (paymentDetails.link_status === "PAID") {
         const order = await Order.findByPk(payment.orderId, { transaction });
-        // console.log("order ",order)
 
         if (order) {
-          // console.log("order status ",order.status)
           order.status = "placed";
           // First, check if we need to generate a QR code
           if (order.qrCode === null || order.qrCode === undefined) {
@@ -1167,7 +1130,6 @@ export const CashfreePaymentLinkDetails = async (
               const { filePath } = await generateOrderQRCode(order, transaction);
               if (filePath) {
                 let whatsappuploadedid = await uploadImageToAirtelAPI(filePath);
-                console.log("whatsappuploadedid", whatsappuploadedid);
                 await sendWhatsQrAppMessage(order, whatsappuploadedid);
               }
             } catch (whatsappError) {
@@ -1182,7 +1144,6 @@ export const CashfreePaymentLinkDetails = async (
       await transaction.commit();
 
       // Return the updated payment details as a response
-      console.log("Payment details updated successfully:", payment.orderId);
       const orderdetails = await Order.findOne({
         where: { id: payment.orderId },
       });
@@ -1261,7 +1222,6 @@ const sendWhatsQrAppMessage = async (order: any, whatsappuploadedid: any | null)
     );
 
   } else {
-
     sendImageWithoutAttachment(
       toNumber,
       "01jxc2n4fawcmzwpewsx7024wg",
@@ -1316,7 +1276,6 @@ export const cancelOrder = async (
 
   try {
     const { orderId } = req.body; // Extract orderId from the request body
-    console.log("orderId", orderId);
     if (!orderId) {
       return res.status(400).json({
         message: "Order ID is required to cancel the order.",
@@ -1390,7 +1349,7 @@ export const cancelOrder = async (
         const isWithinCancellationWindow = moment().unix() < cancellationDeadline;
 
         if (isWithinCancellationWindow) {
-          console.log("Cancellation window is still open.");
+          // console.log("Cancellation window is still open.");
         } else {
           return res.status(400).json({
             message: "Cancellation window has closed for this order.",
@@ -1427,8 +1386,6 @@ export const cancelOrder = async (
       payments.map(async (payment: any) => {
         if (payment.status === "success") {
           totalRefundAmount += payment.amount;
-          console.log("Refund amount:", payment.amount);
-          console.log("Payment method:", payment.paymentMethod);
           // Handle wallet payment refund
           if (
             payment.paymentMethod === "wallet" ||
@@ -1872,7 +1829,6 @@ export const generateOrderQRCode = async (order: any, transaction?: any): Promis
     const uploadDir = path.join(__dirname, '../../upload');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
-      // console.log(`Created directory: ${uploadDir}`);
     }
 
     const qrCodeFilePath = path.join(uploadDir, qrCodeFileName);
@@ -1902,8 +1858,6 @@ export const generateOrderQRCode = async (order: any, transaction?: any): Promis
       order.qrCodeFilePath = qrCodeFilePath;
       // await order.save({ transaction });
     }
-
-    // console.log(`QR code saved to file: ${qrCodeFilePath}`);
 
     return {
       base64: qrCodeBase64,

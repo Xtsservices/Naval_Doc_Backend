@@ -177,7 +177,6 @@ export const verifyOtp = async (req: Request, res: Response) => {
       } 
       // Get canteen name if user has canteenId
       
-      console.log("canteenIddata",user)
       if (user.canteenId) {
         const canteen = await Canteen.findOne({ where: { id: user.canteenId } });
         canteenName = canteen?.dataValues?.canteenName ? canteen.dataValues.canteenName : null;

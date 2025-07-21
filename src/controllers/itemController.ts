@@ -30,7 +30,6 @@ export const createItem = async (
   const image = req.file?.buffer; // Get the binary data of the uploaded image
   const status = req.body.status || "active"; // Default status to 'active' if not provided
   const currency = req.body.currency || "INR"; // Default currency to 'INR' if not provided
-  console.log("errorcurrency", currency);
 
   // Validate the request body
   const { error } = createItemValidation.validate({
@@ -55,7 +54,6 @@ export const createItem = async (
   // Validate and convert startDate and endDate to Unix timestamps
   const startDateUnix = moment(startDate, "DD-MM-YYYY", true);
   const endDateUnix = moment(endDate, "DD-MM-YYYY", true);
-  console.log("startDateUnix", startDateUnix);
 
   if (!startDateUnix.isValid() || !endDateUnix.isValid()) {
     logger.error("Invalid date format. Expected format is dd-mm-yyyy.");
@@ -72,7 +70,6 @@ export const createItem = async (
       where: { name, status: "active" },
       transaction,
     });
-    console.log("existingItem", existingItem);
 
     if (existingItem) {
       logger.warn(`Item with name "${name}" already exists`);
@@ -81,14 +78,7 @@ export const createItem = async (
       });
     }
 
-    console.log("🧪 Item Input Debug:");
-    console.log("name:", name, "| type:", typeof name);
-    console.log("description:", description, "| type:", typeof description);
-    console.log("type:", type, "| type:", typeof type);
-    console.log("quantity:", quantity, "| type:", typeof quantity);
-    console.log("quantityUnit:", quantityUnit, "| type:", typeof quantityUnit);
-    console.log("status:", status, "| type:", typeof status);
-    console.log("image:", image ? `Buffer (${image.length} bytes)` : "null");
+   
 
     // Create a new item
     const item = await Item.create(
@@ -104,7 +94,6 @@ export const createItem = async (
       { transaction }
     );
 
-    console.log("item", item);
 
     // Create the pricing for the item
     const pricing = await Pricing.create(

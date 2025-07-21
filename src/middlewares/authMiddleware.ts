@@ -80,7 +80,6 @@ const authenticateToken = async (req: Request, res: Response, next: NextFunction
     //   iat: decoded.iat,
     // }
 
-    // console.log('Decoded token:', 2, req.user);
 
 
 
