@@ -484,25 +484,29 @@ export const getTodaysOrders = async (
   res: Response
 ): Promise<Response> => {
   try {
-    const canteenIdRaw = req.params.canteenId; // Extract canteenId from request
-    console.log("canteenIdRaw", canteenIdRaw)
-    if (!canteenIdRaw) {
-      return res.status(statusCodes.BAD_REQUEST).json({
-        message: getMessage("validation.validationError"),
-        errors: ["Canteen ID is required"],
-      });
-    }
 
-    const canteenId = parseInt(canteenIdRaw, 10);
-    console.log("canteenId", canteenId)
+    const canteenId = req.params.canteenId; // Extract canteenId from request
+
+    // const canteenIdRaw = req.params.canteenId; // Extract canteenId from request
+    // console.log("canteenIdRaw", canteenIdRaw)
+    // if (!canteenIdRaw) {
+    //   return res.status(statusCodes.BAD_REQUEST).json({
+    //     message: getMessage("validation.validationError"),
+    //     errors: ["Canteen ID is required"],
+    //   });
+    // }
+
+    // const canteenId = parseInt(canteenIdRaw, 10);
+    console.log("canteenId=====", canteenId)
+    console.log("canteenId=====", typeof(canteenId))
 
 
-    if (isNaN(canteenId)) {
-      return res.status(statusCodes.BAD_REQUEST).json({
-        message: getMessage("validation.validationError"),
-        errors: ["Canteen ID must be a valid number"],
-      });
-    }
+    // if (isNaN(canteenId)) {
+    //   return res.status(statusCodes.BAD_REQUEST).json({
+    //     message: getMessage("validation.validationError"),
+    //     errors: ["Canteen ID must be a valid number"],
+    //   });
+    // }
 
     console.log("canteenId no error", canteenId)
 
