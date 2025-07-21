@@ -421,8 +421,7 @@ export const getOrderById = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching order by ID: ${
-        error instanceof Error ? error.message : error
+      `Error fetching order by ID: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -471,8 +470,7 @@ export const getAllOrders = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching all orders: ${
-        error instanceof Error ? error.message : error
+      `Error fetching all orders: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -487,7 +485,7 @@ export const getTodaysOrders = async (
 ): Promise<Response> => {
   try {
     const canteenIdRaw = req.params.canteenId; // Extract canteenId from request
-
+    console.log("canteenIdRaw", canteenIdRaw)
     if (!canteenIdRaw) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage("validation.validationError"),
@@ -496,6 +494,8 @@ export const getTodaysOrders = async (
     }
 
     const canteenId = parseInt(canteenIdRaw, 10);
+    console.log("canteenId", canteenId)
+
 
     if (isNaN(canteenId)) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -503,6 +503,9 @@ export const getTodaysOrders = async (
         errors: ["Canteen ID must be a valid number"],
       });
     }
+
+    console.log("canteenId no error", canteenId)
+
 
     // Get today's date range as Unix timestamps
     const startOfDay = moment().startOf("day").unix();
@@ -551,8 +554,7 @@ export const getTodaysOrders = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching today's orders: ${
-        error instanceof Error ? error.message : error
+      `Error fetching today's orders: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -584,8 +586,7 @@ export const getOrdersSummary = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching orders summary: ${
-        error instanceof Error ? error.message : error
+      `Error fetching orders summary: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -626,8 +627,7 @@ export const getOrdersByCanteen = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching orders by canteen: ${
-        error instanceof Error ? error.message : error
+      `Error fetching orders by canteen: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -737,8 +737,7 @@ export const processCashfreePayment = async (
       logger.error("Cashfree Error Response:", error.response?.data);
     }
     logger.error(
-      `Error processing Cashfree payment: ${
-        error instanceof Error ? error.message : error
+      `Error processing Cashfree payment: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -779,8 +778,7 @@ export const cashfreeCallback = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error processing Cashfree callback: ${
-        error instanceof Error ? error.message : error
+      `Error processing Cashfree callback: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -890,8 +888,7 @@ export const createPaymentLink = async (
       logger.error("Cashfree Error Response:", error.response?.data);
     }
     logger.error(
-      `Error creating Cashfree payment link: ${
-        error instanceof Error ? error.message : error
+      `Error creating Cashfree payment link: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -1005,8 +1002,7 @@ export const createCashfreePaymentLink = async (
       logger.error("Cashfree Error Response:", error.response?.data);
     }
     logger.error(
-      `Error creating Cashfree payment link: ${
-        error instanceof Error ? error.message : error
+      `Error creating Cashfree payment link: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -1626,8 +1622,7 @@ export const updateOrderStatus = async (
     await transaction.rollback();
 
     logger.error(
-      `Error updating order statuses: ${
-        error instanceof Error ? error.message : error
+      `Error updating order statuses: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -1811,8 +1806,7 @@ export const createWalkinOrders = async (
   } catch (error: unknown) {
     await transaction.rollback();
     logger.error(
-      `Error creating walkin orders: ${
-        error instanceof Error ? error.message : error
+      `Error creating walkin orders: ${error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
