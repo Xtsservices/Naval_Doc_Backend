@@ -22,11 +22,15 @@ import moment from "moment-timezone"; // Import moment-timezone
 moment.tz("Asia/Kolkata");
 import { v4 as uuidv4 } from "uuid";
 import { User } from "../models";
-import { sendWhatsAppMessage, sendImageWithoutAttachment, uploadImageToAirtelAPI } from "../index";
+import {
+  sendWhatsAppMessage,
+  sendImageWithoutAttachment,
+  uploadImageToAirtelAPI,
+} from "../index";
 
 import { Op } from "sequelize"; // Import Sequelize operators
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
 import { constants } from "buffer";
 import { combineTableNames } from "sequelize/types/utils";
 dotenv.config();
@@ -38,10 +42,14 @@ export const placeOrder = async (
   const transaction: Transaction = await sequelize.transaction();
 
   try {
-
     const { userId } = req.user as unknown as { userId: string };
 
-    const { paymentMethod, transactionId, currency = "INR", platform } = req.body;
+    const {
+      paymentMethod,
+      transactionId,
+      currency = "INR",
+      platform,
+    } = req.body;
 
     if (!userId || !paymentMethod) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -49,8 +57,6 @@ export const placeOrder = async (
         errors: ["userId and paymentMethod are required"],
       });
     }
-
-
 
     // Ensure userId is a string
     const userIdString = String(userId);
@@ -68,7 +74,6 @@ export const placeOrder = async (
       });
     }
 
-
     const amount = cart.totalAmount;
     const gatewayPercentage = 0;
     const gatewayCharges = (amount * gatewayPercentage) / 100;
@@ -85,8 +90,6 @@ export const placeOrder = async (
 
     const walletBalance = (creditSum || 0) - (debitSum || 0);
     if (paymentMethod.includes("wallet")) {
-
-
       if (walletBalance <= 0 || walletBalance < totalAmount) {
         await transaction.rollback();
         return res.status(statusCodes.BAD_REQUEST).json({
@@ -117,7 +120,6 @@ export const placeOrder = async (
       });
     }
 
-
     const order = await Order.create(
       {
         userId: userIdString,
@@ -132,12 +134,9 @@ export const placeOrder = async (
       { transaction }
     );
 
-
-
     // Generate QR Code
     const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
     const qrCode = await QRCode.toDataURL(qrCodeData);
-
 
     // Update the order with the QR code
     order.qrCode = qrCode;
@@ -145,10 +144,9 @@ export const placeOrder = async (
       { qrCode },
       {
         where: { id: order.id },
-        transaction
+        transaction,
       }
     );
-
 
     // Create order items
     const orderItems = cart.cartItems.map((cartItem: any) => ({
@@ -165,8 +163,6 @@ export const placeOrder = async (
     let walletPaymentAmount = 0;
     let remainingAmount = totalAmount;
     if (paymentMethod.includes("wallet")) {
-
-
       if (walletBalance > 0) {
         walletPaymentAmount = Math.min(walletBalance, totalAmount);
         remainingAmount = totalAmount - walletPaymentAmount;
@@ -210,12 +206,10 @@ export const placeOrder = async (
             { status: oderStatus },
             {
               where: { id: order.id },
-              transaction
+              transaction,
             }
           );
-
         }
-
       }
     }
     let linkResponse = null;
@@ -259,7 +253,6 @@ export const placeOrder = async (
         if (status === "pending") {
           linkResponse = await PaymentLink(order, newpayment, req.user);
         }
-
       }
 
       // Create a payment record for the remaining amount
@@ -273,13 +266,15 @@ export const placeOrder = async (
     await transaction.commit();
 
     if (order.status === "placed") {
-      const { base64, filePath } = await generateOrderQRCode(order, transaction);
+      const { base64, filePath } = await generateOrderQRCode(
+        order,
+        transaction
+      );
 
       if (filePath) {
-        let whatsappuploadedid = await uploadImageToAirtelAPI(filePath)
-        sendWhatsQrAppMessage(order, whatsappuploadedid)
+        let whatsappuploadedid = await uploadImageToAirtelAPI(filePath);
+        sendWhatsQrAppMessage(order, whatsappuploadedid);
       }
-
     }
 
     return res.status(statusCodes.SUCCESS).json({
@@ -340,9 +335,7 @@ export const listOrders = async (
           attributes: ["id", "amount", "status", "paymentMethod"], // Fetch necessary payment fields
         },
       ],
-      order: [
-        ['createdAt', 'DESC']
-      ], // Sort by most recent orders
+      order: [["createdAt", "DESC"]], // Sort by most recent orders
     });
 
     if (!orders || orders.length === 0) {
@@ -428,7 +421,8 @@ export const getOrderById = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching order by ID: ${error instanceof Error ? error.message : error
+      `Error fetching order by ID: ${
+        error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -477,7 +471,8 @@ export const getAllOrders = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching all orders: ${error instanceof Error ? error.message : error
+      `Error fetching all orders: ${
+        error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -491,12 +486,21 @@ export const getTodaysOrders = async (
   res: Response
 ): Promise<Response> => {
   try {
-    const canteenId = req.params.canteenId; // Extract canteenId from the request parameters
+    const canteenIdRaw = req.params.canteenId; // Extract canteenId from request
 
-    if (!canteenId) {
+    if (!canteenIdRaw) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage("validation.validationError"),
         errors: ["Canteen ID is required"],
+      });
+    }
+
+    const canteenId = parseInt(canteenIdRaw, 10);
+
+    if (isNaN(canteenId)) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage("validation.validationError"),
+        errors: ["Canteen ID must be a valid number"],
       });
     }
 
@@ -547,7 +551,9 @@ export const getTodaysOrders = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching today's orders: ${error instanceof Error ? error.message : error}`
+      `Error fetching today's orders: ${
+        error instanceof Error ? error.message : error
+      }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage("error.internalServerError"),
@@ -578,7 +584,8 @@ export const getOrdersSummary = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching orders summary: ${error instanceof Error ? error.message : error
+      `Error fetching orders summary: ${
+        error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -619,7 +626,8 @@ export const getOrdersByCanteen = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching orders by canteen: ${error instanceof Error ? error.message : error
+      `Error fetching orders by canteen: ${
+        error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -729,7 +737,8 @@ export const processCashfreePayment = async (
       logger.error("Cashfree Error Response:", error.response?.data);
     }
     logger.error(
-      `Error processing Cashfree payment: ${error instanceof Error ? error.message : error
+      `Error processing Cashfree payment: ${
+        error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -770,7 +779,8 @@ export const cashfreeCallback = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error processing Cashfree callback: ${error instanceof Error ? error.message : error
+      `Error processing Cashfree callback: ${
+        error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -880,7 +890,8 @@ export const createPaymentLink = async (
       logger.error("Cashfree Error Response:", error.response?.data);
     }
     logger.error(
-      `Error creating Cashfree payment link: ${error instanceof Error ? error.message : error
+      `Error creating Cashfree payment link: ${
+        error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -994,7 +1005,8 @@ export const createCashfreePaymentLink = async (
       logger.error("Cashfree Error Response:", error.response?.data);
     }
     logger.error(
-      `Error creating Cashfree payment link: ${error instanceof Error ? error.message : error
+      `Error creating Cashfree payment link: ${
+        error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -1035,7 +1047,6 @@ export const CashfreePaymentLinkDetails = async (
       transaction, // Use the transaction
     });
 
-
     if (!payment) {
       await transaction.rollback(); // Rollback the transaction if no payment is found
       return res.status(404).json({
@@ -1057,7 +1068,6 @@ export const CashfreePaymentLinkDetails = async (
         orderdetails.status = "placed";
         await orderdetails.save({ transaction });
       }
-
 
       return res.status(200).json({
         message: "Payment already successful.",
@@ -1116,18 +1126,21 @@ export const CashfreePaymentLinkDetails = async (
           await Order.update(
             {
               status: "placed",
-              qrCode: order.qrCode
+              qrCode: order.qrCode,
             },
             {
               where: { id: order.id },
-              transaction
+              transaction,
             }
           );
 
           // Now handle WhatsApp message if needed, regardless of whether QR was just generated
           if (sendWhatsAppMessage) {
             try {
-              const { filePath } = await generateOrderQRCode(order, transaction);
+              const { filePath } = await generateOrderQRCode(
+                order,
+                transaction
+              );
               if (filePath) {
                 let whatsappuploadedid = await uploadImageToAirtelAPI(filePath);
                 await sendWhatsQrAppMessage(order, whatsappuploadedid);
@@ -1194,7 +1207,10 @@ interface WhatsAppMessagePayload {
   };
 }
 
-const sendWhatsQrAppMessage = async (order: any, whatsappuploadedid: any | null): Promise<void> => {
+const sendWhatsQrAppMessage = async (
+  order: any,
+  whatsappuploadedid: any | null
+): Promise<void> => {
   const userId = order.userId; // Extract userId from the order object
   const user: any = await User.findOne({ where: { id: userId } }); // Fetch user details from the User table
   const phoneNumber = user?.mobile; // Get the phone number from the user details
@@ -1208,7 +1224,6 @@ const sendWhatsQrAppMessage = async (order: any, whatsappuploadedid: any | null)
   let toNumber = "91".concat(phoneNumber);
 
   if (whatsappuploadedid) {
-
     /// sendOrderSMS
     let smsresult = await sendOrderSMS(phoneNumber, order.orderNo, name);
     console.log("smsresult", smsresult);
@@ -1216,11 +1231,10 @@ const sendWhatsQrAppMessage = async (order: any, whatsappuploadedid: any | null)
     sendImageWithoutAttachment(
       toNumber,
       "01jxc2n4fawcmzwpewsx7024wg",
-      [name,],
+      [name],
       [],
       whatsappuploadedid
     );
-
   } else {
     sendImageWithoutAttachment(
       toNumber,
@@ -1229,9 +1243,7 @@ const sendWhatsQrAppMessage = async (order: any, whatsappuploadedid: any | null)
       [],
       whatsappuploadedid
     );
-
   }
-
 
   // const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/media';
   // const username = 'world_tek';
@@ -1301,15 +1313,12 @@ export const cancelOrder = async (
       });
     }
 
-
     // If the order is already canceled or completed, return an error
     if (order.status === "canceled" || order.status === "completed") {
       return res.status(400).json({
         message: "Order is already canceled or completed.",
       });
     }
-
-
 
     // Check if the order has a menuConfigurationId
     if (order.menuConfigurationId) {
@@ -1320,9 +1329,7 @@ export const cancelOrder = async (
       });
 
       if (menuConfigurationdetails) {
-
-
-        const orderDateUnix = order.orderDate || moment().startOf('day').unix();
+        const orderDateUnix = order.orderDate || moment().startOf("day").unix();
         const menuEndTimeUnix = menuConfigurationdetails.defaultEndTime || 0;
 
         // Get the year, month, day from the order date
@@ -1330,7 +1337,6 @@ export const cancelOrder = async (
         const orderYear = orderDateObj.year();
         const orderMonth = orderDateObj.month();
         const orderDay = orderDateObj.date();
-
 
         const menuEndTimeObj = moment.unix(menuEndTimeUnix);
         const menuEndHour = menuEndTimeObj.hour();
@@ -1346,7 +1352,8 @@ export const cancelOrder = async (
           .unix();
 
         // Check if current time is before the cancellation deadline
-        const isWithinCancellationWindow = moment().unix() < cancellationDeadline;
+        const isWithinCancellationWindow =
+          moment().unix() < cancellationDeadline;
 
         if (isWithinCancellationWindow) {
           // console.log("Cancellation window is still open.");
@@ -1355,19 +1362,17 @@ export const cancelOrder = async (
             message: "Cancellation window has closed for this order.",
           });
         }
-      }
-      else{
+      } else {
         return res.status(404).json({
           message: "No menu configuration found for this order.",
         });
       }
-    } else {  
+    } else {
       return res.status(400).json({
-        message: "Order does not have a menuConfigurationId, cannot check cancellation time.",
+        message:
+          "Order does not have a menuConfigurationId, cannot check cancellation time.",
       });
     }
-  
-
 
     // Update the order status to 'canceled'
     order.status = "canceled";
@@ -1375,7 +1380,7 @@ export const cancelOrder = async (
       { status: "canceled" },
       {
         where: { id: order.id },
-        transaction
+        transaction,
       }
     );
 
@@ -1389,7 +1394,9 @@ export const cancelOrder = async (
           // Handle wallet payment refund
           if (
             payment.paymentMethod === "wallet" ||
-            payment.paymentMethod === "online" || payment.paymentMethod === "cash" || payment.paymentMethod === "UPI"
+            payment.paymentMethod === "online" ||
+            payment.paymentMethod === "cash" ||
+            payment.paymentMethod === "UPI"
           ) {
             await Wallet.create(
               {
@@ -1410,7 +1417,7 @@ export const cancelOrder = async (
             { status: "refunded" },
             {
               where: { id: payment.id },
-              transaction
+              transaction,
             }
           );
         }
@@ -1538,7 +1545,10 @@ export const getWalletBalance = async (
   }
 };
 
-export async function generateUniqueOrderNo(userId: any, transaction: Transaction) {
+export async function generateUniqueOrderNo(
+  userId: any,
+  transaction: Transaction
+) {
   let orderNo: string;
   let isUnique = false;
   let attempts = 0;
@@ -1616,7 +1626,8 @@ export const updateOrderStatus = async (
     await transaction.rollback();
 
     logger.error(
-      `Error updating order statuses: ${error instanceof Error ? error.message : error
+      `Error updating order statuses: ${
+        error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -1800,7 +1811,8 @@ export const createWalkinOrders = async (
   } catch (error: unknown) {
     await transaction.rollback();
     logger.error(
-      `Error creating walkin orders: ${error instanceof Error ? error.message : error
+      `Error creating walkin orders: ${
+        error instanceof Error ? error.message : error
       }`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -1809,15 +1821,16 @@ export const createWalkinOrders = async (
   }
 };
 
-
-
 /**
  * Generates a QR code for an order and saves it both as a PNG file and base64 string
  * @param order - The order object that needs a QR code
  * @param transaction - Optional Sequelize transaction
  * @returns Object with the base64 string and file path
  */
-export const generateOrderQRCode = async (order: any, transaction?: any): Promise<{ base64: string, filePath: string }> => {
+export const generateOrderQRCode = async (
+  order: any,
+  transaction?: any
+): Promise<{ base64: string; filePath: string }> => {
   try {
     // Create QR code data URL with order details
     const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
@@ -1826,7 +1839,7 @@ export const generateOrderQRCode = async (order: any, transaction?: any): Promis
     const qrCodeFileName = `order_${order.OrderNo}_${Date.now()}.png`;
 
     // Ensure upload directory exists
-    const uploadDir = path.join(__dirname, '../../upload');
+    const uploadDir = path.join(__dirname, "../../upload");
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -1835,13 +1848,13 @@ export const generateOrderQRCode = async (order: any, transaction?: any): Promis
 
     // Configure QR code options for high quality
     const qrCodeOptions = {
-      errorCorrectionLevel: 'H' as const, // High error correction for better scanning
+      errorCorrectionLevel: "H" as const, // High error correction for better scanning
       width: 300, // QR code width in pixels
       margin: 1,
       color: {
-        dark: '#000000',  // Black dots
-        light: '#FFFFFF'  // White background
-      }
+        dark: "#000000", // Black dots
+        light: "#FFFFFF", // White background
+      },
     };
 
     // Generate QR code as base64 for database storage
@@ -1849,8 +1862,6 @@ export const generateOrderQRCode = async (order: any, transaction?: any): Promis
 
     // Save to file system - the PNG format is automatically determined from the file extension
     await QRCode.toFile(qrCodeFilePath, qrCodeData, qrCodeOptions);
-
-
 
     // Update the order with the QR code if transaction is provided
     if (transaction && order) {
@@ -1861,7 +1872,7 @@ export const generateOrderQRCode = async (order: any, transaction?: any): Promis
 
     return {
       base64: qrCodeBase64,
-      filePath: qrCodeFilePath
+      filePath: qrCodeFilePath,
     };
   } catch (error) {
     console.error(`Error generating QR code: ${error}`);
