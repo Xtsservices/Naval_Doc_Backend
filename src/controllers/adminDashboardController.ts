@@ -128,7 +128,7 @@ export const getTotalMenus = async (req: Request, res: Response): Promise<Respon
           ],
         },
       ],
-      attributes: ['id', 'name', 'createdAt', 'updatedAt'], // Fetch necessary menu fields
+      attributes: ['id', 'name', 'createdAt', 'description','updatedAt'], // Fetch necessary menu fields
     });
 
     
