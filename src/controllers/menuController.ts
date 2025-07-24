@@ -308,6 +308,7 @@ export const updateMenuWithItems = async (req: Request, res: Response): Promise<
       data: await Menu.findByPk(menuId, { transaction: undefined }), // Return updated menu
     });
   } catch (error: unknown) {
+    console.log("editmenu",error)
     await transaction.rollback();
 
     if (error instanceof Error) {

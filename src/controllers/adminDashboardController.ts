@@ -95,6 +95,7 @@ export const getTotalMenus = async (req: Request, res: Response): Promise<Respon
     const whereCondition = canteenId
       ? { canteenId, status: 'active' }
       : { status: 'active' }; // Add condition if canteenId is provided and status is 'active'
+
     const totalMenus = await Menu.findAll({
       where: whereCondition, // Apply the condition to filter by canteenId
       include: [
@@ -128,11 +129,10 @@ export const getTotalMenus = async (req: Request, res: Response): Promise<Respon
           ],
         },
       ],
-      attributes: ['id', 'name', 'createdAt', 'description','updatedAt'], // Fetch necessary menu fields
+      attributes: ['id', 'name', 'createdAt', 'description','updatedAt','startTime','endTime'], // Fetch necessary menu fields
     });
 
-    
-
+  
     return res.status(statusCodes.SUCCESS).json({
       message: getMessage('admin.totalMenusFetched'),
       data: totalMenus,
