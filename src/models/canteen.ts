@@ -2,7 +2,6 @@ import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/database';
 
 class Canteen extends Model {}
-
 Canteen.init(
   {
     id: {
