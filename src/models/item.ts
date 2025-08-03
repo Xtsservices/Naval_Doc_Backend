@@ -53,7 +53,7 @@ Item.init(
       allowNull: false,
     },
     image: {
-      type: DataTypes.BLOB('long'), // Store binary data for the image
+      type: DataTypes.TEXT, // Store binary data for the image
       allowNull: true,
     },
     createdById: {

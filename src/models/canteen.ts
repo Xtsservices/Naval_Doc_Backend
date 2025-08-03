@@ -20,7 +20,7 @@ Canteen.init(
       unique: true,
     },
     canteenImage: {
-      type: DataTypes.BLOB,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     createdById: {

@@ -28,7 +28,7 @@ export const loginWithMobile = async (req: Request, res: Response) => {
       .json({ message: getMessage('validation.mobileRequired') });
   }
 
-  const transaction = await sequelize.transaction(); // Start a transaction
+  const transaction = await sequelize.transaction(); // Start a transaction 2977
 
   try {
     // Check if the user exists
@@ -50,7 +50,7 @@ export const loginWithMobile = async (req: Request, res: Response) => {
 
     // Generate OTP and expiry time
     let otp = generateOtp();
-
+console.log("otp",otp)
     if (mobile == "9052519059") {
       otp = '123456'
     }
