@@ -26,8 +26,8 @@ export const createItem = async (
     price,
     startDate,
     endDate,
+    image
   } = req.body;
-  const image = req.file?.buffer; // Get the binary data of the uploaded image
   const status = req.body.status || "active"; // Default status to 'active' if not provided
   const currency = req.body.currency || "INR"; // Default currency to 'INR' if not provided
 
@@ -155,20 +155,12 @@ export const getAllItems = async (
         data: [],
       });
     }
-
-    // Convert image to Base64 format
-    const itemsWithBase64Images = items.map((item) => {
-      const itemData = item.toJSON(); // Convert Sequelize instance to plain object
-      if (itemData.image) {
-        itemData.image = Buffer.from(itemData.image).toString("base64"); // Convert binary image to Base64
-      }
-      return itemData;
-    });
+// console.log("itemsboom",items)
 
     logger.info("Items fetched successfully");
     return res.status(statusCodes.SUCCESS).json({
       message: getMessage("success.itemsFetched"),
-      data: itemsWithBase64Images,
+      data: items,
     });
   } catch (error: unknown) {
     logger.error(
@@ -251,8 +243,8 @@ export const updateItem = async (
     price,
     startDate,
     endDate,
+    image,
   } = req.body;
-  const image = req.file?.buffer; // Get the binary data of the uploaded image
   const status = req.body.status || "active"; // Default status to 'active' if not provided
   const currency = req.body.currency || "INR"; // Default currency to 'INR' if not provided
 

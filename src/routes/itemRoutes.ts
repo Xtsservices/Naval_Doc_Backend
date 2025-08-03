@@ -5,9 +5,9 @@ import upload from '../middlewares/multerConfig';
 
 const router = Router();
 
-router.post('/createItem',authenticateToken,upload.single('image'), createItem);
+router.post('/createItem',authenticateToken,createItem);
 
-router.post('/updateItem',authenticateToken,upload.single('image'), updateItem);
+router.post('/updateItem',authenticateToken, updateItem);
 
 
 

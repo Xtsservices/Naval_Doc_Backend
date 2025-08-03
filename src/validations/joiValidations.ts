@@ -124,8 +124,8 @@ export const createItemValidation = Joi.object({
 
 
 export const updateItemValidation = Joi.object({
-  id: Joi.string().required().messages({
-    'string.empty': messages[language].validation.IDRequired || 'id is required.',
+  id: Joi.number().integer().positive().required().messages({
+    'empty': messages[language].validation.IDRequired || 'id is required.',
     'any.required': messages[language].validation.IDRequired || 'id is required.',
   }),
  
@@ -139,7 +139,7 @@ export const updateItemValidation = Joi.object({
     'any.required': messages[language].validation.nameRequired || 'Name is required.',
   }),
 
-  
+  image:Joi.string(),
   type: Joi.string().valid('veg', 'non-veg').required().messages({
     'any.only': messages[language].validation.typeInvalid || 'Type must be either "veg" or "non-veg".',
     'any.required': messages[language].validation.typeInvalid || 'Type is required.',

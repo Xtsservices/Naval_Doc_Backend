@@ -493,9 +493,7 @@ export const getCart = async (
       cartItem.item = cartItem.cartItemItem;
       delete cartItem.cartItemItem;
       if (cartItem.item && cartItem.item.image) {
-        cartItem.item.image = Buffer.from(cartItem.item.image).toString(
-          "base64"
-        );
+        cartItem.item.image = cartItem.item.image;
       }
       return cartItem;
     });
@@ -707,12 +705,12 @@ export const placeOrderWithMobile = async (
       { transaction }
     );
 
-    // Generate QR Code
-    const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
-    const qrCode = await QRCode.toDataURL(qrCodeData);
+    // Generate QR Code this not required to store base64 qr code
+    // const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
+    // const qrCode = await QRCode.toDataURL(qrCodeData);
 
-    // Update the order with the QR code
-    order.qrCode = qrCode;
+    // // Update the order with the QR code
+    // order.qrCode = qrCode;
     await order.save({ transaction });
 
     // Create order items
@@ -763,8 +761,7 @@ export const placeOrderWithMobile = async (
           gatewayCharges,
           totalAmount,
           currency,
-        },
-        qrCode,
+        }
       },
     });
   } catch (error: unknown) {

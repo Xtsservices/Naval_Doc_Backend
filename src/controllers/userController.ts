@@ -27,9 +27,8 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
     // Convert buffer image to base64 string
     const canteensWithImages = canteens.map((canteen) => {
       const canteenData = canteen.toJSON();
-      if (canteenData.canteenImage) {
-        canteenData.canteenImage = `data:image/jpeg;base64,${canteenData.canteenImage.toString('base64')}`;
-      }
+      
+     
       return canteenData;
     });
 

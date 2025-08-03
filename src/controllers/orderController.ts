@@ -87,7 +87,6 @@ export const placeOrder = async (
       where: { userId: userIdString, type: "debit" },
       transaction,
     });
-
     const walletBalance = (creditSum || 0) - (debitSum || 0);
     if (paymentMethod.includes("wallet")) {
       if (walletBalance <= 0 || walletBalance < totalAmount) {
@@ -135,18 +134,22 @@ export const placeOrder = async (
     );
 
     // Generate QR Code
+
     const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
     const qrCode = await QRCode.toDataURL(qrCodeData);
 
     // Update the order with the QR code
-    order.qrCode = qrCode;
-    await Order.update(
-      { qrCode },
-      {
-        where: { id: order.id },
-        transaction,
-      }
-    );
+    //after playstore update remove this also
+     if (platform && platform === "mobile") {
+      order.qrCode = qrCode;
+      await Order.update(
+          { qrCode },
+          {
+              where: { id: order.id },
+              transaction,
+            }
+          );
+        }
 
     // Create order items
     const orderItems = cart.cartItems.map((cartItem: any) => ({
@@ -285,7 +288,6 @@ export const placeOrder = async (
           walletPaymentAmount,
           remainingAmount,
         },
-        qrCode,
         paymentlink: linkResponse,
       },
     });
@@ -1122,7 +1124,7 @@ export const CashfreePaymentLinkDetails = async (
           await Order.update(
             {
               status: "placed",
-              qrCode: order.qrCode,
+              // qrCode: order.qrCode,
             },
             {
               where: { id: order.id },

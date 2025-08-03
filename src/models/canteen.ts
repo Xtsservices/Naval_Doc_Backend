@@ -19,7 +19,7 @@ Canteen.init(
       unique: true,
     },
     canteenImage: {
-      type: DataTypes.TEXT, // Store image as text (e.g., base64 string or URL)
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     createdById: {

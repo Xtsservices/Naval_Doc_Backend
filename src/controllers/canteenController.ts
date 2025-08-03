@@ -18,9 +18,7 @@ export const createCanteen = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { canteenName, canteenCode, firstName, lastName, email, mobile } =
-    req.body;
-  const canteenImage = req.file?.buffer; // Get the binary data of the uploaded image
+  const { canteenName, canteenCode, firstName, lastName, email, mobile,canteenImage } = req.body;
 
   // Validate the request body
   const { error } = createCanteenValidation.validate({
@@ -58,7 +56,7 @@ export const createCanteen = async (
       {
         canteenName,
         canteenCode,
-        canteenImage, // Store the binary image data
+        canteenImage, // storing image url
       },
       { transaction }
     );
@@ -159,10 +157,7 @@ export const getAllCanteens = async (
     const canteensWithImagesAndUsers = canteens.map((canteen) => {
       const canteenData = canteen.toJSON();
       
-      // Convert image buffer to base64 if exists
-      if (canteenData.canteenImage) {
-        canteenData.canteenImage = `data:image/jpeg;base64,${canteenData.canteenImage.toString('base64')}`;
-      }
+      
       
       // Format user data with roles and canteenId
       if (canteenData.adminUser) {
@@ -251,10 +246,10 @@ export const updateCanteen = async (
     lastName,
     email,
     mobile,
+    canteenImage,
     canteenName,
     canteenCode,
   } = req.body;
-  const canteenImage = req.file?.buffer; // Get the binary data of the uploaded image
 
   const transaction: Transaction = await sequelize.transaction();
 
@@ -305,14 +300,8 @@ export const updateCanteen = async (
     // Commit the transaction
     await transaction.commit();
 
-    // Convert image to base64 for response
     const responseCanteen = canteen.toJSON();
-    if (responseCanteen.canteenImage) {
-      responseCanteen.canteenImage = `data:image/jpeg;base64,${responseCanteen.canteenImage.toString(
-        "base64"
-      )}`;
-    }
-
+    
     return res.status(statusCodes.SUCCESS).json({
       message: getMessage("success.canteenUpdated"),
       data: {

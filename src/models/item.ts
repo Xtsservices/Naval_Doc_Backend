@@ -53,7 +53,7 @@ Item.init(
       allowNull: false,
     },
     image: {
-      type: DataTypes.TEXT, // Store image as text (e.g., base64 string or URL)
+      type: DataTypes.TEXT, // Store binary data for the image
       allowNull: true,
     },
     createdById: {

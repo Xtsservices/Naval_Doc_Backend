@@ -751,16 +751,6 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
       menuItem.item=  menuItem.menuItemItem;
       delete menuItem.menuItemItem;
 
-
-      if (menuItem.item && menuItem.item.image) {
-        try {
-          // Convert image to Base64
-          menuItem.item.image = Buffer.from(menuItem.item.image).toString('base64');
-        } catch (conversionError) {
-          logger.error(`Error converting image to Base64 for item ID ${menuItem.item.id}: ${conversionError}`);
-          menuItem.item.image = null; // Set image to null if conversion fails
-        }
-      }
       return menuItem;
     });
 

@@ -6,8 +6,8 @@ import authenticateToken from '../middlewares/authMiddleware'; // Import the aut
 const router = Router();
 
 // Route to create a canteen with image upload and token authentication
-router.post('/createCanteen', authenticateToken, upload.single('canteenImage'), createCanteen);
-router.post('/updateCanteen', authenticateToken, upload.single('canteenImage'), updateCanteen);
+router.post('/createCanteen', authenticateToken, createCanteen);
+router.post('/updateCanteen', authenticateToken, updateCanteen);
 
 router.get('/getAllCanteens', authenticateToken, getAllCanteens);
 router.get('/getAllCanteensforwhatsapp', getAllCanteensforwhatsapp);
