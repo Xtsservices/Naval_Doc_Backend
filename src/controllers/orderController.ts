@@ -139,14 +139,17 @@ export const placeOrder = async (
     const qrCode = await QRCode.toDataURL(qrCodeData);
 
     // Update the order with the QR code
-    // order.qrCode = qrCode;
-    // await Order.update(
-    //   { qrCode },
-    //   {
-    //     where: { id: order.id },
-    //     transaction,
-    //   }
-    // );
+    //after playstore update remove this also
+     if (platform && platform === "mobile") {
+      order.qrCode = qrCode;
+      await Order.update(
+          { qrCode },
+          {
+              where: { id: order.id },
+              transaction,
+            }
+          );
+        }
 
     // Create order items
     const orderItems = cart.cartItems.map((cartItem: any) => ({
@@ -1121,7 +1124,7 @@ export const CashfreePaymentLinkDetails = async (
           await Order.update(
             {
               status: "placed",
-              qrCode: order.qrCode,
+              // qrCode: order.qrCode,
             },
             {
               where: { id: order.id },
