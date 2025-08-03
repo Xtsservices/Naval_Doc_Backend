@@ -2,7 +2,6 @@ import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/database';
 
 class Canteen extends Model {}
-
 Canteen.init(
   {
     id: {
@@ -20,7 +19,7 @@ Canteen.init(
       unique: true,
     },
     canteenImage: {
-      type: DataTypes.BLOB,
+      type: DataTypes.TEXT, // Store image as text (e.g., base64 string or URL)
       allowNull: true,
     },
     createdById: {
