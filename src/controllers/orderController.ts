@@ -134,22 +134,22 @@ export const placeOrder = async (
     );
 
     // Generate QR Code
+//not required after playstore update
+    // const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
+    // const qrCode = await QRCode.toDataURL(qrCodeData);
 
-    const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
-    const qrCode = await QRCode.toDataURL(qrCodeData);
-
-    // Update the order with the QR code
-    //after playstore update remove this also
-     if (platform && platform === "mobile") {
-      order.qrCode = qrCode;
-      await Order.update(
-          { qrCode },
-          {
-              where: { id: order.id },
-              transaction,
-            }
-          );
-        }
+    // // Update the order with the QR code
+    // //after playstore update remove this also
+    //  if (platform && platform === "mobile") {
+    //   order.qrCode = qrCode;
+    //   await Order.update(
+    //       { qrCode },
+    //       {
+    //           where: { id: order.id },
+    //           transaction,
+    //         }
+    //       );
+    //     }
 
     // Create order items
     const orderItems = cart.cartItems.map((cartItem: any) => ({
