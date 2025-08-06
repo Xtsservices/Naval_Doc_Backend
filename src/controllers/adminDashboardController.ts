@@ -117,6 +117,7 @@ export const getTotalMenus = async (req: Request, res: Response): Promise<Respon
             {
               model: Item,
               as: 'menuItemItem', // Include item details
+              where: { status: 'active' }, // Ensure only active items are included
               attributes: ['id', 'name', 'description', 'image'], // Fetch necessary item fields
               include: [
                 {
