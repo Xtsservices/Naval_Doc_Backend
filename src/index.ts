@@ -464,7 +464,7 @@ const processSpecialRecipient = async (body: any) => {
   // Send the reply and return early
   await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
   
-
+return
   // ==========================temperory stop wtsp end =====================
     const canteens = await axios
       .get(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
