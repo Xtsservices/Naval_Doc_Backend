@@ -453,6 +453,10 @@ const processSpecialRecipient = async (body: any) => {
   // Step 1: Menu Selection
   if (msg === 'hi') {
     session.stage = 'menu_selection';
+    // stoping the watsp service
+    const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.wellfarecanteen';
+reply = `WhatsApp service is currently unavailable. Please use the app to place your canteen orders.\nClick the link below to download the app: ${playStoreUrl}`;
+return
     const canteens = await axios
       .get(`${process.env.BASE_URL}/api/canteen/getAllCanteensforwhatsapp`)
       .then(response => response.data.data || [])
