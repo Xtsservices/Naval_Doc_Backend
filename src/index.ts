@@ -456,14 +456,14 @@ const processSpecialRecipient = async (body: any) => {
      // ==========================temperory stop wtsp start =====================
   // Stopping the WhatsApp service temporarily
   const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.wellfarecanteen';
-  const reply = `🚫 WhatsApp ordering is currently unavailable.\nPlease use our app to place your canteen orders.\n\n📲 Download the app here:\n${playStoreUrl}`;
+  let reply = `🚫 WhatsApp ordering is currently unavailable.\nPlease use our app to place your canteen orders.\n\n📲 Download the app here:\n${playStoreUrl}`;
 
   // Save session if needed
   sessions[userId] = session;
 
   // Send the reply and return early
   await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
-  return;
+  
 
   // ==========================temperory stop wtsp end =====================
     const canteens = await axios
