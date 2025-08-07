@@ -15,7 +15,9 @@ import { Buffer } from 'buffer';
 import base64 from 'base-64'; // Install via: npm install base-64
 
 import { generateUniqueOrderNo } from './controllers/orderController'; // Import the function to generate unique order numbers
-
+import fs from 'fs';
+import path from 'path';
+import FormData from 'form-data'; 
 
 
 
@@ -74,6 +76,46 @@ dotenv.config();
 const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// ===================testing purpose===================
+
+// ✅ Log how long each API takes to respond
+
+app.use((req, res, next) => {
+  const start = process.hrtime();
+
+  res.on('finish', () => {
+    const [seconds, nanoseconds] = process.hrtime(start);
+    const durationInMs = Number((seconds * 1000 + nanoseconds / 1e6).toFixed(2));
+console.log("durationInMs", durationInMs);
+    if (durationInMs > 500) {
+      const logLine = `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - ${res.statusCode} - ${durationInMs} ms\n`;
+
+      const logPath = path.join(__dirname, '../logs/slow-api.log');
+
+      // Ensure the folder exists
+      fs.mkdir(path.dirname(logPath), { recursive: true }, (err) => {
+        if (err) console.error('Error creating log folder:', err);
+        else {
+          fs.appendFile(logPath, logLine, (err) => {
+            if (err) console.error('Error writing to slow-api.log:', err);
+          });
+        }
+      });
+
+      // Also print to console (optional)
+      console.warn(`[SLOW API > 500ms] ${logLine}`);
+    }
+  });
+
+  next();
+});
+
+
+// ===================testing purpose===================
+
+
+
 const PORT = process.env.PORT || 3000;
 
 // Enable CORS
@@ -847,9 +889,7 @@ export const sendWhatsAppMessage = async (
  * @returns The media ID returned by the Airtel API
  */
 
-import fs from 'fs';
-import path from 'path';
-import FormData from 'form-data'; 
+
 
 export const uploadImageToAirtelAPI = async (filePath: string): Promise<string> => {
   const url = 'https://iqwhatsapp.airtel.in:443/gateway/airtel-xchange/whatsapp-content-manager/v1/media';

@@ -48,32 +48,37 @@ if (!process.env.DATABASE_URL) {
 // Initialize Sequelize with PostgreSQL
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'postgres',
-  // Enable logging in development mode for debugging slow queries or errors
-  logging: process.env.NODE_ENV === 'development' ? console.log : false,
+  benchmark: true, // ✅ Enables timing for each query
+  logging: (sql, timeTaken?: number) => {
+   if (timeTaken !== undefined && timeTaken > 500) {
+    console.warn(`[SLOW QUERY > 500ms] (${timeTaken} ms): ${sql}`);
+  }
+  },
   pool: {
-    max: 30,          // Reduced to avoid overloading database (prevents Operation timeout)
-    min: 2,           // Lower minimum to reduce idle connections
-    acquire: 60000,   // 60 seconds to acquire connection (faster timeout for Operation timeout errors)
-    idle: 30000,      // 30 seconds before closing idle connections
-    evict: 5000,      // Check idle connections every 5 seconds (less aggressive than 1s)
-    maxUses: 100,     // Close connection after 100 uses to prevent stale connections
+    max: 30,
+    min: 2,
+    acquire: 60000,
+    idle: 30000,
+    evict: 5000,
+    maxUses: 100,
   },
   retry: {
-    max: 3,           // Retry failed connections up to 3 times
+    max: 3,
     match: [
       /SequelizeConnectionError/,
       /SequelizeConnectionRefusedError/,
       /SequelizeHostNotFoundError/,
       /SequelizeHostNotReachableError/,
       /SequelizeConnectionTimedOutError/,
-    ],                // Retry only on specific connection errors
-    backoffBase: 100, // Initial delay of 100ms
-    backoffExponent: 1.5, // Exponential backoff for retries
+    ],
+    backoffBase: 100,
+    backoffExponent: 1.5,
   },
   dialectOptions: {
-    statement_timeout: 10000, // 10 seconds per query to prevent long-running queries
+    statement_timeout: 10000,
   },
 });
+
 
 // Validate database connection on startup
 async function initializeDatabase() {
