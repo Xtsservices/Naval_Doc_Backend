@@ -88,7 +88,7 @@ app.use((req, res, next) => {
     const [seconds, nanoseconds] = process.hrtime(start);
     const durationInMs = Number((seconds * 1000 + nanoseconds / 1e6).toFixed(2));
 console.log("durationInMs", durationInMs);
-    if (durationInMs > 500) {
+    if (durationInMs > 20) {
       const logLine = `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - ${res.statusCode} - ${durationInMs} ms\n`;
 
       const logPath = path.join(__dirname, '../logs/slow-api.log');
