@@ -51,9 +51,9 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
   // Enable logging in development mode for debugging slow queries or errors
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
   pool: {
-    max: 20,          // Reduced to avoid overloading database (prevents Operation timeout)
+    max: 30,          // Reduced to avoid overloading database (prevents Operation timeout)
     min: 2,           // Lower minimum to reduce idle connections
-    acquire: 30000,   // 30 seconds to acquire connection (faster timeout for Operation timeout errors)
+    acquire: 60000,   // 60 seconds to acquire connection (faster timeout for Operation timeout errors)
     idle: 30000,      // 30 seconds before closing idle connections
     evict: 5000,      // Check idle connections every 5 seconds (less aggressive than 1s)
     maxUses: 100,     // Close connection after 100 uses to prevent stale connections
