@@ -81,22 +81,33 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // ✅ Log how long each API takes to respond
 
+
+
 app.use((req, res, next) => {
   const start = process.hrtime();
 
   res.on('finish', () => {
     const [seconds, nanoseconds] = process.hrtime(start);
     const durationInMs = Number((seconds * 1000 + nanoseconds / 1e6).toFixed(2));
-console.log("durationInMs", durationInMs);
-    if (durationInMs > 20) {
-      const logLine = `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - ${res.statusCode} - ${durationInMs} ms\n`;
+    console.log("durationInMs", durationInMs);
+
+    if (durationInMs > 500) {
+      // Format timestamp: YYYY-MM-DD HH:mm
+      const now = new Date();
+      const formattedTime = now.toLocaleString('sv-SE', {
+        timeZone: 'Asia/Kolkata',
+        hour12: false,
+      }).slice(0, 16); // e.g., 2025-08-07 08:49
+
+      const logLine = `[${formattedTime}] ${req.method} ${req.originalUrl} - ${res.statusCode} - ${durationInMs} ms\n`;
 
       const logPath = path.join(__dirname, '../logs/slow-api.log');
 
-      // Ensure the folder exists
+      // Ensure the logs folder exists
       fs.mkdir(path.dirname(logPath), { recursive: true }, (err) => {
-        if (err) console.error('Error creating log folder:', err);
-        else {
+        if (err) {
+          console.error('Error creating log folder:', err);
+        } else {
           fs.appendFile(logPath, logLine, (err) => {
             if (err) console.error('Error writing to slow-api.log:', err);
           });
@@ -110,6 +121,7 @@ console.log("durationInMs", durationInMs);
 
   next();
 });
+
 
 
 // ===================testing purpose===================
