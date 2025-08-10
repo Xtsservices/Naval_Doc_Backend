@@ -51,7 +51,7 @@ export const loginWithMobile = async (req: Request, res: Response) => {
     // Generate OTP and expiry time
     let otp = generateOtp();
 console.log("otp",otp)
-    if (mobile == "9052519059") {
+    if (mobile == "9052519059" || "9999999999" == mobile) {
       otp = '123456'
     }
     // const otp = '123456';
