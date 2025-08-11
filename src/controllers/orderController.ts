@@ -481,13 +481,94 @@ export const getAllOrders = async (
   }
 };
 
-export const getTodaysOrders = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+//before code 
+// export const getTodaysOrders = async (
+//   req: Request,
+//   res: Response
+// ): Promise<Response> => {
+//   try {
+//     const canteenIdRaw = req.params.canteenId; // Extract canteenId from request
+//     // console.log("canteenIdRaw", canteenIdRaw)
+//     if (!canteenIdRaw) {
+//       return res.status(statusCodes.BAD_REQUEST).json({
+//         message: getMessage("validation.validationError"),
+//         errors: ["Canteen ID is required"],
+//       });
+//     }
+
+//     const canteenId = parseInt(canteenIdRaw, 10);
+//     console.log("canteenId", canteenId)
+
+
+//     if (isNaN(canteenId)) {
+//       return res.status(statusCodes.BAD_REQUEST).json({
+//         message: getMessage("validation.validationError"),
+//         errors: ["Canteen ID must be a valid number"],
+//       });
+//     }
+
+//     console.log("canteenId no error", canteenId)
+
+
+//     // Get today's date range as Unix timestamps
+//     const startOfDay = moment().startOf("day").unix();
+//     const endOfDay = moment().endOf("day").unix();
+
+//     // Fetch today's orders for the specified canteen
+//     const orders = await Order.findAll({
+//       where: {
+//         status: "placed",
+//         canteenId,
+//         orderDate: {
+//           [Op.between]: [startOfDay, endOfDay], // Use Unix timestamps for comparison
+//         },
+//       },
+//       include: [
+//         {
+//           model: OrderItem,
+//           as: "orderItems",
+//           include: [
+//             {
+//               model: Item,
+//               as: "menuItemItem",
+//               attributes: ["id", "name"],
+//             },
+//           ],
+//         },
+//         {
+//           model: Payment,
+//           as: "payment",
+//           attributes: ["id", "amount", "status", "paymentMethod"],
+//         },
+//       ],
+//       order: [["createdAt", "DESC"]],
+//     });
+
+//     if (!orders || orders.length === 0) {
+//       return res.status(statusCodes.SUCCESS).json({
+//         data: [],
+//         message: getMessage("order.noOrdersFound"),
+//       });
+//     }
+
+//     return res.status(statusCodes.SUCCESS).json({
+//       message: getMessage("order.todaysOrdersFetched"),
+//       data: orders,
+//     });
+//   } catch (error: unknown) {
+//     logger.error(
+//       `Error fetching today's orders: ${error instanceof Error ? error.message : error
+//       }`
+//     );
+//     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+//       message: getMessage("error.internalServerError"),
+//     });
+//   }
+// };
+
+export const getTodaysOrders = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const canteenIdRaw = req.params.canteenId; // Extract canteenId from request
-    // console.log("canteenIdRaw", canteenIdRaw)
+    const canteenIdRaw = req.params.canteenId;
     if (!canteenIdRaw) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage("validation.validationError"),
@@ -496,9 +577,6 @@ export const getTodaysOrders = async (
     }
 
     const canteenId = parseInt(canteenIdRaw, 10);
-    console.log("canteenId", canteenId)
-
-
     if (isNaN(canteenId)) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage("validation.validationError"),
@@ -506,26 +584,30 @@ export const getTodaysOrders = async (
       });
     }
 
-    console.log("canteenId no error", canteenId)
-
-
-    // Get today's date range as Unix timestamps
     const startOfDay = moment().startOf("day").unix();
     const endOfDay = moment().endOf("day").unix();
 
-    // Fetch today's orders for the specified canteen
+    // Fetch orders with only essential columns
     const orders = await Order.findAll({
       where: {
         status: "placed",
         canteenId,
         orderDate: {
-          [Op.between]: [startOfDay, endOfDay], // Use Unix timestamps for comparison
+          [Op.between]: [startOfDay, endOfDay],
         },
       },
+      attributes: ["id", "status", "orderDate", "createdAt"], // fetch only required columns
       include: [
+        {
+          model: Payment,
+          as: "payment",
+          attributes: ["id", "amount", "status", "paymentMethod"],
+        },
         {
           model: OrderItem,
           as: "orderItems",
+          attributes: ["id", "quantity", "itemId"],
+          separate: true, // runs separate query for orderItems (avoids huge join)
           include: [
             {
               model: Item,
@@ -534,16 +616,12 @@ export const getTodaysOrders = async (
             },
           ],
         },
-        {
-          model: Payment,
-          as: "payment",
-          attributes: ["id", "amount", "status", "paymentMethod"],
-        },
       ],
       order: [["createdAt", "DESC"]],
+      logging: false, // set to true if you want to debug SQL
     });
 
-    if (!orders || orders.length === 0) {
+    if (!orders.length) {
       return res.status(statusCodes.SUCCESS).json({
         data: [],
         message: getMessage("order.noOrdersFound"),
@@ -555,15 +633,15 @@ export const getTodaysOrders = async (
       data: orders,
     });
   } catch (error: unknown) {
-    logger.error(
-      `Error fetching today's orders: ${error instanceof Error ? error.message : error
-      }`
-    );
+    logger.error(`Error fetching today's orders: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage("error.internalServerError"),
     });
   }
 };
+
+
+
 
 export const getOrdersSummary = async (
   req: Request,
