@@ -302,6 +302,8 @@ export const placeOrder = async (
   }
 };
 
+// ...existing code...
+
 export const listOrders = async (
   req: Request,
   res: Response
@@ -316,7 +318,7 @@ export const listOrders = async (
       });
     }
 
-    // Fetch all orders for the user
+    // Fetch all orders for the user, including canteen name
     const orders = await Order.findAll({
       where: { userId },
       include: [
@@ -335,6 +337,11 @@ export const listOrders = async (
           model: Payment,
           as: "payment", // Ensure this matches the alias in the Order -> Payment association
           attributes: ["id", "amount", "status", "paymentMethod"], // Fetch necessary payment fields
+        },
+        {
+          model: Canteen,
+          as: "orderCanteen", // Ensure this matches the alias in the Order -> Canteen association
+          attributes: ["id", "canteenName"], // Fetch canteen name
         },
       ],
       order: [["createdAt", "DESC"]], // Sort by most recent orders
@@ -359,6 +366,7 @@ export const listOrders = async (
     });
   }
 };
+// ...existing code...
 
 export const getOrderById = async (
   req: Request,
