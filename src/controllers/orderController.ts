@@ -1667,9 +1667,16 @@ export const updateOrderStatus = async (
   let { orderIds } = req.body; // Extract orderIds from the request body
 
   // If it's a comma-separated string, split it
-  if (typeof orderIds === "string") {
-    orderIds = orderIds.split(",").map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
-  }
+if (typeof orderIds === "string") {
+  orderIds = orderIds.split(",");
+}
+
+if (Array.isArray(orderIds)) {
+  orderIds = orderIds
+    .flatMap(id => id.toString().split(","))
+    .map(id => parseInt(id.trim(), 10))
+    .filter(id => !isNaN(id));
+}
 
   // Start a transaction
   const transaction: Transaction = await sequelize.transaction();
