@@ -1105,7 +1105,7 @@ export const CashfreePaymentLinkDetails = async (
         "x-api-version": "2023-08-01",
       },
     });
-
+console.log("CASHFREE_BASE_URLRespomon==================boom",response.data)
     // Handle Cashfree response
 
     if (response.status === 200 && response.data) {
