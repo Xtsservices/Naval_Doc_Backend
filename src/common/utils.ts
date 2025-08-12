@@ -210,6 +210,7 @@ const sendSMS = async (params: any): Promise<any> => {
   }
 };
 
+
 export const PaymentLink = async (
   order: any,
   payment: any,
@@ -282,7 +283,7 @@ export const PaymentLink = async (
     if (response.status === 200 && response.data) {
       const { link_id, link_url } = response.data;
 
-
+console.log("paymentresponse===================lool",response)
       // Construct the payment link
       const paymentLink = link_url;
       // Return the payment link as a response
