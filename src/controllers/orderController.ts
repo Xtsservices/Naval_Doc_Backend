@@ -598,6 +598,87 @@ export const getTodaysOrders = async (
   }
 };
 
+// this is getting todays orders by canteenId
+export const getItemWiseOrdersSummary = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { canteenId } = req.query;
+
+    if (!canteenId) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage("validation.validationError"),
+        errors: ["canteenId is required"],
+      });
+    }
+
+    // Fetch orders and include items
+    const orders = await Order.findAll({
+      where: { canteenId },
+      include: [
+        {
+          model: OrderItem,
+          as: "orderItems",
+          include: [
+            {
+              model: Item,
+              as: "menuItemItem",
+              attributes: ["id", "name"],
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!orders.length) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: "No orders found for this canteen",
+      });
+    }
+
+    // Aggregate item-wise counts
+    const itemSummary: Record<string, { orders: number; completed: number; pending: number }> = {};
+
+    orders.forEach((order: any) => {
+      const orderStatus = order.status;
+
+      order.orderItems.forEach((orderItem: any) => {
+        const itemName = orderItem.menuItemItem?.name || "Unknown Item";
+        const qty = orderItem.quantity || 1;
+
+        if (!itemSummary[itemName]) {
+          itemSummary[itemName] = { orders: 0, completed: 0, pending: 0 };
+        }
+
+        itemSummary[itemName].orders += qty;
+
+        if (orderStatus === "completed") {
+          itemSummary[itemName].completed += qty;
+        } else if (orderStatus === "pending") {
+          itemSummary[itemName].pending += qty;
+        }
+      });
+    });
+
+    // Convert object to array
+    const summaryArray = Object.entries(itemSummary).map(([itemName, stats]) => ({
+      itemName,
+      ...stats,
+    }));
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: "Item-wise orders fetched successfully",
+      data: summaryArray,
+    });
+  } catch (error: unknown) {
+    logger.error(
+      `Error fetching item-wise orders summary: ${
+        error instanceof Error ? error.message : error
+      }`
+    );
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage("error.internalServerError"),
+    });
+  }
+};
 
 
 
