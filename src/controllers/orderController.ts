@@ -1929,7 +1929,7 @@ export const generateOrderQRCode = async (
  * Validates that the order date in the cart is not in the past and is within the menu's cutoff time.
  * Returns an object with success, statusCode, and message.
  */
-async function validateOrderDateAndCutoff(
+export async function validateOrderDateAndCutoff(
   cart: any,
   menuConfigurationId: any,
   transaction: Transaction
