@@ -30,11 +30,15 @@ export const adminDashboard = async (req: Request, res: Response): Promise<Respo
     // Fetch total orders count and total amount
     const ordersSummary = await Order.findAll({
       attributes: [
-        [sequelize.fn('COUNT', sequelize.col('id')), 'totalOrders'], // Count total orders
-        [sequelize.fn('SUM', sequelize.col('totalAmount')), 'totalAmount'], // Sum total amount
+      [sequelize.fn('COUNT', sequelize.col('id')), 'totalOrders'], // Count total orders
+      [sequelize.fn('SUM', sequelize.col('totalAmount')), 'totalAmount'], // Sum total amount
       ],
-      where: { ...whereCondition, status: 'placed' }, // Filter by status 'placed' and canteenId if provided
+      where: { 
+      ...whereCondition, 
+      status: { [Op.in]: ['placed', 'completed'] } // Filter by status 'placed' and 'completed'
+      },
     });
+    // Extract total orders and total amount from the summary
 
     const totalOrders = ordersSummary[0]?.toJSON()?.totalOrders || 0;
     const totalAmount = ordersSummary[0]?.toJSON()?.totalAmount || 0;
