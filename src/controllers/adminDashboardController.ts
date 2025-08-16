@@ -208,91 +208,115 @@ export const getTotalItems = async (req: Request, res: Response): Promise<Respon
 
 export const getTotalOrders = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { canteenId, status, orderDate } = req.query;
-
+    const { canteenId, orderDate } = req.query;
     const whereCondition: any = {};
     if (canteenId) whereCondition.canteenId = canteenId;
-    if (status && status !== 'all') whereCondition.status = status;
 
-    // ✅ Exact date match (based on orderDate column which is Unix timestamp)
+    // Date filter (DD-MM-YYYY)
     if (orderDate && typeof orderDate === 'string') {
-      const parsedDate = moment.tz(orderDate, 'YYYY/MM/DD', 'Asia/Kolkata');
-      const dateUnix = parsedDate.startOf('day').unix(); // Only date part
+      const parsedDate = moment.tz(orderDate, 'DD-MM-YYYY', 'Asia/Kolkata');
+      const dateUnix = parsedDate.startOf('day').unix();
       whereCondition.orderDate = dateUnix;
     }
 
-    const totalOrders = await Order.findAll({
-      where: whereCondition,
+    // Total amount (all orders)
+    const totalAmountResult = await Order.findAll({
+      where: { 
+      ...whereCondition, 
+      status: { [Op.in]: ['placed', 'completed'] } // Only 'placed' and 'completed'
+      },
+      attributes: [[sequelize.fn('SUM', sequelize.col('totalAmount')), 'totalAmount']],
+      raw: true,
+    });
+    const totalAmount = Number(totalAmountResult[0]?.totalAmount) || 0;
+
+    // Amount and count by status
+    const [placed, completed, cancelled] = await Promise.all([
+      Order.findAll({
+        where: { ...whereCondition, status: 'placed' },
+        attributes: [
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+        ],
+        raw: true,
+      }),
+      Order.findAll({
+        where: { ...whereCondition, status: 'completed' },
+        attributes: [
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+        ],
+        raw: true,
+      }),
+      Order.findAll({
+        where: { ...whereCondition, status: 'cancelled' },
+        attributes: [
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+        ],
+        raw: true,
+      }),
+    ]);
+
+    // Item count grouped by menuConfigurationId
+    const itemCounts = await OrderItem.findAll({
+      attributes: [
+        [sequelize.col('menuItemItem->itemMenuItem->menuMenuItem->menuMenuConfiguration.menuConfigurationId'), 'menuConfigurationId'],
+        [sequelize.fn('SUM', sequelize.col('quantity')), 'totalOrdered'],
+      ],
       include: [
         {
-          model: Canteen,
-          as: 'orderCanteen',
-          attributes: ['id', 'canteenName'],
-        },
-        {
-          model: OrderItem,
-          as: 'orderItems',
-          attributes: ['id', 'quantity', 'price', 'total', 'itemId'],
+          model: Item,
+          as: 'menuItemItem',
+          attributes: [],
           include: [
             {
-              model: Item,
-              as: 'menuItemItem',
-              attributes: [
-                'id',
-                'name',
-                'description',
-                'type',
-                'status',
-                'quantity',
-                'quantityUnit',
+              model: MenuItem,
+              as: 'itemMenuItem',
+              attributes: [],
+              include: [
+                {
+                  model: Menu,
+                  as: 'menuMenuItem',
+                  attributes: [],
+                  include: [
+                    {
+                      model: MenuConfiguration,
+                      as: 'menuMenuConfiguration',
+                      attributes: [],
+                    },
+                  ],
+                },
               ],
             },
           ],
         },
       ],
-      attributes: [
-        'id',
-        'orderDate',
-        'orderNo',
-        'totalAmount',
-        'status',
-        'canteenId',
-        'menuConfigurationId',
-        'createdAt',
-        'updatedAt',
-      ],
-      raw: false,
-      nest: true,
+      group: ['menuItemItem.itemMenuItem.menuMenuItem.menuMenuConfiguration.menuConfigurationId'],
+      raw: true,
     });
 
-    // Attach menuName based on canteenId and menuConfigurationId
-    const menus = await Menu.findAll({
-      attributes: ['id', 'name', 'canteenId', 'menuConfigurationId'],
-    });
-
-    const ordersWithMenuName = totalOrders.map((order) => {
-      const matchedMenu = menus.find(
-        (menu) =>
-          menu.canteenId === order.canteenId &&
-          menu.menuConfigurationId === order.menuConfigurationId
-      );
-
-      return {
-        ...order.toJSON(),
-        menuName: matchedMenu?.name || null,
-      };
-    });
-
-    if (!ordersWithMenuName.length) {
-      return res.status(200).json({data:[], message: 'No orders found' });
-    }
+    // Format item-wise count by menuConfigurationId
+    const itemWiseCounts = itemCounts.map((row: any) => ({
+      menuConfigurationId: row.menuConfigurationId,
+      totalOrdered: Number(row.totalOrdered),
+    }));
 
     return res.status(200).json({
-      message: 'Orders fetched successfully',
-      data: ordersWithMenuName,
+      message: 'Order summary fetched successfully',
+      data: {
+        totalAmount,
+        placed: {
+          count: Number((placed[0] as any)?.count) || 0,
+        },
+        completed: {
+          count: Number((completed[0] as any)?.count) || 0,
+        },
+        cancelled: {
+          count: Number((cancelled[0] as any)?.count) || 0,
+        },
+        itemWiseCounts,
+      },
     });
   } catch (error: unknown) {
-    console.error(`Error fetching orders: ${error instanceof Error ? error.message : error}`);
+    logger.error(`Error fetching total orders: ${error instanceof Error ? error.message : error}`);
     return res.status(500).json({ message: 'Failed to fetch total orders' });
   }
 };
