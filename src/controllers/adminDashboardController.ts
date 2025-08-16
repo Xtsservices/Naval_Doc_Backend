@@ -293,13 +293,52 @@ export const getTotalOrders = async (req: Request, res: Response): Promise<Respo
   }
 };
 
+export const getOrdersWithPagination = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 10;
+    const offset = (page - 1) * limit;
 
+    const { canteenId, status } = req.query;
+    const whereCondition: any = {};
+    if (canteenId) whereCondition.canteenId = canteenId;
+    if (status ) whereCondition.status = status;
 
+    const { count, rows } = await Order.findAndCountAll({
+      where: whereCondition,
+      include: [
+        {
+          model: User,
+          as: 'orderUser', // Use the correct alias if you have one
+          attributes: ['id', 'firstName', 'lastName', 'mobile', 'email'],
+        },
+        {
+          model: Canteen,
+          as: 'orderCanteen',
+          attributes: ['id', 'canteenName'],
+        },
+      ],
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset,
+    });
 
-
-
-
-
+    return res.status(statusCodes.SUCCESS).json({
+      message: 'Orders fetched successfully',
+      data: {
+        total: count,
+        page,
+        limit,
+        orders: rows,
+      },
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching paginated orders: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
 
 
 
@@ -318,3 +357,4 @@ export const getTotalAmount = async (req: Request, res: Response): Promise<Respo
     });
   }
 };
+
