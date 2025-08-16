@@ -656,13 +656,14 @@ export const getTodayItemWiseOrdersSummary = async (req: Request, res: Response)
           itemSummary[itemName] = { orders: 0, completed: 0, pending: 0 };
         }
 
-        if (orderStatus === "placed") {
-        itemSummary[itemName].orders += qty;
-        }
-        else if (orderStatus === "completed") {
+      
+        if (orderStatus === "completed") {
           itemSummary[itemName].completed += qty;
         } else if (orderStatus === "pending") {
           itemSummary[itemName].pending += qty;
+        }
+          else if (orderStatus !== "initiated") {
+        itemSummary[itemName].orders += qty;
         }
       });
     });
