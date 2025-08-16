@@ -74,6 +74,30 @@ export const placeOrder = async (
       });
     }
 
+    // Check if the canteenId and menuConfigurationId are present in the cart
+    const canteenId = cart.canteenId;
+    const menuConfigurationId = cart.menuConfigurationId;
+
+    // Check if the order date is in the past (previous date)
+    // Validate order date and cutoff time
+    const orderDateValidationResult = await validateOrderDateAndCutoff(cart, menuConfigurationId, transaction);
+    if (!orderDateValidationResult.success) {
+      await transaction.rollback();
+      return res.status(orderDateValidationResult.statusCode).json({
+      message: orderDateValidationResult.message,
+      });
+    }
+
+    // Check if the canteenId and menuConfigurationId are present in the cart
+
+    if (!canteenId || !menuConfigurationId) {
+      await transaction.rollback();
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage("validation.validationError"),
+        errors: ["canteenId and menuConfigurationId are required"],
+      });
+    }
+
     const amount = cart.totalAmount;
     const gatewayPercentage = 0;
     const gatewayCharges = (amount * gatewayPercentage) / 100;
@@ -1901,3 +1925,73 @@ export const generateOrderQRCode = async (
     throw error;
   }
 };
+/**
+ * Validates that the order date in the cart is not in the past and is within the menu's cutoff time.
+ * Returns an object with success, statusCode, and message.
+ */
+async function validateOrderDateAndCutoff(
+  cart: any,
+  menuConfigurationId: any,
+  transaction: Transaction
+): Promise<{ success: boolean; statusCode: number; message: string }> {
+  // Check if orderDate exists in cart
+  if (!cart.orderDate) {
+    return {
+      success: false,
+      statusCode: statusCodes.BAD_REQUEST,
+      message: "Order date is missing in the cart.",
+    };
+  }
+
+  // Fetch menu configuration for cutoff time
+  const menuConfig = await menuConfiguration.findOne({
+    where: { id: menuConfigurationId },
+    transaction,
+  });
+
+  if (!menuConfig) {
+    return {
+      success: false,
+      statusCode: statusCodes.NOT_FOUND,
+      message: "Menu configuration not found.",
+    };
+  }
+
+  // Get order date and cutoff time as moment objects
+  const orderDateUnix = cart.orderDate;
+  const nowUnix = moment().unix();
+
+  // If order date is in the past
+  if (orderDateUnix < moment().startOf("day").unix()) {
+    return {
+      success: false,
+      statusCode: statusCodes.BAD_REQUEST,
+      message: "Order date cannot be in the past.",
+    };
+  }
+
+  // If order is for today, check cutoff time
+  const isToday =
+    moment.unix(orderDateUnix).isSame(moment(), "day") ||
+    orderDateUnix === moment().startOf("day").unix();
+
+  if (isToday && menuConfig.defaultEndTime) {
+    // menuConfig.defaultEndTime is expected to be a unix timestamp (seconds since epoch)
+    const cutoffUnix = menuConfig.defaultEndTime;
+    if (nowUnix > cutoffUnix) {
+      return {
+        success: false,
+        statusCode: statusCodes.BAD_REQUEST,
+        message: "Order cutoff time has passed for today.",
+      };
+    }
+  }
+
+  // All checks passed
+  return {
+    success: true,
+    statusCode: statusCodes.SUCCESS,
+    message: "Order date and cutoff time are valid.",
+  };
+}
+
