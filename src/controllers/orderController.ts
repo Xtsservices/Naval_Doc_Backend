@@ -599,7 +599,8 @@ export const getTodaysOrders = async (
 };
 
 // this is getting todays orders by canteenId
-export const getItemWiseOrdersSummary = async (req: Request, res: Response): Promise<Response> => {
+
+export const getTodayItemWiseOrdersSummary = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { canteenId } = req.query;
 
@@ -610,9 +611,16 @@ export const getItemWiseOrdersSummary = async (req: Request, res: Response): Pro
       });
     }
 
-    // Fetch orders and include items
+    // Get today's start and end (Asia/Kolkata timezone)
+    const todayStart = moment().tz("Asia/Kolkata").startOf("day").unix();
+    const todayEnd = moment().tz("Asia/Kolkata").endOf("day").unix();
+
+    // Fetch today's orders for given canteen
     const orders = await Order.findAll({
-      where: { canteenId },
+      where: {
+        canteenId,
+        orderDate: { [Op.between]: [todayStart, todayEnd] }, // filter only today
+      },
       include: [
         {
           model: OrderItem,
@@ -630,7 +638,7 @@ export const getItemWiseOrdersSummary = async (req: Request, res: Response): Pro
 
     if (!orders.length) {
       return res.status(statusCodes.NOT_FOUND).json({
-        message: "No orders found for this canteen",
+        message: "No orders found for today",
       });
     }
 
@@ -665,12 +673,12 @@ export const getItemWiseOrdersSummary = async (req: Request, res: Response): Pro
     }));
 
     return res.status(statusCodes.SUCCESS).json({
-      message: "Item-wise orders fetched successfully",
+      message: "Today's item-wise orders fetched successfully",
       data: summaryArray,
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching item-wise orders summary: ${
+      `Error fetching today's item-wise orders summary: ${
         error instanceof Error ? error.message : error
       }`
     );
@@ -679,6 +687,7 @@ export const getItemWiseOrdersSummary = async (req: Request, res: Response): Pro
     });
   }
 };
+
 
 
 

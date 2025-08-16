@@ -1,5 +1,5 @@
 import express from 'express';
-import { placeOrder ,CashfreePaymentLinkDetails,getAllOrders,listOrders,getOrdersSummary,getOrdersByCanteen,getOrderById,processCashfreePayment,cashfreeCallback,createPaymentLink,createCashfreePaymentLink,cancelOrder,getWalletTransactions,getWalletBalance,updateOrderStatus,getTodaysOrders,createWalkinOrders, getItemWiseOrdersSummary} from '../controllers/orderController';
+import { placeOrder ,CashfreePaymentLinkDetails,getAllOrders,listOrders,getOrdersSummary,getOrdersByCanteen,getOrderById,processCashfreePayment,cashfreeCallback,createPaymentLink,createCashfreePaymentLink,cancelOrder,getWalletTransactions,getWalletBalance,updateOrderStatus,getTodaysOrders,createWalkinOrders, getTodayItemWiseOrdersSummary} from '../controllers/orderController';
 import authenticateToken from '../middlewares/authMiddleware'; // Middleware for authentication
 
 const router = express.Router();
@@ -14,7 +14,7 @@ router.get('/listOrders', authenticateToken, listOrders);
 router.get('/getOrderById', authenticateToken, getOrderById);
 
 //this is getting todays orders by canteenId for canteen Admin
-router.get('/getItemWiseOrdersSummary', getItemWiseOrdersSummary);
+router.get('/getTodayItemWiseOrdersSummary', getTodayItemWiseOrdersSummary);
 
 
 router.get('/ordersSummary',authenticateToken, getOrdersSummary);
