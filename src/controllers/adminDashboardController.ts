@@ -38,6 +38,7 @@ export const adminDashboard = async (req: Request, res: Response): Promise<Respo
       status: { [Op.in]: ['placed', 'completed'] } // Filter by status 'placed' and 'completed'
       },
     });
+    // Extract total orders and total amount from the summary
 
     const totalOrders = ordersSummary[0]?.toJSON()?.totalOrders || 0;
     const totalAmount = ordersSummary[0]?.toJSON()?.totalAmount || 0;
