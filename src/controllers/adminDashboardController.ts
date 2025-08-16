@@ -299,18 +299,32 @@ export const getOrdersWithPagination = async (req: Request, res: Response): Prom
     const limit = parseInt(req.query.limit as string, 10) || 10;
     const offset = (page - 1) * limit;
 
-    const { canteenId, status } = req.query;
+    const { canteenId, status, date, mobile } = req.query;
     const whereCondition: any = {};
     if (canteenId) whereCondition.canteenId = canteenId;
-    if (status ) whereCondition.status = status;
+    if (status) whereCondition.status = status;
+
+    // Filter by date (DD-MM-YYYY)
+    if (date && typeof date === 'string') {
+      const parsedDate = moment.tz(date, 'DD-MM-YYYY', 'Asia/Kolkata');
+      const dateUnix = parsedDate.startOf('day').unix();
+      whereCondition.orderDate = dateUnix;
+    }
+
+    // Filter by user mobile number
+    let userWhere: any = {};
+    if (mobile && typeof mobile === 'string') {
+      userWhere.mobile = mobile;
+    }
 
     const { count, rows } = await Order.findAndCountAll({
       where: whereCondition,
       include: [
         {
           model: User,
-          as: 'orderUser', // Use the correct alias if you have one
+          as: 'orderUser',
           attributes: ['id', 'firstName', 'lastName', 'mobile', 'email'],
+          where: Object.keys(userWhere).length ? userWhere : undefined,
         },
         {
           model: Canteen,
@@ -357,4 +371,6 @@ export const getTotalAmount = async (req: Request, res: Response): Promise<Respo
     });
   }
 };
+
+
 
