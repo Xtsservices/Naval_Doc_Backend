@@ -236,6 +236,7 @@ export const getTotalOrders = async (req: Request, res: Response): Promise<Respo
       Order.count({ where: { ...whereCondition, status: 'completed' } }),
       Order.count({ where: { ...whereCondition, status: 'cancelled' } }),
     ]);
+    const total = placed + completed + cancelled;
 
     // Item count grouped by menuConfigurationId using a raw query for reliability
     // Item-wise breakup: total quantity ordered for each item, grouped by item and menu configuration
@@ -283,6 +284,7 @@ export const getTotalOrders = async (req: Request, res: Response): Promise<Respo
         completed: { count: completed },
         cancelled: { count: cancelled },
         itemWiseCounts: itemCounts,
+        totalOrders: total,
       },
     });
   } catch (error: unknown) {
