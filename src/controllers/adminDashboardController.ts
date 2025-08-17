@@ -261,23 +261,21 @@ export const getTotalOrders = async (req: Request, res: Response): Promise<Respo
       replacements.orderDate = dateUnix;
     }
 
+    // Get total orders grouped by item only (avoiding menu configuration duplicates)
     const itemCounts = await sequelize.query(
       `
       SELECT 
-      mc."name" AS "menuConfigurationName",
-      i."id" AS "itemId",
-      i."name" AS "itemName",
-      m."menuConfigurationId" AS "menuConfigurationId",
-      o."canteenId" AS "canteenId",
-      SUM(oi."quantity") AS "totalOrdered"
-      FROM order_items oi
-      JOIN items i ON oi."itemId" = i."id"
-      JOIN menu_items mi ON mi."itemId" = i."id"
-      JOIN menus m ON mi."menuId" = m."id"
-      JOIN menu_configurations mc ON m."menuConfigurationId" = mc."id"
-      JOIN orders o ON oi."orderId" = o."id"
+      i.id AS "itemId",
+      i.name AS "itemName",
+      mc.name AS "menuName",
+      SUM(oi."quantity") AS "totalQuantity"
+      FROM orders o
+      JOIN order_items oi ON oi."orderId" = o.id
+      JOIN items i ON oi."itemId" = i.id
+      JOIN menu_configurations mc ON o."menuConfigurationId" = mc.id
       WHERE ${whereClauses.join(' AND ')}
-      GROUP BY mc."name", i."id", i."name", m."menuConfigurationId", o."canteenId"
+      GROUP BY i.id, i.name, mc.name
+      ORDER BY i.name
       `,
       { type: QueryTypes.SELECT, replacements }
     );
