@@ -5,6 +5,8 @@ import authenticateToken from '../middlewares/authMiddleware'; // Import the aut
 
 const router = express.Router();
 
+
+
 // Route to fetch admin dashboard data
 router.get('/dashboard', authenticateToken,adminDashboard);
 router.get('/getTotalAmount', getTotalAmount);

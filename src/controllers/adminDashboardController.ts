@@ -3,7 +3,7 @@ import logger from '../common/logger';
 import { getMessage } from '../common/utils';
 import { statusCodes } from '../common/statusCodes';
 import { sequelize } from '../config/database'; // Import sequelize for transaction management
-import { Op } from 'sequelize';
+import { Op, QueryTypes } from 'sequelize';
 import { responseHandler } from '../common/responseHandler';
 import Order from '../models/order';
 import Item from '../models/item';
@@ -219,11 +219,11 @@ export const getTotalOrders = async (req: Request, res: Response): Promise<Respo
       whereCondition.orderDate = dateUnix;
     }
 
-    // Total amount (all orders)
+    // Total amount (all placed and completed orders)
     const totalAmountResult = await Order.findAll({
       where: { 
-      ...whereCondition, 
-      status: { [Op.in]: ['placed', 'completed'] } // Only 'placed' and 'completed'
+        ...whereCondition, 
+        status: { [Op.in]: ['placed', 'completed'] }
       },
       attributes: [[sequelize.fn('SUM', sequelize.col('totalAmount')), 'totalAmount']],
       raw: true,
@@ -232,87 +232,57 @@ export const getTotalOrders = async (req: Request, res: Response): Promise<Respo
 
     // Amount and count by status
     const [placed, completed, cancelled] = await Promise.all([
-      Order.findAll({
-        where: { ...whereCondition, status: 'placed' },
-        attributes: [
-          [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-        ],
-        raw: true,
-      }),
-      Order.findAll({
-        where: { ...whereCondition, status: 'completed' },
-        attributes: [
-          [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-        ],
-        raw: true,
-      }),
-      Order.findAll({
-        where: { ...whereCondition, status: 'cancelled' },
-        attributes: [
-          [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-        ],
-        raw: true,
-      }),
+      Order.count({ where: { ...whereCondition, status: 'placed' } }),
+      Order.count({ where: { ...whereCondition, status: 'completed' } }),
+      Order.count({ where: { ...whereCondition, status: 'cancelled' } }),
     ]);
 
-    // Item count grouped by menuConfigurationId
-    const itemCounts = await OrderItem.findAll({
-      attributes: [
-        [sequelize.col('menuItemItem->itemMenuItem->menuMenuItem->menuMenuConfiguration.menuConfigurationId'), 'menuConfigurationId'],
-        [sequelize.fn('SUM', sequelize.col('quantity')), 'totalOrdered'],
-      ],
-      include: [
-        {
-          model: Item,
-          as: 'menuItemItem',
-          attributes: [],
-          include: [
-            {
-              model: MenuItem,
-              as: 'itemMenuItem',
-              attributes: [],
-              include: [
-                {
-                  model: Menu,
-                  as: 'menuMenuItem',
-                  attributes: [],
-                  include: [
-                    {
-                      model: MenuConfiguration,
-                      as: 'menuMenuConfiguration',
-                      attributes: [],
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ],
-      group: ['menuItemItem.itemMenuItem.menuMenuItem.menuMenuConfiguration.menuConfigurationId'],
-      raw: true,
-    });
+    // Item count grouped by menuConfigurationId using a raw query for reliability
+    // Item-wise breakup: total quantity ordered for each item, grouped by item and menu configuration
+    // Build dynamic WHERE conditions for raw SQL query
+    const replacements: any = {};
+    let whereClauses: string[] = [`o."status" IN ('placed', 'completed')`];
 
-    // Format item-wise count by menuConfigurationId
-    const itemWiseCounts = itemCounts.map((row: any) => ({
-      menuConfigurationId: row.menuConfigurationId,
-      totalOrdered: Number(row.totalOrdered),
-    }));
+    if (canteenId) {
+      whereClauses.push(`o."canteenId" = :canteenId`);
+      replacements.canteenId = canteenId;
+    }
+
+    if (orderDate && typeof orderDate === 'string') {
+      const parsedDate = moment.tz(orderDate, 'DD-MM-YYYY', 'Asia/Kolkata');
+      const dateUnix = parsedDate.startOf('day').unix();
+      whereClauses.push(`o."orderDate" = :orderDate`);
+      replacements.orderDate = dateUnix;
+    }
+
+    const itemCounts = await sequelize.query(
+      `
+      SELECT 
+      mc."name" AS "menuConfigurationName",
+      i."id" AS "itemId",
+      i."name" AS "itemName",
+      m."menuConfigurationId" AS "menuConfigurationId",
+      SUM(oi."quantity") AS "totalOrdered"
+      FROM order_items oi
+      JOIN items i ON oi."itemId" = i."id"
+      JOIN menu_items mi ON mi."itemId" = i."id"
+      JOIN menus m ON mi."menuId" = m."id"
+      JOIN menu_configurations mc ON m."menuConfigurationId" = mc."id"
+      JOIN orders o ON oi."orderId" = o."id"
+      WHERE ${whereClauses.join(' AND ')}
+      GROUP BY mc."name", i."id", i."name", m."menuConfigurationId"
+      `,
+      { type: QueryTypes.SELECT, replacements }
+    );
 
     return res.status(200).json({
       message: 'Order summary fetched successfully',
       data: {
         totalAmount,
-        placed: {
-          count: Number((placed[0] as any)?.count) || 0,
-        },
-        completed: {
-          count: Number((completed[0] as any)?.count) || 0,
-        },
-        cancelled: {
-          count: Number((cancelled[0] as any)?.count) || 0,
-        },
-        itemWiseCounts,
+        placed: { count: placed },
+        completed: { count: completed },
+        cancelled: { count: cancelled },
+        itemWiseCounts: itemCounts,
       },
     });
   } catch (error: unknown) {
