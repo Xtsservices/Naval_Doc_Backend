@@ -276,6 +276,7 @@ export const getTotalOrders = async (req: Request, res: Response): Promise<Respo
       { type: QueryTypes.SELECT, replacements }
     );
 
+    // Format itemCounts to match the expected structure
     return res.status(200).json({
       message: 'Order summary fetched successfully',
       data: {
