@@ -222,19 +222,24 @@ export const getTotalOrders = async (req: Request, res: Response): Promise<Respo
     // Total amount (all placed and completed orders)
     const totalAmountResult = await Order.findAll({
       where: { 
-        ...whereCondition, 
-        status: { [Op.in]: ['placed', 'completed'] }
+      ...whereCondition, 
+      status: { [Op.in]: ['placed', 'completed'] }
       },
-      attributes: [[sequelize.fn('SUM', sequelize.col('totalAmount')), 'totalAmount']],
+      attributes: [
+      [sequelize.fn('SUM', sequelize.col('totalAmount')), 'totalAmount'],
+      'canteenId'
+      ],
+      group: ['canteenId'],
       raw: true,
     });
     const totalAmount = Number(totalAmountResult[0]?.totalAmount) || 0;
 
     // Amount and count by status
+    // Count orders by status: placed, completed, cancelled
     const [placed, completed, cancelled] = await Promise.all([
-      Order.count({ where: { ...whereCondition, status: 'placed' } }),
-      Order.count({ where: { ...whereCondition, status: 'completed' } }),
-      Order.count({ where: { ...whereCondition, status: 'cancelled' } }),
+      Order.count({ where: { ...whereCondition, status: 'placed', ...(canteenId && { canteenId }) } }),
+      Order.count({ where: { ...whereCondition, status: 'completed', ...(canteenId && { canteenId }) } }),
+      Order.count({ where: { ...whereCondition, status: 'cancelled', ...(canteenId && { canteenId }) } }),
     ]);
     const total = placed + completed + cancelled;
 
@@ -263,6 +268,7 @@ export const getTotalOrders = async (req: Request, res: Response): Promise<Respo
       i."id" AS "itemId",
       i."name" AS "itemName",
       m."menuConfigurationId" AS "menuConfigurationId",
+      o."canteenId" AS "canteenId",
       SUM(oi."quantity") AS "totalOrdered"
       FROM order_items oi
       JOIN items i ON oi."itemId" = i."id"
@@ -271,7 +277,7 @@ export const getTotalOrders = async (req: Request, res: Response): Promise<Respo
       JOIN menu_configurations mc ON m."menuConfigurationId" = mc."id"
       JOIN orders o ON oi."orderId" = o."id"
       WHERE ${whereClauses.join(' AND ')}
-      GROUP BY mc."name", i."id", i."name", m."menuConfigurationId"
+      GROUP BY mc."name", i."id", i."name", m."menuConfigurationId", o."canteenId"
       `,
       { type: QueryTypes.SELECT, replacements }
     );
