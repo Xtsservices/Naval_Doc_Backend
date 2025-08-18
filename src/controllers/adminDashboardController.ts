@@ -17,107 +17,6 @@ import Pricing from '../models/pricing';
 import moment from 'moment-timezone';
 
 
-export const adminDashboard2 = async (req: Request, res: Response): Promise<Response> => {
-  try {
-
-    const { canteenId } = req.query; // Extract canteenId from query parameters
-    // Add condition if canteenId is provided
-    const whereCondition: any = {};
-    if (canteenId) {
-      whereCondition.canteenId = canteenId;
-    }
-
-    // Fetch total orders count and total amount
-    const ordersSummary = await Order.findAll({
-      attributes: [
-      [sequelize.fn('COUNT', sequelize.col('id')), 'totalOrders'], // Count total orders
-      [sequelize.fn('SUM', sequelize.col('totalAmount')), 'totalAmount'], // Sum total amount
-      ],
-      where: { 
-      ...whereCondition, 
-      status: { [Op.in]: ['placed', 'completed'] } // Filter by status 'placed' and 'completed'
-      },
-    });
-    // Extract total orders and total amount from the summary
-
-    const totalOrders = ordersSummary[0]?.toJSON()?.totalOrders || 0;
-    const totalAmount = ordersSummary[0]?.toJSON()?.totalAmount || 0;
-
-    // Fetch completed orders count
-    const completedOrders = await Order.count({
-      where: { ...whereCondition, status: 'completed' }, // Filter by status 'completed' and canteenId if provided
-    });
-
-    // Fetch cancelled orders count
-    const cancelledOrders = await Order.count({
-      where: { ...whereCondition, status: 'cancelled' }, // Filter by status 'cancelled' and canteenId if provided
-    });
-
-    // Fetch total items count
-    const totalItems = await Item.count({
-      where: { status: 'active' },
-    });
-
-    // Fetch total canteens count
-    const totalCanteens = canteenId
-      ? await Canteen.count({ where: { id: canteenId } }) // Count only the specified canteen if canteenId is provided
-      : await Canteen.count();
-
-    // Fetch total menus count
-    const totalMenus = await Menu.count({
-            where: { ...whereCondition, status: 'active' }, // Filter by status 'placed' and canteenId if provided
-
-    });
-
-
-    // Get today's date range in Asia/Kolkata timezone
-    const todayStart = moment().tz('Asia/Kolkata').startOf('day').unix();
-    const todayEnd = moment().tz('Asia/Kolkata').endOf('day').unix();
-
-    // Fetch today's orders count and revenue
-    const todayOrdersSummary = await Order.findAll({
-      attributes: [
-        [sequelize.fn('COUNT', sequelize.col('id')), 'todayOrders'],
-        [sequelize.fn('SUM', sequelize.col('totalAmount')), 'todayRevenue'],
-      ],
-      where: {
-        ...whereCondition,
-        status: { [Op.in]: ['placed', 'completed'] },
-        orderDate: { [Op.gte]: todayStart, [Op.lte]: todayEnd },
-      },
-      raw: true, // Ensures the result is a plain object, not an Order instance
-    });
-
-    const todayOrders = Number(todayOrdersSummary[0]?.todayOrders) || 0;
-    const todayRevenue = Number(todayOrdersSummary[0]?.todayRevenue) || 0;
-
-    // Combine all data into a single response
-    const dashboardSummary = {
-      totalOrders,
-      totalAmount,
-      completedOrders,
-      cancelledOrders,
-      totalItems,
-      totalCanteens,
-      totalMenus,
-      todayOrders,
-      todayRevenue,
-    };
-
-
-
-    return res.status(statusCodes.SUCCESS).json({
-      message: getMessage('admin.dashboardFetched'),
-      data: dashboardSummary,
-    });
-  } catch (error: unknown) {
-    logger.error(`Error fetching admin dashboard data: ${error instanceof Error ? error.message : error}`);
-    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
-      message: getMessage('error.internalServerError'),
-    });
-  }
-};
-
 export const adminDashboard = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { canteenId, orderDate } = req.query;
@@ -224,6 +123,8 @@ export const adminDashboard = async (req: Request, res: Response): Promise<Respo
     });
   }
 };
+
+
 
 export const getTotalMenus = async (req: Request, res: Response): Promise<Response> => {
   try {
