@@ -231,8 +231,114 @@ export const getTotalItems = async (req: Request, res: Response): Promise<Respon
   }
 };
 
+export const getTotalOrders = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  try {
+    const { canteenId, orderDate } = req.query;
 
-export const getTotalOrders = async (req: Request, res: Response): Promise<Response> => {
+    // Build where condition
+    const whereCondition: any = {
+      status: { [Op.in]: ['placed', 'completed'] },
+    };
+    const replacements: any = {};
+
+    // Canteen filter
+    if (canteenId) {
+      whereCondition.canteenId = canteenId;
+      replacements.canteenId = canteenId;
+    }
+
+    // Date filter (DD-MM-YYYY) or default to today
+    let startDate: number;
+    let endDate: number;
+    if (orderDate && typeof orderDate === 'string') {
+      const parsedDate = moment.tz(orderDate, 'DD-MM-YYYY', 'Asia/Kolkata');
+      startDate = parsedDate.startOf('day').unix();
+      endDate = parsedDate.endOf('day').unix();
+      replacements.orderDate = startDate;
+    } else {
+      // Default to today in Asia/Kolkata timezone
+      startDate = moment().tz('Asia/Kolkata').startOf('day').unix();
+      endDate = moment().tz('Asia/Kolkata').endOf('day').unix();
+      replacements.orderDate = startDate;
+    }
+    whereCondition.orderDate = { [Op.gte]: startDate, [Op.lte]: endDate };
+
+    // Fetch total orders and amount by canteen
+    const summary = await Order.findAll({
+      attributes: [
+        [sequelize.col('Canteen.canteenName'), 'canteenName'],
+        [sequelize.fn('COUNT', sequelize.col('Order.id')), 'totalOrders'],
+        [sequelize.fn('SUM', sequelize.col('Order.totalAmount')), 'totalAmount'],
+      ],
+      include: [
+        {
+          model: Canteen,
+          as: 'Canteen',
+          attributes: [],
+        },
+      ],
+      group: ['Canteen.canteenName'],
+      where: whereCondition,
+      raw: true,
+    });
+
+    // Build where clauses for raw query
+    const whereClauses: string[] = [`o."status" IN ('placed', 'completed')`];
+    if (canteenId) {
+      whereClauses.push(`o."canteenId" = :canteenId`);
+    }
+    whereClauses.push(`o."orderDate" >= :orderDate AND o."orderDate" <= :endDate`);
+    replacements.endDate = endDate;
+
+    // Fetch item-wise counts
+    const itemCounts = await sequelize.query(
+      `
+      SELECT 
+        c.canteenName AS "canteenName",
+        i.id AS "itemId",
+        i.name AS "itemName",
+        mc.name AS "menuName",
+        SUM(oi."quantity") AS "totalQuantity"
+      FROM orders o
+      JOIN order_items oi ON oi."orderId" = o.id
+      JOIN items i ON oi."itemId" = i.id
+      JOIN menu_configurations mc ON o."menuConfigurationId" = mc.id
+      JOIN canteens c ON o."canteenId" = c.id
+      WHERE ${whereClauses.join(' AND ')}
+      GROUP BY c.canteenName, i.id, i.name, mc.name
+      ORDER BY c.canteenName, i.name
+      `,
+      { type: QueryTypes.SELECT, replacements }
+    );
+
+    // Combine summary and item counts
+    const data = summary.map((canteen) => ({
+      canteenName: canteen.canteenName,
+      totalOrders: Number(canteen.totalOrders),
+      totalAmount: Number(canteen.totalAmount),
+      itemWiseCounts: itemCounts.filter((item) => item.canteenName === canteen.canteenName),
+    }));
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: 'Detailed canteen order summary fetched successfully',
+      data,
+    });
+  } catch (error: unknown) {
+    logger.error(
+      `Error fetching detailed orders by canteen: ${error instanceof Error ? error.message : error}`
+    );
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+
+
+export const getTotalOrders2 = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { canteenId, orderDate } = req.query;
     const whereCondition: any = {};

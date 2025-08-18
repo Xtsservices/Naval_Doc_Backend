@@ -731,7 +731,7 @@ export const getOrdersSummary = async (
   }
 };
 
-export const getOrdersByCanteen = async (
+export const getOrdersByCanteen2 = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
@@ -771,6 +771,70 @@ export const getOrdersByCanteen = async (
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage("error.internalServerError"),
+    });
+  }
+};
+
+export const getOrdersByCanteen = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  try {
+    const { canteenId, orderDate } = req.query;
+
+    // Build where condition
+    const whereCondition: any = {
+      status: { [Op.in]: ['placed', 'completed'] },
+    };
+
+    // Canteen filter
+    if (canteenId) {
+      whereCondition.canteenId = canteenId;
+    }
+
+    // Date filter (DD-MM-YYYY) or default to today
+    let startDate: number;
+    let endDate: number;
+    if (orderDate && typeof orderDate === 'string') {
+      const parsedDate = moment.tz(orderDate, 'DD-MM-YYYY', 'Asia/Kolkata');
+      startDate = parsedDate.startOf('day').unix();
+      endDate = parsedDate.endOf('day').unix();
+    } else {
+      // Default to today in Asia/Kolkata timezone
+      startDate = moment().tz('Asia/Kolkata').startOf('day').unix();
+      endDate = moment().tz('Asia/Kolkata').endOf('day').unix();
+    }
+    whereCondition.orderDate = { [Op.gte]: startDate, [Op.lte]: endDate };
+
+    // Fetch total orders and total amount grouped by canteen name
+    const result = await Order.findAll({
+      attributes: [
+        [sequelize.col('Canteen.canteenName'), 'canteenName'],
+        [sequelize.fn('COUNT', sequelize.col('Order.id')), 'totalOrders'],
+        [sequelize.fn('SUM', sequelize.col('Order.totalAmount')), 'totalAmount'],
+      ],
+      include: [
+        {
+          model: Canteen,
+          as: 'Canteen',
+          attributes: [],
+        },
+      ],
+      group: ['Canteen.canteenName'],
+      where: whereCondition,
+      raw: true,
+    });
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('order.canteenSummaryFetched'),
+      data: result,
+    });
+  } catch (error: unknown) {
+    logger.error(
+      `Error fetching orders by canteen: ${error instanceof Error ? error.message : error}`
+    );
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
     });
   }
 };
