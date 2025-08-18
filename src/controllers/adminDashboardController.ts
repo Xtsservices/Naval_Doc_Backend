@@ -17,7 +17,7 @@ import Pricing from '../models/pricing';
 import moment from 'moment-timezone';
 
 
-export const adminDashboard = async (req: Request, res: Response): Promise<Response> => {
+export const adminDashboard2 = async (req: Request, res: Response): Promise<Response> => {
   try {
 
     const { canteenId } = req.query; // Extract canteenId from query parameters
@@ -112,6 +112,113 @@ export const adminDashboard = async (req: Request, res: Response): Promise<Respo
     });
   } catch (error: unknown) {
     logger.error(`Error fetching admin dashboard data: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const adminDashboard = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { canteenId, orderDate } = req.query;
+
+    // Build where condition for orders
+    const whereCondition: any = {
+      status: { [Op.in]: ['placed', 'completed'] },
+    };
+
+    // Canteen filter
+    if (canteenId) {
+      whereCondition.canteenId = canteenId;
+    }
+
+    // Date filter for todayOrders and todayRevenue (DD-MM-YYYY) or default to today
+    let startDate: number;
+    let endDate: number;
+    if (orderDate && typeof orderDate === 'string') {
+      const parsedDate = moment.tz(orderDate, 'DD-MM-YYYY', 'Asia/Kolkata');
+      if (!parsedDate.isValid()) {
+        return res.status(statusCodes.BAD_REQUEST).json({ message: 'Invalid orderDate format. Use DD-MM-YYYY' });
+      }
+      startDate = parsedDate.startOf('day').unix();
+      endDate = parsedDate.endOf('day').unix();
+    } else {
+      // Default to today in Asia/Kolkata timezone
+      startDate = moment().tz('Asia/Kolkata').startOf('day').unix();
+      endDate = moment().tz('Asia/Kolkata').endOf('day').unix();
+    }
+
+    // Fetch total orders count and total amount
+    const ordersSummary = await Order.findAll({
+      attributes: [
+        [sequelize.fn('COUNT', sequelize.col('id')), 'totalOrders'],
+        [sequelize.fn('SUM', sequelize.col('totalAmount')), 'totalAmount'],
+      ],
+      where: whereCondition,
+      raw: true,
+    });
+    const totalOrders = Number(ordersSummary[0]?.totalOrders) || 0;
+    const totalAmount = Number(ordersSummary[0]?.totalAmount) || 0;
+
+    // Fetch completed orders count
+    const completedOrders = await Order.count({
+      where: { ...whereCondition, status: 'completed' },
+    });
+
+    // Fetch cancelled orders count
+    const cancelledOrders = await Order.count({
+      where: { ...whereCondition, status: 'cancelled' },
+    });
+
+    // Fetch total items count
+    const totalItems = await Item.count({
+      where: { status: 'active' },
+    });
+
+    // Fetch total canteens count
+    const totalCanteens = canteenId
+      ? await Canteen.count({ where: { id: canteenId } })
+      : await Canteen.count();
+
+    // Fetch total menus count
+    const totalMenus = await Menu.count({
+      where: { ...whereCondition, status: 'active' },
+    });
+
+    // Fetch today's orders count and revenue
+    const todayOrdersSummary = await Order.findAll({
+      attributes: [
+        [sequelize.fn('COUNT', sequelize.col('id')), 'todayOrders'],
+        [sequelize.fn('SUM', sequelize.col('totalAmount')), 'todayRevenue'],
+      ],
+      where: {
+        ...whereCondition,
+        orderDate: { [Op.gte]: startDate, [Op.lte]: endDate },
+      },
+      raw: true,
+    });
+    const todayOrders = Number(todayOrdersSummary[0]?.todayOrders) || 0;
+    const todayRevenue = Number(todayOrdersSummary[0]?.todayRevenue) || 0;
+
+    // Combine all data into a single response
+    const dashboardSummary = {
+      totalOrders,
+      totalAmount,
+      completedOrders,
+      cancelledOrders,
+      totalItems,
+      totalCanteens,
+      totalMenus,
+      todayOrders,
+      todayRevenue,
+    };
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('admin.dashboardFetched'),
+      data: dashboardSummary,
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching admin dashboard data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
     });

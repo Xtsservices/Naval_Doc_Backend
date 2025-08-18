@@ -731,49 +731,7 @@ export const getOrdersSummary = async (
   }
 };
 
-export const getOrdersByCanteen2 = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
-  try {
-    // Get today's date range in Asia/Kolkata timezone
-    const todayStart = moment().tz("Asia/Kolkata").startOf("day").unix();
-    const todayEnd = moment().tz("Asia/Kolkata").endOf("day").unix();
 
-    // Fetch total orders and total amount grouped by canteen name for today only
-    const result = await Order.findAll({
-      attributes: [
-        [sequelize.col("Canteen.canteenName"), "canteenName"],
-        [sequelize.fn("COUNT", sequelize.col("Order.id")), "totalOrders"],
-        [sequelize.fn("SUM", sequelize.col("Order.totalAmount")), "totalAmount"],
-      ],
-      include: [
-        {
-          model: Canteen,
-          as: "Canteen", // Alias must match the association
-          attributes: [],
-        },
-      ],
-      group: ["Canteen.canteenName"],
-      where: {
-        status: { [Op.in]: ['placed', 'completed'] },
-        orderDate: { [Op.gte]: todayStart, [Op.lte]: todayEnd },
-      },
-    });
-
-    return res.status(statusCodes.SUCCESS).json({
-      message: getMessage("order.canteenSummaryFetched"),
-      data: result,
-    });
-  } catch (error: unknown) {
-    logger.error(
-      `Error fetching orders by canteen: ${error instanceof Error ? error.message : error}`
-    );
-    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
-      message: getMessage("error.internalServerError"),
-    });
-  }
-};
 
 export const getOrdersByCanteen = async (
   req: Request,
