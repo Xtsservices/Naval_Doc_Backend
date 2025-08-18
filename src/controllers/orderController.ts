@@ -756,7 +756,7 @@ export const getOrdersByCanteen = async (
       ],
       group: ["Canteen.canteenName"],
       where: {
-        status: "placed",
+        status: { [Op.in]: ['placed', 'completed'] },
         orderDate: { [Op.gte]: todayStart, [Op.lte]: todayEnd },
       },
     });
