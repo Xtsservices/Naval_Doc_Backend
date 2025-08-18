@@ -80,23 +80,23 @@ export const placeOrder = async (
 
     // Check if the order date is in the past (previous date)
     // Validate order date and cutoff time
-    const orderDateValidationResult = await validateOrderDateAndCutoff(cart, menuConfigurationId, transaction);
-    if (!orderDateValidationResult.success) {
-      await transaction.rollback();
-      return res.status(orderDateValidationResult.statusCode).json({
-      message: orderDateValidationResult.message,
-      });
-    }
+    // const orderDateValidationResult = await validateOrderDateAndCutoff(cart, menuConfigurationId, transaction);
+    // if (!orderDateValidationResult.success) {
+    //   await transaction.rollback();
+    //   return res.status(orderDateValidationResult.statusCode).json({
+    //   message: orderDateValidationResult.message,
+    //   });
+    // }
 
     // Check if the canteenId and menuConfigurationId are present in the cart
 
-    if (!canteenId || !menuConfigurationId) {
-      await transaction.rollback();
-      return res.status(statusCodes.BAD_REQUEST).json({
-        message: getMessage("validation.validationError"),
-        errors: ["canteenId and menuConfigurationId are required"],
-      });
-    }
+    // if (!canteenId || !menuConfigurationId) {
+    //   await transaction.rollback();
+    //   return res.status(statusCodes.BAD_REQUEST).json({
+    //     message: getMessage("validation.validationError"),
+    //     errors: ["canteenId and menuConfigurationId are required"],
+    //   });
+    // }
 
     const amount = cart.totalAmount;
     const gatewayPercentage = 0;
