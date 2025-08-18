@@ -439,7 +439,7 @@ export const getTotalOrders2 = async (req: Request, res: Response): Promise<Resp
   }
 };
 
-export const getOrdersWithPagination = async (req: Request, res: Response): Promise<Response> => {
+export const getOrdersWithPagination2 = async (req: Request, res: Response): Promise<Response> => {
   try {
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 10;
@@ -500,6 +500,82 @@ export const getOrdersWithPagination = async (req: Request, res: Response): Prom
   }
 };
 
+export const getOrdersWithPagination = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 10;
+    const offset = (page - 1) * limit;
+
+    const { canteenId, date, mobile } = req.query;
+
+    // Build where condition for orders (no status filter)
+    const whereCondition: any = {};
+
+    // Canteen filter
+    if (canteenId) {
+      whereCondition.canteenId = canteenId;
+    }
+
+    // Date filter (DD-MM-YYYY) or default to today
+    let startDate: number;
+    let endDate: number;
+    if (date && typeof date === 'string') {
+      const parsedDate = moment.tz(date, 'DD-MM-YYYY', 'Asia/Kolkata');
+      if (!parsedDate.isValid()) {
+        return res.status(statusCodes.BAD_REQUEST).json({ message: 'Invalid date format. Use DD-MM-YYYY' });
+      }
+      startDate = parsedDate.startOf('day').unix();
+      endDate = parsedDate.endOf('day').unix();
+    } else {
+      // Default to today in Asia/Kolkata timezone
+      startDate = moment().tz('Asia/Kolkata').startOf('day').unix();
+      endDate = moment().tz('Asia/Kolkata').endOf('day').unix();
+    }
+    whereCondition.orderDate = { [Op.gte]: startDate, [Op.lte]: endDate };
+
+    // Filter by user mobile number
+    let userWhere: any = {};
+    if (mobile && typeof mobile === 'string') {
+      userWhere.mobile = mobile;
+    }
+
+    const { count, rows } = await Order.findAndCountAll({
+      where: whereCondition,
+      include: [
+        {
+          model: User,
+          as: 'orderUser',
+          attributes: ['id', 'firstName', 'lastName', 'mobile', 'email'],
+          where: Object.keys(userWhere).length ? userWhere : undefined,
+        },
+        {
+          model: Canteen,
+          as: 'orderCanteen',
+          attributes: ['id', 'canteenName'],
+        },
+      ],
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset,
+      raw: false, // Ensure full model instances for proper serialization
+    });
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: 'Orders fetched successfully',
+      data: {
+        total: count,
+        page,
+        limit,
+        orders: rows,
+      },
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching paginated orders: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
 
 
 export const getTotalAmount = async (req: Request, res: Response): Promise<Response> => {
