@@ -5,6 +5,7 @@ moment.tz('Asia/Kolkata') // Import moment for Unix timestamps
 import Canteen from './canteen';
 
 class Order extends Model {
+  [x: string]: any;
   public id!: number;
   public userId!: number;
   public totalAmount!: number;

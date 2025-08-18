@@ -69,6 +69,28 @@ export const adminDashboard = async (req: Request, res: Response): Promise<Respo
 
     });
 
+
+    // Get today's date range in Asia/Kolkata timezone
+    const todayStart = moment().tz('Asia/Kolkata').startOf('day').unix();
+    const todayEnd = moment().tz('Asia/Kolkata').endOf('day').unix();
+
+    // Fetch today's orders count and revenue
+    const todayOrdersSummary = await Order.findAll({
+      attributes: [
+        [sequelize.fn('COUNT', sequelize.col('id')), 'todayOrders'],
+        [sequelize.fn('SUM', sequelize.col('totalAmount')), 'todayRevenue'],
+      ],
+      where: {
+        ...whereCondition,
+        status: { [Op.in]: ['placed', 'completed'] },
+        orderDate: { [Op.gte]: todayStart, [Op.lte]: todayEnd },
+      },
+      raw: true, // Ensures the result is a plain object, not an Order instance
+    });
+
+    const todayOrders = Number(todayOrdersSummary[0]?.todayOrders) || 0;
+    const todayRevenue = Number(todayOrdersSummary[0]?.todayRevenue) || 0;
+
     // Combine all data into a single response
     const dashboardSummary = {
       totalOrders,
@@ -78,7 +100,11 @@ export const adminDashboard = async (req: Request, res: Response): Promise<Respo
       totalItems,
       totalCanteens,
       totalMenus,
+      todayOrders,
+      todayRevenue,
     };
+
+
 
     return res.status(statusCodes.SUCCESS).json({
       message: getMessage('admin.dashboardFetched'),

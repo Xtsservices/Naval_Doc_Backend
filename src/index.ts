@@ -89,7 +89,6 @@ app.use((req, res, next) => {
   res.on('finish', () => {
     const [seconds, nanoseconds] = process.hrtime(start);
     const durationInMs = Number((seconds * 1000 + nanoseconds / 1e6).toFixed(2));
-    console.log("durationInMs", durationInMs);
 
     if (durationInMs > 500) {
       // Format timestamp: YYYY-MM-DD HH:mm
