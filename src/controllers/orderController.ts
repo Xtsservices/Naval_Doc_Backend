@@ -736,25 +736,29 @@ export const getOrdersByCanteen = async (
   res: Response
 ): Promise<Response> => {
   try {
-    // Fetch total orders and total amount grouped by canteen name
+    // Get today's date range in Asia/Kolkata timezone
+    const todayStart = moment().tz("Asia/Kolkata").startOf("day").unix();
+    const todayEnd = moment().tz("Asia/Kolkata").endOf("day").unix();
+
+    // Fetch total orders and total amount grouped by canteen name for today only
     const result = await Order.findAll({
       attributes: [
-        [sequelize.col("Canteen.canteenName"), "canteenName"], // Use the correct column name
-        [sequelize.fn("COUNT", sequelize.col("Order.id")), "totalOrders"], // Count total orders
-        [
-          sequelize.fn("SUM", sequelize.col("Order.totalAmount")),
-          "totalAmount",
-        ], // Sum total amount
+        [sequelize.col("Canteen.canteenName"), "canteenName"],
+        [sequelize.fn("COUNT", sequelize.col("Order.id")), "totalOrders"],
+        [sequelize.fn("SUM", sequelize.col("Order.totalAmount")), "totalAmount"],
       ],
       include: [
         {
-          model: Canteen, // Ensure the model is correctly imported
+          model: Canteen,
           as: "Canteen", // Alias must match the association
-          attributes: [], // Exclude additional Canteen attributes
+          attributes: [],
         },
       ],
-      group: ["Canteen.canteenName"], // Group by the correct column name
-      where: { status: "placed" }, // Filter by status 'placed'
+      group: ["Canteen.canteenName"],
+      where: {
+        status: "placed",
+        orderDate: { [Op.gte]: todayStart, [Op.lte]: todayEnd },
+      },
     });
 
     return res.status(statusCodes.SUCCESS).json({
@@ -763,8 +767,7 @@ export const getOrdersByCanteen = async (
     });
   } catch (error: unknown) {
     logger.error(
-      `Error fetching orders by canteen: ${error instanceof Error ? error.message : error
-      }`
+      `Error fetching orders by canteen: ${error instanceof Error ? error.message : error}`
     );
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage("error.internalServerError"),
