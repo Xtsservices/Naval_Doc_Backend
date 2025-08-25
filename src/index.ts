@@ -425,7 +425,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
       // Fetch cities from the API
       try {
         const citiesResponse = await axios.get('https://server.vydhyo.com/whatsapp/cities');
-        const cities = citiesResponse.data.data; // Use API data or fallback to default
+        const cities = citiesResponse.data.data || CITIES; // Use API data or fallback to default
         console.log('Fetched cities from API:', citiesResponse.data.data);
 
         reply = `👋 Welcome to Vydhyo! Please select your city:\n${cities.map((city: string, index: number) => `${index + 1}) ${city}`).join('\n')}`;
@@ -437,25 +437,34 @@ app.post('/webhook', async (req: Request, res: Response) => {
 
     } else if (Number(text) >= 1 && Number(text) <= CITIES.length) {
       session.city = CITIES[Number(text) - 1];
+      session.stage = 'service_selection';
       reply = `You selected ${session.city}. Please select a service:\n${SERVICES.map((service, index) => `${index + 1}) ${service}`).join('\n')}`;
     } else {
       reply = `❓ I didn't understand that. Please type 'Hi' to start or select a valid city number.`;
     }
-  } else if (!session.service) {
-    if (Number(text) >= 1 && Number(text) <= SERVICES.length) {
-      session.service = SERVICES[Number(text) - 1];
-      if (session.service === 'Doctor Appointments') {
-        reply = `You selected ${session.service}. Please select a specialization:\n${SPECIALIZATIONS['Doctor Appointments'].map((spec, index) => `${index + 1}) ${spec}`).join('\n')}`;
-      } else {
-        reply = `You selected ${session.service}. This service is not yet implemented.`;
-      }
-    } else {
-      reply = `❓ I didn't understand that. Please select a valid service number:\n${SERVICES.map((service, index) => `${index + 1}) ${service}`).join('\n')}`;
-    }
   } else if (!session.specialization) {
+    
     if (Number(text) >= 1 && Number(text) <= SPECIALIZATIONS['Doctor Appointments'].length) {
-      session.specialization = SPECIALIZATIONS['Doctor Appointments'][Number(text) - 1];
-      reply = `You selected ${session.specialization}. Please select a doctor:\n${DOCTORS[session.specialization as keyof typeof DOCTORS].map((doc, index) => `${index + 1}) ${doc}`).join('\n')}`;
+      // Fetch specializations from the API
+      try {
+        const specializationsResponse = await axios.get('https://server.vydhyo.com/whatsapp/specializations');
+        const apiSpecializations = specializationsResponse.data.data || [];
+        console.log('Fetched specializations from API:', apiSpecializations);
+        
+        // Use API data instead of hardcoded specializations
+        if (Number(text) >= 1 && Number(text) <= apiSpecializations.length) {
+          session.specialization = apiSpecializations[Number(text) - 1];
+          // Continue with the existing logic but use API data for doctors too
+          reply = `You selected ${session.specialization}. Please select a doctor:\n${DOCTORS[session.specialization as keyof typeof DOCTORS] ? DOCTORS[session.specialization as keyof typeof DOCTORS].map((doc, index) => `${index + 1}) ${doc}`).join('\n') : 'No doctors available for this specialization.'}`;
+        } else {
+          reply = `❓ I didn't understand that. Please select a valid specialization number:\n${apiSpecializations.map((spec: string, index: number) => `${index + 1}) ${spec}`).join('\n')}`;
+        }
+      } catch (error) {
+        console.error('Error fetching specializations from API:', error);
+        // Fallback to existing hardcoded logic
+        session.specialization = SPECIALIZATIONS['Doctor Appointments'][Number(text) - 1];
+        reply = `You selected ${session.specialization}. Please select a doctor:\n${DOCTORS[session.specialization as keyof typeof DOCTORS].map((doc, index) => `${index + 1}) ${doc}`).join('\n')}`;
+      }
     } else {
       reply = `❓ I didn't understand that. Please select a valid specialization number:\n${SPECIALIZATIONS['Doctor Appointments'].map((spec, index) => `${index + 1}) ${spec}`).join('\n')}`;
     }
