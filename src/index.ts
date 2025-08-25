@@ -425,14 +425,20 @@ app.post('/webhook', async (req: Request, res: Response) => {
       // Fetch cities from the API
       try {
         const citiesResponse = await axios.get('https://server.vydhyo.com/whatsapp/cities');
-        const cities = citiesResponse.data.data || CITIES; // Use API data or fallback to default
-        console.log('Fetched cities from API:', citiesResponse.data.data);
+        const apiCities = citiesResponse.data?.data || [];
+        console.log('Fetched cities from API:', apiCities);
 
-        reply = `👋 Welcome to Vydhyo! Please select your city:\n${cities.map((city: string, index: number) => `${index + 1}) ${city}`).join('\n')}`;
+        // Check if cities exist and have length
+        if (Array.isArray(apiCities) && apiCities.length > 0) {
+          reply = `👋 Welcome to Vydhyo! Please select your city:\n${apiCities.map((city: string, index: number) => `${index + 1}) ${city}`).join('\n')}`;
+        } else {
+          console.log('No cities found in API response, using default cities');
+            reply = `❌ No cities found. Please try again later.`;
+        }
       } catch (error) {
         console.error('Error fetching cities from API:', error);
         // Fallback to default cities if API fails
-        reply = `👋 Welcome to Vydhyo! Please select your city:\n${CITIES.map((city, index) => `${index + 1}) ${city}`).join('\n')}`;
+        reply = `❌ No cities found. Please try again later.`;
       }
 
     } else if (Number(text) >= 1 && Number(text) <= CITIES.length) {
@@ -442,7 +448,35 @@ app.post('/webhook', async (req: Request, res: Response) => {
     } else {
       reply = `❓ I didn't understand that. Please type 'Hi' to start or select a valid city number.`;
     }
-  } else if (!session.specialization) {
+  } 
+  // Service selection step
+  else if (!session.service) {
+    if (Number(text) >= 1 && Number(text) <= SERVICES.length) {
+      session.service = SERVICES[Number(text) - 1];
+      if (session.service === 'Doctor Appointments') {
+        // Fetch specializations from API
+        try {
+          const specializationsResponse = await axios.get('https://server.vydhyo.com/whatsapp/specializations');
+          const apiSpecializations = specializationsResponse.data.data || [];
+          if (Array.isArray(apiSpecializations) && apiSpecializations.length > 0) {
+            reply = `You selected ${session.service}. Please select a specialization:\n${apiSpecializations.map((spec: string, index: number) => `${index + 1}) ${spec}`).join('\n')}`;
+          } else {
+            reply = `❌ No specializations found. Please try again later.`;
+          }
+        } catch (error) {
+          console.error('Error fetching specializations from API:', error);
+          // Fallback to hardcoded specializations
+          reply = `You selected ${session.service}. Please select a specialization:\n${SPECIALIZATIONS['Doctor Appointments'].map((spec, index) => `${index + 1}) ${spec}`).join('\n')}`;
+        }
+      } else {
+        reply = `You selected ${session.service}. This service is not yet supported. Please type 'Hi' to start again.`;
+        // Optionally, reset session or handle other services here
+      }
+    } else {
+      reply = `❓ I didn't understand that. Please select a valid service number:\n${SERVICES.map((service, index) => `${index + 1}) ${service}`).join('\n')}`;
+    }
+  }
+  else if (!session.specialization) {
     
     if (Number(text) >= 1 && Number(text) <= SPECIALIZATIONS['Doctor Appointments'].length) {
       // Fetch specializations from the API
