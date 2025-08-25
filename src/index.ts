@@ -412,6 +412,28 @@ app.post('/webhook', async (req: Request, res: Response) => {
   // Handle session logic
   if (!session.city) {
     if (text.toLowerCase() === 'hi') {
+
+      // Reset session variables
+      session.city = undefined;
+      session.service = undefined;
+      session.specialization = undefined;
+      session.doctor = undefined;
+      session.date = undefined;
+      session.slot = undefined;
+      session.stage = 'city_selection';
+
+      // Fetch cities from the API
+      try {
+        const citiesResponse = await axios.get('https://server.vydhyo.com/whatsapp/cities');
+        const cities = citiesResponse.data.data || CITIES; // Use API data or fallback to default
+        
+        reply = `👋 Welcome to Vydhyo! Please select your city:\n${cities.map((city: any, index: number) => `${index + 1}) ${city.name || city}`).join('\n')}`;
+      } catch (error) {
+        console.error('Error fetching cities from API:', error);
+        // Fallback to default cities if API fails
+        reply = `👋 Welcome to Vydhyo! Please select your city:\n${CITIES.map((city, index) => `${index + 1}) ${city}`).join('\n')}`;
+      }
+
       reply = `👋 Welcome to Vydhyo! Please select your city:\n${CITIES.map((city, index) => `${index + 1}) ${city}`).join('\n')}`;
     } else if (Number(text) >= 1 && Number(text) <= CITIES.length) {
       session.city = CITIES[Number(text) - 1];
