@@ -435,7 +435,6 @@ app.post('/webhook', async (req: Request, res: Response) => {
         reply = `👋 Welcome to Vydhyo! Please select your city:\n${CITIES.map((city, index) => `${index + 1}) ${city}`).join('\n')}`;
       }
 
-      reply = `👋 Welcome to Vydhyo! Please select your city:\n${CITIES.map((city, index) => `${index + 1}) ${city}`).join('\n')}`;
     } else if (Number(text) >= 1 && Number(text) <= CITIES.length) {
       session.city = CITIES[Number(text) - 1];
       reply = `You selected ${session.city}. Please select a service:\n${SERVICES.map((service, index) => `${index + 1}) ${service}`).join('\n')}`;
