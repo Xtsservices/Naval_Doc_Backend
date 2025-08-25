@@ -425,7 +425,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
       // Fetch cities from the API
       try {
         const citiesResponse = await axios.get('https://server.vydhyo.com/whatsapp/cities');
-        const cities = citiesResponse.data.data || CITIES; // Use API data or fallback to default
+        const cities = citiesResponse.data.data; // Use API data or fallback to default
         console.log('Fetched cities from API:', citiesResponse.data.data);
 
         reply = `👋 Welcome to Vydhyo! Please select your city:\n${cities.map((city: string, index: number) => `${index + 1}) ${city}`).join('\n')}`;
