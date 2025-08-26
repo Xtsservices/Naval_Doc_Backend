@@ -43,7 +43,7 @@ export const placeOrder = async (
 
   try {
     const { userId } = req.user as unknown as { userId: string };
-
+    console.log("1" ,req.body); // Debug log to check userId
     const {
       paymentMethod,
       transactionId,
@@ -291,6 +291,8 @@ export const placeOrder = async (
 
     // Commit the transaction
     await transaction.commit();
+
+    console.log("Order placed:", order.status);
 
     if (order.status === "placed") {
       const { base64, filePath } = await generateOrderQRCode(
