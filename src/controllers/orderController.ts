@@ -300,6 +300,7 @@ export const placeOrder = async (
 
       if (filePath) {
         let whatsappuploadedid = await uploadImageToAirtelAPI(filePath);
+        console.log("303:", whatsappuploadedid);
         sendWhatsQrAppMessage(order, whatsappuploadedid);
       }
     }
