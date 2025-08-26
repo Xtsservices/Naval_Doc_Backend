@@ -74,6 +74,7 @@ export const placeOrder = async (
       });
     }
 
+    console.log("2"); // Debug log to check cart details
     // Check if the canteenId and menuConfigurationId are present in the cart
     const canteenId = cart.canteenId;
     const menuConfigurationId = cart.menuConfigurationId;
@@ -106,6 +107,7 @@ export const placeOrder = async (
       where: { userId: userIdString, type: "credit" },
       transaction,
     });
+    console.log("3"); // Debug log to check cart details
 
     const debitSum = await Wallet.sum("amount", {
       where: { userId: userIdString, type: "debit" },
@@ -130,18 +132,21 @@ export const placeOrder = async (
     if (platform && platform === "mobile") {
       oderStatus = "placed";
     }
+    console.log("4"); // Debug log to check cart details
 
     // Generate a unique order number (e.g., NV + order timestamp + random 4 digits)
     // Generate a unique order number (e.g., NV + order timestamp + random 4 digits)
     // Ensure uniqueness by checking the database and retrying if necessary
     // Generate a unique order number using utility function
     const orderNo = await generateUniqueOrderNo(userId, transaction);
+    console.log("5");
     if (!orderNo) {
       await transaction.rollback();
       return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
         message: "Failed to generate a unique order number. Please try again.",
       });
     }
+    console.log("6");
 
     const order = await Order.create(
       {
@@ -156,6 +161,8 @@ export const placeOrder = async (
       },
       { transaction }
     );
+
+    console.log("7");
 
     // Generate QR Code
 //not required after playstore update
@@ -185,7 +192,7 @@ export const placeOrder = async (
       createdById: userIdString,
     }));
     await OrderItem.bulkCreate(orderItems, { transaction });
-
+    console.log("8");
     // Handle wallet payment
     let walletPaymentAmount = 0;
     let remainingAmount = totalAmount;
@@ -284,11 +291,12 @@ export const placeOrder = async (
 
       // Create a payment record for the remaining amount
     }
+    console.log("9");
 
     // Clear the cart
     await CartItem.destroy({ where: { cartId: cart.id }, transaction });
     await cart.destroy({ transaction });
-
+    console.log("10");
     // Commit the transaction
     await transaction.commit();
 
