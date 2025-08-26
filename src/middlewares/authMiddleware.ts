@@ -23,9 +23,11 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { getCustomerDetails, getMessage } from '../common/utils';
 import { statusCodes } from '../common/statusCodes';
 import logger from '../common/logger';
+import Session from '../models/session';
 
 const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
   const token = req.headers.authorization;
+  
   if (Array.isArray(token)) {
     return res.status(statusCodes.UNAUTHORIZED).json({
       message: getMessage('error.tokenRequired'),
@@ -39,6 +41,9 @@ const authenticateToken = async (req: Request, res: Response, next: NextFunction
 
   try {
 
+
+
+
     const secretKey = process.env.JWT_SECRET || 'your-secret-key';
     const decoded = jwt.verify(token, secretKey) as JwtPayload;
 
@@ -49,9 +54,26 @@ const authenticateToken = async (req: Request, res: Response, next: NextFunction
       });
     }
 
+    
+
+
     // Attach the decoded token to the request object for further use
     req.user = decoded as JwtPayload;
 
+   
+  // Fetch session from session table and validate
+  const session:any = await Session.findOne({
+    where: { userId: req.user.userId, token }
+  });
+
+  if (session && session.logoutTime != null) {
+    return res.status(statusCodes.UNAUTHORIZED).json({
+      message: getMessage('error.invalidToken'),
+    });
+  }
+
+ 
+  
     if (!req.user?.userId) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage('error.invalidUserId'),

@@ -3,6 +3,7 @@ import User from '../models/user';
 import Otp from '../models/otp';
 import Role from '../models/role'; // Import the Role model
 import UserRole from '../models/userRole'; // Import the UserRole model
+import Session from '../models/session';
 import { generateOtp, generateToken, getExpiryTimeInKolkata, getMessage, sendOTPSMS, getCustomerProfile } from '../common/utils';
 import {
   loginWithMobileValidation,
@@ -49,8 +50,9 @@ export const loginWithMobile = async (req: Request, res: Response) => {
     }
 
     // Generate OTP and expiry time
+
+
     let otp = generateOtp();
-console.log("otp",otp)
     if (mobile == "9052519059" || "9494384838" == mobile) {
       otp = '123456'
     }
@@ -59,6 +61,14 @@ console.log("otp",otp)
 
     // Save OTP to the database
     await Otp.create({ mobile, otp, expiresAt }, { transaction });
+
+    const existingSession = await Session.findOne({
+      where: { userId: user.id, logoutTime: null },
+      transaction
+    });
+    if (existingSession) {
+      await existingSession.update({ logoutTime: new Date() }, { transaction });
+    }
 
     await transaction.commit(); // Commit the transaction
 
@@ -137,9 +147,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
 
     // Check if the OTP has expired
     const currentTime = Math.floor(Date.now() / 1000); // Current time in Unix timestamp
-    console.log("object", currentTime)
-    console.log("otpRecord.expiresAt", otpRecord.expiresAt)
-    console.log("otpRecord.expiresAt", currentTime > otpRecord.expiresAt)
+   
     if (currentTime > otpRecord.expiresAt && mobile != "9052519059") {
       logger.warn(`Expired OTP for mobile ${mobile}`);
       await otpRecord.destroy({ transaction }); // Delete the expired OTP
@@ -188,10 +196,21 @@ export const verifyOtp = async (req: Request, res: Response) => {
 
     }
 
+ 
+
     // Generate a JWT token using the userId
     const token = generateToken({ userId: user.id });
 
+    await Session.create({
+      userId: user.id,
+      token,
+      loginTime: new Date(),
+      // Add deviceInfo, ipAddress, etc. if needed
+    }, { transaction });
+    
+
     await transaction.commit(); // Commit the transaction
+
 
     logger.info(`OTP verified for mobile ${mobile}, token generated for userId ${user.id}`);
     res.status(statusCodes.SUCCESS).json({
@@ -361,5 +380,28 @@ export const updateProfile = async (req: Request, res: Response): Promise<Respon
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
     });
+  }
+};
+
+// Logout user
+export const logout = async (req: Request, res: Response) => {
+  try {
+    // Extract userId from authenticated request
+    const { userId } = req.user as { userId: number };
+
+    // Update the session's logoutTime where logoutTime is null and userId matches (ignore token)
+    const [updated] = await Session.update(
+      { logoutTime: new Date() },
+      { where: { userId, logoutTime: null } }
+    );
+
+    if (updated === 0) {
+      return res.status(statusCodes.NOT_FOUND).json({ message: 'Session not found or already logged out' });
+    }
+
+    return res.status(statusCodes.SUCCESS).json({ message: 'Logged out successfully' });
+  } catch (error: unknown) {
+    logger.error(`Error in logout: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({ message: getMessage('error.internalServerError') });
   }
 };

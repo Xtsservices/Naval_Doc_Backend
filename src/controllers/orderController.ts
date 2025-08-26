@@ -50,6 +50,7 @@ export const placeOrder = async (
       currency = "INR",
       platform,
     } = req.body;
+    console.log("Request Body:", userId, paymentMethod); // Debug log to check request body
 
     if (!userId || !paymentMethod) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -57,16 +58,19 @@ export const placeOrder = async (
         errors: ["userId and paymentMethod are required"],
       });
     }
+    console.log("Request Body after validation:", userId, paymentMethod); // Debug log to check request body after validation
 
     // Ensure userId is a string
     const userIdString = String(userId);
+
+    console.log("User ID (string):", userIdString);
 
     const cart: any = await Cart.findOne({
       where: { userId: userIdString, status: "active" },
       include: [{ model: CartItem, as: "cartItems" }],
       transaction,
     });
-
+console.log("Cart Details:", cart); // Debug log to check cart details
     if (!cart || !cart.cartItems || cart.cartItems.length === 0) {
       await transaction.rollback();
       return res.status(statusCodes.NOT_FOUND).json({
