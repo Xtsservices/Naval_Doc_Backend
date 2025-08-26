@@ -1300,6 +1300,7 @@ console.log("CASHFREE_BASE_URLRespomon==================boom",response.data)
               );
               if (filePath) {
                 let whatsappuploadedid = await uploadImageToAirtelAPI(filePath);
+                console.log("WhatsApp uploaded ID:", whatsappuploadedid);
                 await sendWhatsQrAppMessage(order, whatsappuploadedid);
               }
             } catch (whatsappError) {

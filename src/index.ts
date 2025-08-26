@@ -1101,6 +1101,7 @@ export const sendImageWithoutAttachment = async (
 
   try {
     const response = await axios.post(url, payloadData, { headers });
+    console.log('✅ Message with attachment sent:', response.data);
   } catch (error: any) {
     console.error('❌ Error sending message with attachment:', error.response?.data || error.message);
     throw error;
