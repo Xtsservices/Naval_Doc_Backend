@@ -512,16 +512,16 @@ const vydhyobot = async (body: any) => {
   else if (!vydhyoSession.doctor) {
     if (vydhyoSession.doctors && Number(text) >= 1 && Number(text) <= vydhyoSession.doctors.length) {
       vydhyoSession.doctor = vydhyoSession.doctors[Number(text) - 1];
-      vydhyoSession.doctorId = vydhyoSession.doctor.id;
+      vydhyoSession.doctorId = vydhyoSession.doctor.userId;
       // Get clinics for doctor & city
       try {
-        const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/clinics?doctorId=${vydhyoSession.doctorId}&city=${encodeURIComponent(vydhyoSession.city)}`);
+        const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/doctor-clinics?userId=${vydhyoSession.doctorId}&city=${encodeURIComponent(vydhyoSession.city)}`);
         vydhyoSession.clinics = Array.isArray(data?.data) ? data.data : [];
         if ((vydhyoSession.clinics ?? []).length > 0) {
             reply = `You selected ${vydhyoSession.doctor.firstName} ${vydhyoSession.doctor.lastName}. Please select a clinic:\n${(vydhyoSession.clinics ?? []).map((c: any, i: number) => `${i + 1}) ${c.address}`).join('\n')}`;
           vydhyoSession.stage = 'clinic_selection';
         } else {
-          reply = `❌ No clinics found for ${vydhyoSession.doctor.firstName} in ${vydhyoSession.city}.`;
+          reply = `❌ No clinics found for ${vydhyoSession.doctor.firstname} ${vydhyoSession.doctor.lastname} in ${vydhyoSession.city}.`;
         }
       } catch {
         reply = `❌ No clinics found. Please try again later.`;
