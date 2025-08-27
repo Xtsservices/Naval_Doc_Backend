@@ -469,12 +469,12 @@ const vydhyobot = async (body: any) => {
       vydhyoSession.stage = 'specialization_selection';
       // Get specializations for city
       try {
-        const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/specializations?city=${encodeURIComponent(vydhyoSession.city)}`);
+        const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/specializations`);
         vydhyoSession.specializations = Array.isArray(data?.data) ? data.data : [];
         if ((vydhyoSession.specializations ?? []).length > 0) {
           reply = `You selected ${vydhyoSession.city}. Please select a specialization:\n${(vydhyoSession.specializations ?? []).map((s: string, i: number) => `${i + 1}) ${s}`).join('\n')}`;
         } else {
-          reply = `❌ No specializations found for ${vydhyoSession.city}.`;
+          reply = `❌ No specializations found`;
         }
       } catch {
         reply = `❌ No specializations found. Please try again later.`;
@@ -490,7 +490,7 @@ const vydhyobot = async (body: any) => {
       vydhyoSession.stage = 'doctor_selection';
       // Get doctors for city & specialization
       try {
-        const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/doctors?city=${encodeURIComponent(vydhyoSession.city)}&specialization=${encodeURIComponent(vydhyoSession.specialization)}`);
+        const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/doctors-by-specialization-city?city=${encodeURIComponent(vydhyoSession.city)}&specialization=${encodeURIComponent(vydhyoSession.specialization)}`);
         vydhyoSession.doctors = Array.isArray(data?.data) ? data.data : [];
         if ((vydhyoSession.doctors ?? []).length > 0) {
           reply = `You selected ${vydhyoSession.specialization}. Please select a doctor:\n${(vydhyoSession.doctors ?? []).map((d: any, i: number) => `${i + 1}) ${d.name}`).join('\n')}`;
