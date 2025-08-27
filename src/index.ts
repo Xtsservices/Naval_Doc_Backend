@@ -497,7 +497,7 @@ const vydhyobot = async (body: any) => {
         vydhyoSession.doctors = Array.isArray(data?.data) ? data.data : [];
         if ((vydhyoSession.doctors ?? []).length > 0) {
           console.log(vydhyoSession.doctors);
-          reply = `You selected ${vydhyoSession.specialization}. Please select a doctor:\n${(vydhyoSession.doctors ?? []).map((d: any, i: number) => `${i + 1}) ${d.firstName} ${d.lastName}`).join('\n')}`;
+          reply = `You selected ${vydhyoSession.specialization}. Please select a doctor:\n${(vydhyoSession.doctors ?? []).map((d: any, i: number) => `${i + 1}) ${d.firstname} ${d.lastname}`).join('\n')}`;
         } else {
           reply = `❌ No doctors found for ${vydhyoSession.specialization} in ${vydhyoSession.city}.`;
         }
