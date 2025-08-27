@@ -565,6 +565,7 @@ const vydhyobot = async (body: any) => {
       console.log(`https://server.vydhyo.com/whatsappbooking/getSlotsByDoctorIdAndDateForWhatsapp?doctorId=${vydhyoSession.doctorId}&addressId=${vydhyoSession.addressId}&date=${encodeURIComponent(vydhyoSession.date)}`);
       try {
         const { data } = await axios.get(`https://server.vydhyo.com/whatsappbooking/getSlotsByDoctorIdAndDateForWhatsapp?doctorId=${vydhyoSession.doctorId}&addressId=${vydhyoSession.addressId}&date=${encodeURIComponent(vydhyoSession.date)}`);
+        console.log("data", data);
         vydhyoSession.slots = Array.isArray(data?.data) ? data.data : [];
         console.log(vydhyoSession.slots);
         if ((vydhyoSession.slots ?? []).length > 0) {
