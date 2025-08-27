@@ -566,6 +566,7 @@ const vydhyobot = async (body: any) => {
       try {
         const { data } = await axios.get(`https://server.vydhyo.com/whatsappbooking/getSlotsByDoctorIdAndDateForWhatsapp?doctorId=${vydhyoSession.doctorId}&addressId=${vydhyoSession.addressId}&date=${encodeURIComponent(vydhyoSession.date)}`);
         vydhyoSession.slots = Array.isArray(data?.data) ? data.data : [];
+        console.log(vydhyoSession.slots);
         if ((vydhyoSession.slots ?? []).length > 0) {
           reply = `You selected ${vydhyoSession.date}. Please select a time slot:\n${(vydhyoSession.slots ?? []).map((s: string, i: number) => `${i + 1}) ${s}`).join('\n')}`;
           vydhyoSession.stage = 'slot_selection';
