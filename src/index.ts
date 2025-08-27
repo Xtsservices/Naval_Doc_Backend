@@ -407,7 +407,8 @@ app.post('/webhook', async (req: Request, res: Response) => {
 
   const session = sessions[from];
   let reply = '';
-
+let apiCities: string[] = [];
+let apiSpecializations: string[] = [];
   // Handle session logic
   if (!session.city) {
     if (text.toLowerCase() === 'hi') {
@@ -420,12 +421,11 @@ app.post('/webhook', async (req: Request, res: Response) => {
       session.date = undefined;
       session.slot = undefined;
       session.stage = 'city_selection';
-
+      
       // Fetch cities from the API
       try {
         const citiesResponse = await axios.get('https://server.vydhyo.com/whatsapp/cities');
-        const apiCities = citiesResponse.data?.data || [];
-        console.log('Fetched cities from API:', apiCities);
+        apiCities = Array.isArray(citiesResponse.data?.data) ? citiesResponse.data.data : [];
 
         // Check if cities exist and have length
         if (Array.isArray(apiCities) && apiCities.length > 0) {
@@ -440,8 +440,8 @@ app.post('/webhook', async (req: Request, res: Response) => {
         reply = `❌ No cities found. Please try again later.`;
       }
 
-    } else if (Number(text) >= 1 && Number(text) <= CITIES.length) {
-      session.city = CITIES[Number(text) - 1];
+    } else if (Number(text) >= 1 && Number(text) <= apiCities.length) {
+      session.city = apiCities[Number(text) - 1];
       session.stage = 'service_selection';
       reply = `You selected ${session.city}. Please select a service:\n${SERVICES.map((service, index) => `${index + 1}) ${service}`).join('\n')}`;
     } else {
@@ -456,7 +456,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
         // Fetch specializations from API
         try {
           const specializationsResponse = await axios.get('https://server.vydhyo.com/whatsapp/specializations');
-          const apiSpecializations = specializationsResponse.data.data || [];
+           apiSpecializations = specializationsResponse.data.data || [];
           if (Array.isArray(apiSpecializations) && apiSpecializations.length > 0) {
             reply = `You selected ${session.service}. Please select a specialization:\n${apiSpecializations.map((spec: string, index: number) => `${index + 1}) ${spec}`).join('\n')}`;
           } else {
@@ -465,7 +465,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
         } catch (error) {
           console.error('Error fetching specializations from API:', error);
           // Fallback to hardcoded specializations
-          reply = `You selected ${session.service}. Please select a specialization:\n${SPECIALIZATIONS['Doctor Appointments'].map((spec, index) => `${index + 1}) ${spec}`).join('\n')}`;
+            reply = `❌ No specializations found. Please try again later.`;
         }
       } else {
         reply = `You selected ${session.service}. This service is not yet supported. Please type 'Hi' to start again.`;
