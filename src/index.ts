@@ -353,11 +353,20 @@ const sessions: Record<string, {
   menus: any;
   selectedCanteen: any;
   canteens: any;
+  cities?: string[];
   city?: string;
   service?: string;
+  specializations?: string[]; // <-- Added this line
   specialization?: string;
-  doctor?: string;
+  doctors?: any[];
+  doctor?: any;
+  doctorId?: any;
+  clinics?: any[];
+  clinic?: any;
+  addressId?: any;
+  dates?: string[];
   date?: string;
+  slots?: string[];
   slot?: string;
   stage?: string;
   cart?: { itemId: number; name: string; price: number; quantity: number }[];
@@ -389,161 +398,216 @@ app.post('/webhook', async (req: Request, res: Response) => {
     // console.log('Navigating to another function for processing recipientAddress:', req.body.recipientAddress);
     await processSpecialRecipient(req.body); // Navigate to another function
     return res.status(200).json({ message: 'Special recipient processed.' });
+  } else {
+    await vydhyobot(req.body);
+        return res.status(200).json({ message: 'Special recipient processed.' });
+
   }
 
-  const { sourceAddress: from, messageParameters } = req.body;
 
-  if (!from || !messageParameters?.text?.body) {
-    // console.error('Invalid webhook payload:', req.body);
-    return res.status(400).json({ message: 'Invalid webhook payload.' });
-  }
+});
+
+const vydhyobot = async (body: any) => {
+  const { sourceAddress: from, messageParameters } = body;
+  if (!from || !messageParameters?.text?.body) return;
 
   const text = messageParameters.text.body.trim();
-  // console.log(`📥 Incoming message from ${from}: ${text}`);
-
+  // Initialize vydhyoSession if not present
   if (!sessions[from]) {
-    sessions[from] = { items: [], selectedCanteen: null, canteens: [], menus: null, selectedMenu: null };
+    sessions[from] = {
+      items: [],
+      selectedCanteen: null,
+      canteens: [],
+      menus: null,
+      selectedMenu: null,
+      cities: [],
+      city: undefined,
+      service: undefined,
+      specializations: [],
+      specialization: undefined,
+      doctors: [],
+      doctor: undefined,
+      doctorId: undefined,
+      clinics: [],
+      clinic: undefined,
+      addressId: undefined,
+      dates: [],
+      date: undefined,
+      slots: [],
+      slot: undefined,
+      stage: undefined,
+      cart: [],
+      selectedDate: undefined
+    };
   }
-
-  const session = sessions[from];
+  const vydhyoSession = sessions[from];
   let reply = '';
-let apiCities: string[] = [];
-let apiSpecializations: string[] = [];
-  // Handle session logic
-  if (!session.city) {
+
+  // 1. City selection
+  if (!vydhyoSession.city) {
     if (text.toLowerCase() === 'hi') {
-
-      // Reset session variables
-      session.city = undefined;
-      session.service = undefined;
-      session.specialization = undefined;
-      session.doctor = undefined;
-      session.date = undefined;
-      session.slot = undefined;
-      session.stage = 'city_selection';
-      
-      // Fetch cities from the API
+      vydhyoSession.city = undefined;
+      vydhyoSession.service = undefined;
+      vydhyoSession.specialization = undefined;
+      vydhyoSession.doctor = undefined;
+      vydhyoSession.date = undefined;
+      vydhyoSession.slot = undefined;
+      vydhyoSession.stage = 'city_selection';
       try {
-        const citiesResponse = await axios.get('https://server.vydhyo.com/whatsapp/cities');
-        apiCities = Array.isArray(citiesResponse.data?.data) ? citiesResponse.data.data : [];
-
-        // Check if cities exist and have length
-        if (Array.isArray(apiCities) && apiCities.length > 0) {
-          reply = `👋 Welcome to Vydhyo! Please select your city:\n${apiCities.map((city: string, index: number) => `${index + 1}) ${city}`).join('\n')}`;
+        const { data } = await axios.get('https://server.vydhyo.com/whatsapp/cities');
+        vydhyoSession.cities = Array.isArray(data?.data) ? data.data : [];
+        if ((vydhyoSession.cities ?? []).length > 0) {
+          reply = `👋 Welcome to Vydhyo! Please select your city:\n${(vydhyoSession.cities ?? []).map((city: string, i: number) => `${i + 1}) ${city}`).join('\n')}`;
         } else {
-          console.log('No cities found in API response, using default cities');
-            reply = `❌ No cities found. Please try again later.`;
+          reply = `❌ No cities found. Please try again later.`;
         }
-      } catch (error) {
-        console.error('Error fetching cities from API:', error);
-        // Fallback to default cities if API fails
+      } catch {
         reply = `❌ No cities found. Please try again later.`;
       }
-
-    } else if (Number(text) >= 1 && Number(text) <= apiCities.length) {
-      session.city = apiCities[Number(text) - 1];
-      session.stage = 'service_selection';
-      reply = `You selected ${session.city}. Please select a service:\n${SERVICES.map((service, index) => `${index + 1}) ${service}`).join('\n')}`;
+    } else if (vydhyoSession.cities && Number(text) >= 1 && Number(text) <= vydhyoSession.cities.length) {
+      vydhyoSession.city = vydhyoSession.cities[Number(text) - 1];
+      vydhyoSession.stage = 'specialization_selection';
+      // Get specializations for city
+      try {
+        const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/specializations?city=${encodeURIComponent(vydhyoSession.city)}`);
+        vydhyoSession.specializations = Array.isArray(data?.data) ? data.data : [];
+        if ((vydhyoSession.specializations ?? []).length > 0) {
+          reply = `You selected ${vydhyoSession.city}. Please select a specialization:\n${(vydhyoSession.specializations ?? []).map((s: string, i: number) => `${i + 1}) ${s}`).join('\n')}`;
+        } else {
+          reply = `❌ No specializations found for ${vydhyoSession.city}.`;
+        }
+      } catch {
+        reply = `❌ No specializations found. Please try again later.`;
+      }
     } else {
       reply = `❓ I didn't understand that. Please type 'Hi' to start or select a valid city number.`;
     }
-  } 
-  // Service selection step
-  else if (!session.service) {
-    if (Number(text) >= 1 && Number(text) <= SERVICES.length) {
-      session.service = SERVICES[Number(text) - 1];
-      if (session.service === 'Doctor Appointments') {
-        // Fetch specializations from API
-        try {
-          const specializationsResponse = await axios.get('https://server.vydhyo.com/whatsapp/specializations');
-           apiSpecializations = specializationsResponse.data.data || [];
-          if (Array.isArray(apiSpecializations) && apiSpecializations.length > 0) {
-            reply = `You selected ${session.service}. Please select a specialization:\n${apiSpecializations.map((spec: string, index: number) => `${index + 1}) ${spec}`).join('\n')}`;
-          } else {
-            reply = `❌ No specializations found. Please try again later.`;
-          }
-        } catch (error) {
-          console.error('Error fetching specializations from API:', error);
-          // Fallback to hardcoded specializations
-            reply = `❌ No specializations found. Please try again later.`;
+  }
+  // 2. Specialization selection
+  else if (!vydhyoSession.specialization) {
+    if (vydhyoSession.specializations && Number(text) >= 1 && Number(text) <= vydhyoSession.specializations.length) {
+      vydhyoSession.specialization = vydhyoSession.specializations[Number(text) - 1];
+      vydhyoSession.stage = 'doctor_selection';
+      // Get doctors for city & specialization
+      try {
+        const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/doctors?city=${encodeURIComponent(vydhyoSession.city)}&specialization=${encodeURIComponent(vydhyoSession.specialization)}`);
+        vydhyoSession.doctors = Array.isArray(data?.data) ? data.data : [];
+        if ((vydhyoSession.doctors ?? []).length > 0) {
+          reply = `You selected ${vydhyoSession.specialization}. Please select a doctor:\n${(vydhyoSession.doctors ?? []).map((d: any, i: number) => `${i + 1}) ${d.name}`).join('\n')}`;
+        } else {
+          reply = `❌ No doctors found for ${vydhyoSession.specialization} in ${vydhyoSession.city}.`;
         }
-      } else {
-        reply = `You selected ${session.service}. This service is not yet supported. Please type 'Hi' to start again.`;
-        // Optionally, reset session or handle other services here
+      } catch {
+        reply = `❌ No doctors found. Please try again later.`;
       }
     } else {
-      reply = `❓ I didn't understand that. Please select a valid service number:\n${SERVICES.map((service, index) => `${index + 1}) ${service}`).join('\n')}`;
+      reply = `❓ I didn't understand that. Please select a valid specialization number:\n${vydhyoSession.specializations?.map((s: string, i: number) => `${i + 1}) ${s}`).join('\n')}`;
     }
   }
-  else if (!session.specialization) {
-    
-    if (Number(text) >= 1 && Number(text) <= SPECIALIZATIONS['Doctor Appointments'].length) {
-      // Fetch specializations from the API
+  // 3. Doctor selection
+  else if (!vydhyoSession.doctor) {
+    if (vydhyoSession.doctors && Number(text) >= 1 && Number(text) <= vydhyoSession.doctors.length) {
+      vydhyoSession.doctor = vydhyoSession.doctors[Number(text) - 1];
+      vydhyoSession.doctorId = vydhyoSession.doctor.id;
+      // Get clinics for doctor & city
       try {
-        const specializationsResponse = await axios.get('https://server.vydhyo.com/whatsapp/specializations');
-        const apiSpecializations = specializationsResponse.data.data || [];
-        console.log('Fetched specializations from API:', apiSpecializations);
-        
-        // Use API data instead of hardcoded specializations
-        if (Number(text) >= 1 && Number(text) <= apiSpecializations.length) {
-          session.specialization = apiSpecializations[Number(text) - 1];
-          // Continue with the existing logic but use API data for doctors too
-          reply = `You selected ${session.specialization}. Please select a doctor:\n${DOCTORS[session.specialization as keyof typeof DOCTORS] ? DOCTORS[session.specialization as keyof typeof DOCTORS].map((doc, index) => `${index + 1}) ${doc}`).join('\n') : 'No doctors available for this specialization.'}`;
+        const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/clinics?doctorId=${vydhyoSession.doctorId}&city=${encodeURIComponent(vydhyoSession.city)}`);
+        vydhyoSession.clinics = Array.isArray(data?.data) ? data.data : [];
+        if ((vydhyoSession.clinics ?? []).length > 0) {
+          reply = `You selected ${vydhyoSession.doctor.name}. Please select a clinic:\n${(vydhyoSession.clinics ?? []).map((c: any, i: number) => `${i + 1}) ${c.address}`).join('\n')}`;
+          vydhyoSession.stage = 'clinic_selection';
         } else {
-          reply = `❓ I didn't understand that. Please select a valid specialization number:\n${apiSpecializations.map((spec: string, index: number) => `${index + 1}) ${spec}`).join('\n')}`;
+          reply = `❌ No clinics found for ${vydhyoSession.doctor.name} in ${vydhyoSession.city}.`;
         }
-      } catch (error) {
-        console.error('Error fetching specializations from API:', error);
-        // Fallback to existing hardcoded logic
-        session.specialization = SPECIALIZATIONS['Doctor Appointments'][Number(text) - 1];
-        reply = `You selected ${session.specialization}. Please select a doctor:\n${DOCTORS[session.specialization as keyof typeof DOCTORS].map((doc, index) => `${index + 1}) ${doc}`).join('\n')}`;
+      } catch {
+        reply = `❌ No clinics found. Please try again later.`;
       }
     } else {
-      reply = `❓ I didn't understand that. Please select a valid specialization number:\n${SPECIALIZATIONS['Doctor Appointments'].map((spec, index) => `${index + 1}) ${spec}`).join('\n')}`;
+      reply = `❓ I didn't understand that. Please select a valid doctor number:\n${vydhyoSession.doctors?.map((d: any, i: number) => `${i + 1}) ${d.name}`).join('\n')}`;
     }
-  } else if (!session.doctor) {
-    if (Number(text) >= 1 && Number(text) <= DOCTORS[session.specialization as keyof typeof DOCTORS].length) {
-      session.doctor = DOCTORS[session.specialization as keyof typeof DOCTORS][Number(text) - 1];
-      const today = new Date();
-      const dates = [today, new Date(today.getTime() + 86400000), new Date(today.getTime() + 2 * 86400000)];
-      reply = `You selected ${session.doctor}. Please select a date:\n${dates.map((date, index) => `${index + 1}) ${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`).join('\n')}`;
+  }
+  // 4. Clinic selection
+  else if (!vydhyoSession.clinic) {
+    if (vydhyoSession.clinics && Number(text) >= 1 && Number(text) <= vydhyoSession.clinics.length) {
+      vydhyoSession.clinic = vydhyoSession.clinics[Number(text) - 1];
+      vydhyoSession.addressId = vydhyoSession.clinic.id;
+      // Get next 3 available dates for doctorId, addressId
+      try {
+        const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/available-dates?doctorId=${vydhyoSession.doctorId}&addressId=${vydhyoSession.addressId}`);
+        vydhyoSession.dates = Array.isArray(data?.data) ? data.data.slice(0, 3) : [];
+        if ((vydhyoSession.dates ?? []).length > 0) {
+          reply = `You selected clinic: ${vydhyoSession.clinic.address}\nPlease select a date:\n${(vydhyoSession.dates ?? []).map((d: string, i: number) => `${i + 1}) ${d}`).join('\n')}`;
+          vydhyoSession.stage = 'date_selection';
+        } else {
+          reply = `❌ No dates available for this clinic.`;
+        }
+      } catch {
+        reply = `❌ No dates available. Please try again later.`;
+      }
     } else {
-      reply = `❓ I didn't understand that. Please select a valid doctor number:\n${DOCTORS[session.specialization as keyof typeof DOCTORS].map((doc, index) => `${index + 1}) ${doc}`).join('\n')}`;
+      reply = `❓ I didn't understand that. Please select a valid clinic number:\n${vydhyoSession.clinics?.map((c: any, i: number) => `${i + 1}) ${c.address}`).join('\n')}`;
     }
-  } else if (!session.date) {
-    const today = new Date();
-    const dates = [today, new Date(today.getTime() + 86400000), new Date(today.getTime() + 2 * 86400000)];
-    if (Number(text) >= 1 && Number(text) <= dates.length) {
-      session.date = dates[Number(text) - 1].toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-      reply = `You selected ${session.date}. Please select a time slot:\n${SLOTS.map((slot, index) => `${index + 1}) ${slot}`).join('\n')}`;
+  }
+  // 5. Date selection
+  else if (!vydhyoSession.date) {
+    if (vydhyoSession.dates && Number(text) >= 1 && Number(text) <= vydhyoSession.dates.length) {
+      vydhyoSession.date = vydhyoSession.dates[Number(text) - 1];
+      // Get slots for doctorId, addressId, date
+      try {
+        const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/slots?doctorId=${vydhyoSession.doctorId}&addressId=${vydhyoSession.addressId}&date=${encodeURIComponent(vydhyoSession.date)}`);
+        vydhyoSession.slots = Array.isArray(data?.data) ? data.data : [];
+        if ((vydhyoSession.slots ?? []).length > 0) {
+          reply = `You selected ${vydhyoSession.date}. Please select a time slot:\n${(vydhyoSession.slots ?? []).map((s: string, i: number) => `${i + 1}) ${s}`).join('\n')}`;
+          vydhyoSession.stage = 'slot_selection';
+        } else {
+          reply = `❌ No slots available for this date.`;
+        }
+      } catch {
+        reply = `❌ No slots available. Please try again later.`;
+      }
     } else {
-      reply = `❓ I didn't understand that. Please select a valid date number:\n${dates.map((date, index) => `${index + 1}) ${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`).join('\n')}`;
+      reply = `❓ I didn't understand that. Please select a valid date number:\n${vydhyoSession.dates?.map((d: string, i: number) => `${i + 1}) ${d}`).join('\n')}`;
     }
-  } else if (!session.slot) {
-    if (Number(text) >= 1 && Number(text) <= SLOTS.length) {
-      session.slot = SLOTS[Number(text) - 1];
-      reply = `You selected ${session.slot}. Confirm your appointment by replying 'Yes'.`;
+  }
+  // 6. Slot selection
+  else if (!vydhyoSession.slot) {
+    if (vydhyoSession.slots && Number(text) >= 1 && Number(text) <= vydhyoSession.slots.length) {
+      vydhyoSession.slot = vydhyoSession.slots[Number(text) - 1];
+      reply = `You selected ${vydhyoSession.slot}. Confirm your appointment by replying 'Yes'.`;
+      vydhyoSession.stage = 'confirm';
     } else {
-      reply = `❓ I didn't understand that. Please select a valid time slot number:\n${SLOTS.map((slot, index) => `${index + 1}) ${slot}`).join('\n')}`;
+      reply = `❓ I didn't understand that. Please select a valid slot number:\n${vydhyoSession.slots?.map((s: string, i: number) => `${i + 1}) ${s}`).join('\n')}`;
     }
-  } else if (text.toLowerCase() === 'yes') {
-    const appointmentId = uuidv4();
-    reply = `✅ Appointment confirmed!\n\nDetails:\nCity: ${session.city}\nService: ${session.service}\nSpecialization: ${session.specialization}\nDoctor: ${session.doctor}\nDate: ${session.date}\nSlot: ${session.slot}\nAppointment ID: ${appointmentId}`;
-    delete sessions[from]; // Clear session after confirmation
+  }
+  // 7. Confirmation
+  else if (vydhyoSession.stage === 'confirm' && text.toLowerCase() === 'yes') {
+    // Confirm appointment (dummy API call)
+    try {
+      await axios.post('https://server.vydhyo.com/whatsapp/book', {
+        city: vydhyoSession.city,
+        specialization: vydhyoSession.specialization,
+        doctorId: vydhyoSession.doctorId,
+        addressId: vydhyoSession.addressId,
+        date: vydhyoSession.date,
+        slot: vydhyoSession.slot,
+        user: from
+      });
+      reply = `✅ Appointment confirmed!\n\nDetails:\nCity: ${vydhyoSession.city}\nSpecialization: ${vydhyoSession.specialization}\nDoctor: ${vydhyoSession.doctor.name}\nClinic: ${vydhyoSession.clinic.address}\nDate: ${vydhyoSession.date}\nSlot: ${vydhyoSession.slot}`;
+      delete sessions[from];
+    } catch {
+      reply = `❌ Failed to confirm appointment. Please try again later.`;
+    }
   } else {
-    reply = `❓ I didn't understand that. Please confirm your appointment by replying 'Yes'.`;
+    reply = `❓ I didn't understand that. Please type 'Hi' to start again.`;
   }
 
-  // Send reply via Airtel API
   try {
-    await sendWhatsAppMessage(from, reply, FROM_NUMBER.toString(),null);
-    // console.log(`📤 Reply sent to ${from}: ${reply}`);
+    await sendWhatsAppMessage(from, reply, FROM_NUMBER.toString(), null);
   } catch (error: any) {
     console.error('❌ Error sending reply:', error.message);
   }
-
-  res.status(200).json({ message: 'Webhook processed successfully.' });
-});
+};
+  // Your Vydhyobot implementation here
 
 /**
  * Function to process special recipient
