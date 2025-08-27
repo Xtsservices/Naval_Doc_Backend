@@ -489,10 +489,12 @@ const vydhyobot = async (body: any) => {
       vydhyoSession.specialization = vydhyoSession.specializations[Number(text) - 1];
       vydhyoSession.stage = 'doctor_selection';
       // Get doctors for city & specialization
+      console.log(`https://server.vydhyo.com/whatsapp/doctors-by-specialization-city?city=${encodeURIComponent(vydhyoSession.city)}&specialization=${encodeURIComponent(vydhyoSession.specialization)}`);
       try {
         const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/doctors-by-specialization-city?city=${encodeURIComponent(vydhyoSession.city)}&specialization=${encodeURIComponent(vydhyoSession.specialization)}`);
-        vydhyoSession.doctors = Array.isArray(data?.data) ? data.data : [];
         console.log("data", data);
+
+        vydhyoSession.doctors = Array.isArray(data?.data) ? data.data : [];
         if ((vydhyoSession.doctors ?? []).length > 0) {
           console.log(vydhyoSession.doctors);
           reply = `You selected ${vydhyoSession.specialization}. Please select a doctor:\n${(vydhyoSession.doctors ?? []).map((d: any, i: number) => `${i + 1}) ${d.firstName} ${d.lastName}`).join('\n')}`;
