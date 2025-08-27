@@ -534,20 +534,25 @@ const vydhyobot = async (body: any) => {
   else if (!vydhyoSession.clinic) {
     if (vydhyoSession.clinics && Number(text) >= 1 && Number(text) <= vydhyoSession.clinics.length) {
       vydhyoSession.clinic = vydhyoSession.clinics[Number(text) - 1];
-      vydhyoSession.addressId = vydhyoSession.clinic.id;
-      // Get next 3 available dates for doctorId, addressId
-      try {
-        const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/available-dates?doctorId=${vydhyoSession.doctorId}&addressId=${vydhyoSession.addressId}`);
-        vydhyoSession.dates = Array.isArray(data?.data) ? data.data.slice(0, 3) : [];
-        if ((vydhyoSession.dates ?? []).length > 0) {
-          reply = `You selected clinic: ${vydhyoSession.clinic.address}\nPlease select a date:\n${(vydhyoSession.dates ?? []).map((d: string, i: number) => `${i + 1}) ${d}`).join('\n')}`;
-          vydhyoSession.stage = 'date_selection';
-        } else {
-          reply = `❌ No dates available for this clinic.`;
-        }
-      } catch {
-        reply = `❌ No dates available. Please try again later.`;
+      vydhyoSession.addressId = vydhyoSession.clinic.addressId;
+
+      // Generate today + next 3 days
+      const dates: { key: string; display: string }[] = [];
+      for (let i = 0; i < 4; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + i);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        dates.push({
+          key: `${yyyy}-${mm}-${dd}`,
+          display: `${dd}-${mm}-${yyyy}`,
+        });
       }
+      vydhyoSession.dates = dates.map(date => date.key);
+
+      reply = `You selected clinic: ${vydhyoSession.clinic.address}\nPlease select a date:\n${dates.map((date, i) => `${i + 1}) ${date.display}`).join('\n')}`;
+      vydhyoSession.stage = 'date_selection';
     } else {
       reply = `❓ I didn't understand that. Please select a valid clinic number:\n${vydhyoSession.clinics?.map((c: any, i: number) => `${i + 1}) ${c.address}`).join('\n')}`;
     }
@@ -557,8 +562,9 @@ const vydhyobot = async (body: any) => {
     if (vydhyoSession.dates && Number(text) >= 1 && Number(text) <= vydhyoSession.dates.length) {
       vydhyoSession.date = vydhyoSession.dates[Number(text) - 1];
       // Get slots for doctorId, addressId, date
+      console.log(`https://server.vydhyo.com/whatsappbooking/getSlotsByDoctorIdAndDateForWhatsapp?doctorId=${vydhyoSession.doctorId}&addressId=${vydhyoSession.addressId}&date=${encodeURIComponent(vydhyoSession.date)}`);
       try {
-        const { data } = await axios.get(`https://server.vydhyo.com/whatsapp/slots?doctorId=${vydhyoSession.doctorId}&addressId=${vydhyoSession.addressId}&date=${encodeURIComponent(vydhyoSession.date)}`);
+        const { data } = await axios.get(`https://server.vydhyo.com/whatsappbooking/getSlotsByDoctorIdAndDateForWhatsapp?doctorId=${vydhyoSession.doctorId}&addressId=${vydhyoSession.addressId}&date=${encodeURIComponent(vydhyoSession.date)}`);
         vydhyoSession.slots = Array.isArray(data?.data) ? data.data : [];
         if ((vydhyoSession.slots ?? []).length > 0) {
           reply = `You selected ${vydhyoSession.date}. Please select a time slot:\n${(vydhyoSession.slots ?? []).map((s: string, i: number) => `${i + 1}) ${s}`).join('\n')}`;
