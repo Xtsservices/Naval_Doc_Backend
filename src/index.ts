@@ -299,6 +299,12 @@ app.use('/api/voice', voiceRoutes);
 //payment method sdk 
 app.use('/api/paymentsdk', paymentSdkRoutes);
 
+app.get("/app-version", (req, res) => {
+  res.json({
+    minVersionCode: 37 
+  });
+});
+
 // GET endpoint to fetch payment method counts
 // Self-invoked function to get payment method counts
 (async () => {
