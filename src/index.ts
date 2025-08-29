@@ -301,7 +301,7 @@ app.use('/api/paymentsdk', paymentSdkRoutes);
 
 app.get("/app-version", (req, res) => {
   res.json({
-    minVersionCode: 40
+    minVersionCode: 39
   });
 });
 
