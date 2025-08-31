@@ -48,3 +48,33 @@ export const getAllCanteens = async (req: Request, res: Response): Promise<Respo
     });
   }
 };
+
+export const getAllUsers = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    // Fetch all users, only select mobileNumber
+    const users = await User.findAll({
+      attributes: ['mobile'],
+    });
+
+    if (!users || users.length === 0) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('user.noUsersFound'),
+      });
+    }
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('success.usersFetched'),
+      data: users,
+    });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      logger.error(`Error fetching user details: ${error.message}`);
+    } else {
+      logger.error(`Unknown error fetching user details: ${error}`);
+    }
+
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
