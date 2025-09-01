@@ -47,7 +47,7 @@ export const handleVoiceRequest = async (req: Request, res: Response): Promise<R
         participants: [
           {
             participantName: callingParticipant,
-            participantAddress: "9392392143", // Example participant address
+            participantAddress: "6301179997", // Example participant address
             outBoundNO: routedNumber, // Route to the mapped number
             callerId: callerId,
             dialKey: 1,
@@ -56,50 +56,50 @@ export const handleVoiceRequest = async (req: Request, res: Response): Promise<R
             maxTime: 0,
             enableEarlyMedia: "false",
           },
-          {
-            participantName: callingParticipant,
-            participantAddress: "6301179997", // Example participant address
-            outBoundNO: routedNumber, // Route to the mapped number
-            callerId: callerId,
-            dialKey: 2,
-            maxRetries: 1,
-            audioId: 0,
-            maxTime: 0,
-            enableEarlyMedia: "false",
-          },
-          {
-            participantName: callingParticipant,
-            participantAddress: "9490219062", // Example participant address
-            outBoundNO: routedNumber, // Route to the mapped number
-            callerId: callerId,
-            dialKey: 3,
-            maxRetries: 1,
-            audioId: 0,
-            maxTime: 0,
-            enableEarlyMedia: "false",
-          },
-          {
-            participantName: callingParticipant,
-            participantAddress: "9494999989", // Example participant address
-            outBoundNO: routedNumber, // Route to the mapped number
-            callerId: callerId,
-            dialKey: 4,
-            maxRetries: 1,
-            audioId: 0,
-            maxTime: 0,
-            enableEarlyMedia: "false",
-          },
-          {
-            participantName: callingParticipant,
-            participantAddress: "9701646859", // Example participant address
-            outBoundNO: routedNumber, // Route to the mapped number
-            callerId: callerId,
-            dialKey: 5,
-            maxRetries: 1,
-            audioId: 0,
-            maxTime: 0,
-            enableEarlyMedia: "false",
-          },
+          // {
+          //   participantName: callingParticipant,
+          //   participantAddress: "6301179997", // Example participant address
+          //   outBoundNO: routedNumber, // Route to the mapped number
+          //   callerId: callerId,
+          //   dialKey: 2,
+          //   maxRetries: 1,
+          //   audioId: 0,
+          //   maxTime: 0,
+          //   enableEarlyMedia: "false",
+          // },
+          // {
+          //   participantName: callingParticipant,
+          //   participantAddress: "9490219062", // Example participant address
+          //   outBoundNO: routedNumber, // Route to the mapped number
+          //   callerId: callerId,
+          //   dialKey: 3,
+          //   maxRetries: 1,
+          //   audioId: 0,
+          //   maxTime: 0,
+          //   enableEarlyMedia: "false",
+          // },
+          // {
+          //   participantName: callingParticipant,
+          //   participantAddress: "9494999989", // Example participant address
+          //   outBoundNO: routedNumber, // Route to the mapped number
+          //   callerId: callerId,
+          //   dialKey: 4,
+          //   maxRetries: 1,
+          //   audioId: 0,
+          //   maxTime: 0,
+          //   enableEarlyMedia: "false",
+          // },
+          // {
+          //   participantName: callingParticipant,
+          //   participantAddress: "9701646859", // Example participant address
+          //   outBoundNO: routedNumber, // Route to the mapped number
+          //   callerId: callerId,
+          //   dialKey: 5,
+          //   maxRetries: 1,
+          //   audioId: 0,
+          //   maxTime: 0,
+          //   enableEarlyMedia: "false",
+          // },
         ],
         mergingStrategy: "SEQUENTIAL",
         maxTime: 0,
