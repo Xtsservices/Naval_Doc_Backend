@@ -13,6 +13,7 @@ export const handleVoiceRequest = async (req: Request, res: Response): Promise<R
         message: 'Both callingParticipant and callerId are required.',
       });
     }
+    console.log(`Received voice request from participant: ${callingParticipant}`, dialKey);
 
     // Validate dialKey (must be between 1 and 9)
     if (!dialKey || isNaN(Number(dialKey)) || Number(dialKey) < 1 || Number(dialKey) > 9) {
