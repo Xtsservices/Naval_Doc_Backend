@@ -47,10 +47,10 @@ export const handleVoiceRequest = async (req: Request, res: Response): Promise<R
         participants: [
           {
             participantName: callingParticipant,
-            participantAddress: "6301179997", // Example participant address
+            participantAddress: routedNumber, // Example participant address
             outBoundNO: routedNumber, // Route to the mapped number
             callerId: callerId,
-            dialKey: 1,
+            dialKey: Number(dialKey),
             maxRetries: 1,
             audioId: 0,
             maxTime: 0,
