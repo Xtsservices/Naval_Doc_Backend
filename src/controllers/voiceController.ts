@@ -24,15 +24,12 @@ export const handleVoiceRequest = async (req: Request, res: Response): Promise<R
 
     // Map dialKey to a specific phone number
     const dialKeyToNumberMap: { [key: string]: string } = {
-      "1": "1234567890",
-      "2": "9876543210",
-      "3": "1122334455",
-      "4": "5566778899",
-      "5": "9988776655",
-      "6": "6677889900",
-      "7": "7788990011",
-      "8": "8899001122",
-      "9": "9900112233",
+      "1": "9392392143",
+      "2": "6301179997",
+      "3": "9490219062",
+      "4": "9701646859",
+      "5": "9494999989",
+      
     };
 
     const routedNumber = dialKeyToNumberMap[dialKey as string];
@@ -43,6 +40,7 @@ export const handleVoiceRequest = async (req: Request, res: Response): Promise<R
       });
     }
 
+    console.log(`Routing to number: ${routedNumber} for dialKey: ${dialKey}`);
     // Construct the response object
     const responsePayload = {
       client_add_participant: {
