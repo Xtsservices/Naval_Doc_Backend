@@ -85,13 +85,13 @@ console.log("Cart Details:", cart); // Debug log to check cart details
 
     // Check if the order date is in the past (previous date)
     // Validate order date and cutoff time
-    // const orderDateValidationResult = await validateOrderDateAndCutoff(cart, menuConfigurationId, transaction);
-    // if (!orderDateValidationResult.success) {
-    //   await transaction.rollback();
-    //   return res.status(orderDateValidationResult.statusCode).json({
-    //   message: orderDateValidationResult.message,
-    //   });
-    // }
+    const orderDateValidationResult = await validateOrderDateAndCutoff(cart, menuConfigurationId, transaction);
+    if (!orderDateValidationResult.success) {
+      await transaction.rollback();
+      return res.status(orderDateValidationResult.statusCode).json({
+      message: orderDateValidationResult.message,
+      });
+    }
 
     // Check if the canteenId and menuConfigurationId are present in the cart
 
