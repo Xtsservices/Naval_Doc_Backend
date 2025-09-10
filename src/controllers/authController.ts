@@ -62,14 +62,8 @@ export const loginWithMobile = async (req: Request, res: Response) => {
     }
     
     // const otp = '123456';
-    const fiftyYearsMsAccurate = 50 * 365.25 * 24 * 60 * 60 * 1000;
-    let expiresAt = null;
-    if(mobile == "9052519059" || mobile == "9494384838" || mobile == "9573575468"){
-      expiresAt = getExpiryTimeInKolkata(fiftyYearsMsAccurate); // OTP expires in 50 years for test numbers
-    }else{
-      expiresAt = getExpiryTimeInKolkata(60); // OTP expires in 60 seconds
-    }
-
+    const expiresAt = getExpiryTimeInKolkata(60); // OTP expires in 60 seconds
+    
     // Save OTP to the database
     await Otp.create({ mobile, otp, expiresAt }, { transaction });
 
@@ -159,7 +153,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
     // Check if the OTP has expired
     const currentTime = Math.floor(Date.now() / 1000); // Current time in Unix timestamp
    
-    if (currentTime > otpRecord.expiresAt) {
+    if (currentTime > otpRecord.expiresAt && !(mobile == "9052519059" || mobile == "9494384838" || mobile == "9573575468")) {
       logger.warn(`Expired OTP for mobile ${mobile}`);
       await otpRecord.destroy({ transaction }); // Delete the expired OTP
       await transaction.rollback(); // Rollback the transaction
