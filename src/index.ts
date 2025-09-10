@@ -805,12 +805,17 @@ if (session.stage === 'cart_selection' && /^\d+\*\d+(,\d+\*\d+)*$/.test(msg)) {
       const quantity = parseInt(qtyStr);
       const item = session.items.find((i: { id: number }) => i.id === id);
       if (item) {
-        session.cart = session.cart || [];
-        const existing = session.cart.find(c => c.itemId === id);
-        if (existing) existing.quantity = quantity;
-        else session.cart.push({ itemId: id, name: item.name, price: item.price, quantity });
+      // Check maxQuantity if present
+      if (typeof item.maxQuantity === 'number' && quantity > item.maxQuantity) {
+        reply = `⚠️ You can order a maximum of ${item.maxQuantity} for "${item.name}". Please adjust your quantity.`;
+        await sendWhatsAppMessage(userId, reply, FROM_NUMBER.toString(), null);
+        return;
       }
-      reply = `❌ No menus available for ${session.selectedCanteen.canteenName}. Please try again later.`;
+      session.cart = session.cart || [];
+      const existing = session.cart.find(c => c.itemId === id);
+      if (existing) existing.quantity = quantity;
+      else session.cart.push({ itemId: id, name: item.name, price: item.price, quantity });
+      }
     }
     session.stage = 'cart_review';
     sessions[userId] = session;
