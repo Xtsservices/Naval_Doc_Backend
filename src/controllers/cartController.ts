@@ -63,28 +63,28 @@ export const addToCart = async (
     let  checkOrderDateUnix = moment(orderDate, "DD-MM-YYYY").unix();
 
     // Check if there is an existing order with status 'placed' or 'completed' for the same user, orderDate, menuConfigurationId, and menuId
-    const existingOrder = await Order.findOne({
-      where: {
-      userId,
-      orderDate: checkOrderDateUnix,
-      menuConfigurationId,
-      menuId,
-      status: {
-        [Op.in]: ["placed", "completed"],
-      },
-      },
-      transaction,
-    });
+    // const existingOrder = await Order.findOne({
+    //   where: {
+    //   userId,
+    //   orderDate: checkOrderDateUnix,
+    //   menuConfigurationId,
+    //   menuId,
+    //   status: {
+    //     [Op.in]: ["placed", "completed"],
+    //   },
+    //   },
+    //   transaction,
+    // });
 
-    if (existingOrder) {
-      await transaction.rollback();
-      return res.status(statusCodes.BAD_REQUEST).json({
-      message: "Order already exists for this date, menu configuration, and menu.",
-      errors: [
-        "You already have an order placed or completed for this menu and date.",
-      ],
-      });
-    }
+    // if (existingOrder) {
+    //   await transaction.rollback();
+    //   return res.status(statusCodes.BAD_REQUEST).json({
+    //   message: "Order already exists for this date, menu configuration, and menu.",
+    //   errors: [
+    //     "You already have an order placed or completed for this menu and date.",
+    //   ],
+    //   });
+    // }
 
     if (quantity <= 0) {
       return res.status(statusCodes.BAD_REQUEST).json({
