@@ -1,6 +1,5 @@
 import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
-
 import authRoutes from './routes/authRoutes';
 import canteenRoutes from './routes/canteenRoutes';
 import userRoutes from './routes/userRoutes';
