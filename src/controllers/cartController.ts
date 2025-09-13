@@ -62,7 +62,7 @@ export const addToCart = async (
 
     // let  checkOrderDateUnix = moment(orderDate, "DD-MM-YYYY").unix();
 
-    // // Check if there is an existing order with status 'placed' or 'completed' for the same user, orderDate, menuConfigurationId, and menuId
+    // Check if there is an existing order with status 'placed' or 'completed' for the same user, orderDate, menuConfigurationId, and menuId
     // const existingOrder = await Order.findOne({
     //   where: {
     //   userId,
