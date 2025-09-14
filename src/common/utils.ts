@@ -59,7 +59,7 @@ export const getTotalItemsPlacedOnDate = async (
       },
     ],
   });
-
+console.log("Total Items Placed on Date:", totalItems);
 
   // Fetch the quantity from the Item table for the given itemId
   const item = await Item.findOne({
