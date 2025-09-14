@@ -14,8 +14,8 @@ import MenuItem from "../models/menuItem";
 
 import logger from "../common/logger";
 import { statusCodes } from "../common/statusCodes";
-import { getMessage } from "../common/utils";
-import { Op, Transaction } from "sequelize";
+import { getMessage ,checkexistingorder, getTotalItemsPlacedOnDate} from "../common/utils";
+import { Op, Transaction, Utils } from "sequelize";
 import { sequelize } from "../config/database";
 import QRCode from "qrcode";
 import moment from "moment-timezone"; // Import moment-timezone
@@ -33,7 +33,8 @@ export const addToCart = async (
   });
 
   try {
-    const { userId } = req.user as unknown as { userId: string }; // Extract userId from the request body
+    const { userId: userIdString } = req.user as unknown as { userId: string }; // Extract userId from the request body
+    const userId = Number(userIdString);
     const {
       itemId,
       quantity,
@@ -60,31 +61,42 @@ export const addToCart = async (
       });
     }
 
-    // let  checkOrderDateUnix = moment(orderDate, "DD-MM-YYYY").unix();
+    const { remainingQuantity } = await getTotalItemsPlacedOnDate(
+      orderDate,
+      itemId
+    );
 
-    // Check if there is an existing order with status 'placed' or 'completed' for the same user, orderDate, menuConfigurationId, and menuId
-    // const existingOrder = await Order.findOne({
-    //   where: {
-    //   userId,
-    //   orderDate: checkOrderDateUnix,
-    //   menuConfigurationId,
-    //   menuId,
-    //   status: {
-    //     [Op.in]: ["placed", "completed"],
-    //   },
-    //   },
-    //   transaction,
-    // });
+    if (remainingQuantity < quantity) {
+      await transaction.rollback();
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: "Not enough items available in stock: " + remainingQuantity + " left",
+        errors: [
+          `Only ${remainingQuantity} items are remaining for this item on the selected date`,
+        ],
+      });
+    }
 
-    // if (existingOrder) {
-    //   await transaction.rollback();
-    //   return res.status(statusCodes.BAD_REQUEST).json({
-    //   message: "Order already exists for this date, menu configuration, and menu.",
-    //   errors: [
-    //     "You already have an order placed or completed for this menu and date.",
-    //   ],
-    //   });
-    // }
+    // Check for existing orders on the same date and menu configuration  
+
+    let existingOrder = await checkexistingorder(
+      orderDate,
+      userId,
+      menuConfigurationId,
+      transaction,
+      res
+    );
+    if(existingOrder === false){
+      await transaction.rollback();
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: "Order already exists for this date, menu configuration",
+        errors: [
+          "You already have an order placed or completed for this menu and date.",
+        ],
+      });
+    }
+
+
+
 
     if (quantity <= 0) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -276,7 +288,9 @@ export const updateCartItem = async (
         message: getMessage("validation.validationError"),
         errors: ["cartId, cartItemId, and quantity are required"],
       });
+
     }
+
 
     if (quantity <= 0) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -286,7 +300,7 @@ export const updateCartItem = async (
     }
 
     // Verify the cart exists
-    const cart = await Cart.findByPk(cartId, { transaction });
+    const cart :any = await Cart.findByPk(cartId, { transaction });
 
     if (!cart) {
       await transaction.rollback();
@@ -294,6 +308,16 @@ export const updateCartItem = async (
         message: getMessage("cart.notFound"),
       });
     }
+
+    let date = moment.unix(cart.orderDate).format("DD-MM-YYYY");
+    
+    let remainingItems = await getTotalItemsPlacedOnDate(date, cartItemId);
+    if (remainingItems < quantity) {
+      await transaction.rollback();
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: "Not enough items available in stock: " + remainingItems + " left",
+      });
+      }
 
     // Verify the cart item exists and belongs to the specified cart
     const cartItem: any = await CartItem.findOne({

@@ -9,6 +9,11 @@ import userRole from "../models/userRole";
 import UserRole from "../models/userRole";
 import Role from "../models/role";
 
+import { Op } from "sequelize";
+import Order from "../models/order";
+const { OrderItem } = require("../models/orderItem"); // Adjust import as needed
+const Item = require("../models/item"); // Adjust import as needed
+
 dotenv.config();
 
 /**
@@ -18,6 +23,88 @@ dotenv.config();
 export const generateOtp = (): string => {
   return crypto.randomInt(100000, 999999).toString(); // 6-digit OTP
 };
+
+
+/**
+ * Checks if an order already exists for the given user, date, and menu configuration.
+ * Rolls back the transaction and sends a response if an order exists.
+ */
+export const getTotalItemsPlacedOnDate = async (
+  orderDate: string,
+  itemId: number
+): Promise<{ remainingQuantity: number }> => {
+
+  const orderDateUnix = moment(orderDate, "DD-MM-YYYY").unix();
+
+  // Count total items placed on the given date
+  const totalItems = await OrderItem.count({
+    where: {
+      itemId: itemId, // Match with the specific itemId
+      createdAt: {
+        [Op.gte]: moment.unix(orderDateUnix).startOf("day").toDate(),
+        [Op.lt]: moment.unix(orderDateUnix).endOf("day").toDate(),
+      },
+    },
+    include: [
+      {
+        model: Order,
+        as: "order",
+        where: {
+          status: {
+            [Op.in]: ["placed", "completed"],
+          },
+        },
+      },
+    ],
+  });
+
+  // Fetch the quantity from the Item table for the given itemId
+  const item = await Item.findOne({
+    where: { id: itemId },
+    attributes: ["quantity"],
+  });
+
+  const quantity = item ? item.quantity : 0;
+
+  let remainingQuantity = quantity - totalItems;
+
+
+ 
+
+  return {
+    remainingQuantity,
+  };
+};
+
+
+export const checkexistingorder = async (
+  orderDate: string,
+  userId: number,
+  menuConfigurationId: number,
+  transaction: any,
+  res: any
+): Promise<any> => {
+  const checkOrderDateUnix = moment(orderDate, "DD-MM-YYYY").unix();
+
+  const existingOrder = await Order.findOne({
+    where: {
+      userId,
+      orderDate: checkOrderDateUnix,
+      menuConfigurationId,
+      status: {
+        [Op.in]: ["placed", "completed"],
+      },
+    },
+    transaction,
+  });
+
+  if (existingOrder) {
+    return false;
+  }
+  return true;
+};
+
+
 
 export const getCustomerProfile = async (mobile: string): Promise<any> => {
   try {
