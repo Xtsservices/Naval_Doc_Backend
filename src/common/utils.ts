@@ -8,11 +8,13 @@ import User from "../models/user";
 import userRole from "../models/userRole";
 import UserRole from "../models/userRole";
 import Role from "../models/role";
+import OrderItem from "../models/orderItem";
+import  Item from "../models/item";
 
 import { Op } from "sequelize";
 import Order from "../models/order";
-const { OrderItem } = require("../models/orderItem"); // Adjust import as needed
-const Item = require("../models/item"); // Adjust import as needed
+// const { OrderItem } = require("../models/orderItem"); // Adjust import as needed
+// const Item = require("../models/item"); // Adjust import as needed
 
 dotenv.config();
 
@@ -58,11 +60,13 @@ export const getTotalItemsPlacedOnDate = async (
     ],
   });
 
+
   // Fetch the quantity from the Item table for the given itemId
   const item = await Item.findOne({
     where: { id: itemId },
     attributes: ["quantity"],
   });
+
 
   const quantity = item ? item.quantity : 0;
 
@@ -71,9 +75,8 @@ export const getTotalItemsPlacedOnDate = async (
 
  
 
-  return {
-    remainingQuantity,
-  };
+  return { remainingQuantity };
+
 };
 
 

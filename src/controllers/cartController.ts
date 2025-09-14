@@ -69,7 +69,7 @@ export const addToCart = async (
     if (remainingQuantity < quantity) {
       await transaction.rollback();
       return res.status(statusCodes.BAD_REQUEST).json({
-        message: "Not enough items available in stock: " + remainingQuantity + " left",
+        message: "Stock completed for this item. No quantity left.",
         errors: [
           `Only ${remainingQuantity} items are remaining for this item on the selected date`,
         ],
@@ -312,10 +312,13 @@ export const updateCartItem = async (
     let date = moment.unix(cart.orderDate).format("DD-MM-YYYY");
     
     let remainingItems = await getTotalItemsPlacedOnDate(date, cartItemId);
-    if (remainingItems < quantity) {
+    console.log("Remaining Items:", remainingItems?.remainingQuantity);
+    console.log("Requested Quantity:", quantity);
+
+    if (remainingItems?.remainingQuantity < quantity) {
       await transaction.rollback();
       return res.status(statusCodes.BAD_REQUEST).json({
-        message: "Not enough items available in stock: " + remainingItems + " left",
+        message: "Stock completed for this item. No quantity left.",
       });
       }
 
