@@ -31,7 +31,7 @@ export const generateOtp = (): string => {
  * Checks if an order already exists for the given user, date, and menu configuration.
  * Rolls back the transaction and sends a response if an order exists.
  */
-export const getTotalItemsPlacedOnDate = async (
+export const getTotalItemsPlacedOnDate1 = async (
   orderDate: string,
   itemId: number
 ): Promise<{ remainingQuantity: number }> => {
@@ -79,6 +79,85 @@ console.log("Total Items Placed on Date:", totalItems);
   return { remainingQuantity };
 
 };
+
+export const getTotalItemsPlacedOnDate = async (
+  orderDate: string,
+  itemId: number
+): Promise<{ remainingQuantity: number }> => {
+  const orderDateUnix = moment(orderDate, "DD-MM-YYYY").unix();
+  console.log("orderDateUnix:", orderDateUnix);
+  console.log("itemId:", itemId);
+
+  // First fetch raw rows to debug
+  const orderItems = await OrderItem.findAll({
+    where: {
+      itemId: itemId,
+      createdAt: {
+        [Op.gte]: moment.unix(orderDateUnix).startOf("day").toDate(),
+        [Op.lt]: moment.unix(orderDateUnix).endOf("day").toDate(),
+      },
+    },
+    include: [
+      {
+        model: Order,
+        as: "order",
+        attributes: ["id", "status"], // Just log what’s needed
+        where: {
+          status: {
+            [Op.in]: ["placed", "completed"],
+          },
+        },
+      },
+    ],
+    attributes: ["id", "quantity", "createdAt", "orderId"], // log essentials
+    raw: true,
+  });
+
+  console.log("Matching OrderItems:", orderItems);
+
+  // Then sum up the quantities
+  // First, get all order IDs with the required status and date
+  const matchingOrders = await Order.findAll({
+    where: {
+      status: {
+        [Op.in]: ["placed", "completed"],
+      },
+      orderDate: orderDateUnix,
+    },
+    attributes: ["id"],
+    raw: true,
+  });
+
+  const matchingOrderIds = matchingOrders.map((order: any) => order.id);
+
+  const totalItems =
+    (await OrderItem.sum("quantity", {
+      where: {
+        itemId: itemId,
+        orderId: {
+          [Op.in]: matchingOrderIds.length > 0 ? matchingOrderIds : [0], // [0] ensures no match if empty
+        },
+        createdAt: {
+          [Op.gte]: moment.unix(orderDateUnix).startOf("day").toDate(),
+          [Op.lt]: moment.unix(orderDateUnix).endOf("day").toDate(),
+        },
+      },
+    })) || 0;
+
+  console.log("Total Quantity Placed on Date:", totalItems);
+
+  // Fetch the stock from Item table
+  const item = await Item.findOne({
+    where: { id: itemId },
+    attributes: ["quantity"],
+  });
+
+  const quantity = item ? item.quantity : 0;
+  const remainingQuantity = quantity - totalItems;
+
+  return { remainingQuantity };
+};
+
 
 
 export const checkexistingorder = async (
