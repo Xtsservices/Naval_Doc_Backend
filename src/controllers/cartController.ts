@@ -66,6 +66,7 @@ export const addToCart = async (
       itemId
     );
 
+    console.log("Remaining Quantity:", remainingQuantity);
     if (remainingQuantity < quantity) {
       await transaction.rollback();
       return res.status(statusCodes.BAD_REQUEST).json({
