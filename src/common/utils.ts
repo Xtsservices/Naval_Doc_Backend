@@ -38,15 +38,16 @@ export const getTotalItemsPlacedOnDate1 = async (
 
   const orderDateUnix = moment(orderDate, "DD-MM-YYYY").unix();
 
-  console.log("itemId:", itemId);
   // Count total items placed on the given date
+  // Validate the date format first
+  if (!moment(orderDate, "DD-MM-YYYY").isValid()) {
+    throw new Error("Invalid date format. Expected DD-MM-YYYY");
+  }
+
   const totalItems = await OrderItem.count({
     where: {
       itemId: itemId, // Match with the specific itemId
-      createdAt: {
-        [Op.gte]: moment.unix(orderDateUnix).startOf("day").toDate(),
-        [Op.lt]: moment.unix(orderDateUnix).endOf("day").toDate(),
-      },
+    
     },
     include: [
       {
@@ -56,11 +57,11 @@ export const getTotalItemsPlacedOnDate1 = async (
           status: {
             [Op.in]: ["placed", "completed"],
           },
+          orderDate: orderDateUnix // Added date check at Order level
         },
       },
     ],
   });
-console.log("Total Items Placed on Date:", totalItems);
 
   // Fetch the quantity from the Item table for the given itemId
   const item = await Item.findOne({
