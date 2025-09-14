@@ -37,7 +37,7 @@ export const getTotalItemsPlacedOnDate1 = async (
 ): Promise<{ remainingQuantity: number }> => {
 
   const orderDateUnix = moment(orderDate, "DD-MM-YYYY").unix();
-console.log("orderDateUnix:", orderDateUnix);
+
   console.log("itemId:", itemId);
   // Count total items placed on the given date
   const totalItems = await OrderItem.count({
@@ -84,24 +84,28 @@ export const getTotalItemsPlacedOnDate = async (
   orderDate: string,
   itemId: number
 ): Promise<{ remainingQuantity: number }> => {
-  const orderDateUnix = moment(orderDate, "DD-MM-YYYY").unix();
-  console.log("orderDateUnix:", orderDateUnix);
+  const startOfDay = moment(orderDate, "DD-MM-YYYY").startOf("day").toDate();
+  const endOfDay = moment(orderDate, "DD-MM-YYYY").endOf("day").toDate();
+
+  console.log("orderDate:", orderDate);
+  console.log("startOfDay:", startOfDay);
+  console.log("endOfDay:", endOfDay);
   console.log("itemId:", itemId);
 
-  // First fetch raw rows to debug
+  // Fetch rows first
   const orderItems = await OrderItem.findAll({
     where: {
       itemId: itemId,
       createdAt: {
-        [Op.gte]: moment.unix(orderDateUnix).startOf("day").toDate(),
-        [Op.lt]: moment.unix(orderDateUnix).endOf("day").toDate(),
+        [Op.gte]: startOfDay,
+        [Op.lt]: endOfDay,
       },
     },
     include: [
       {
         model: Order,
         as: "order",
-        attributes: ["id", "status"], // Just log what’s needed
+        attributes: ["id", "status"],
         where: {
           status: {
             [Op.in]: ["placed", "completed"],
@@ -109,44 +113,21 @@ export const getTotalItemsPlacedOnDate = async (
         },
       },
     ],
-    attributes: ["id", "quantity", "createdAt", "orderId"], // log essentials
+    attributes: ["id", "quantity", "createdAt", "orderId"],
     raw: true,
   });
 
   console.log("Matching OrderItems:", orderItems);
 
-  // Then sum up the quantities
-  // First, get all order IDs with the required status and date
-  const matchingOrders = await Order.findAll({
-    where: {
-      status: {
-        [Op.in]: ["placed", "completed"],
-      },
-      orderDate: orderDateUnix,
-    },
-    attributes: ["id"],
-    raw: true,
-  });
-
-  const matchingOrderIds = matchingOrders.map((order: any) => order.id);
-
-  const totalItems =
-    (await OrderItem.sum("quantity", {
-      where: {
-        itemId: itemId,
-        orderId: {
-          [Op.in]: matchingOrderIds.length > 0 ? matchingOrderIds : [0], // [0] ensures no match if empty
-        },
-        createdAt: {
-          [Op.gte]: moment.unix(orderDateUnix).startOf("day").toDate(),
-          [Op.lt]: moment.unix(orderDateUnix).endOf("day").toDate(),
-        },
-      },
-    })) || 0;
+  // Manually sum the quantities
+  const totalItems = orderItems.reduce(
+    (sum, item) => sum + (item.quantity || 0),
+    0
+  );
 
   console.log("Total Quantity Placed on Date:", totalItems);
 
-  // Fetch the stock from Item table
+  // Fetch stock
   const item = await Item.findOne({
     where: { id: itemId },
     attributes: ["quantity"],
@@ -155,9 +136,10 @@ export const getTotalItemsPlacedOnDate = async (
   const quantity = item ? item.quantity : 0;
   const remainingQuantity = quantity - totalItems;
 
+  console.log("Remaining Quantity:", remainingQuantity);
+
   return { remainingQuantity };
 };
-
 
 
 export const checkexistingorder = async (
