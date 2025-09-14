@@ -135,6 +135,7 @@ export const getTotalItemsPlacedOnDate1 = async (
   });
 
   const quantity = item ? item.quantity : 0;
+  console.log("Item Stock Quantity:", quantity);
   const remainingQuantity = quantity - totalItems;
 
   console.log("Remaining Quantity:", remainingQuantity);
