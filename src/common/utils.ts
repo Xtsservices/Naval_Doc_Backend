@@ -31,7 +31,7 @@ export const generateOtp = (): string => {
  * Checks if an order already exists for the given user, date, and menu configuration.
  * Rolls back the transaction and sends a response if an order exists.
  */
-export const getTotalItemsPlacedOnDate1 = async (
+export const getTotalItemsPlacedOnDate = async (
   orderDate: string,
   itemId: number
 ): Promise<{ remainingQuantity: number }> => {
@@ -81,7 +81,7 @@ export const getTotalItemsPlacedOnDate1 = async (
 
 };
 
-export const getTotalItemsPlacedOnDate = async (
+export const getTotalItemsPlacedOnDate1 = async (
   orderDate: string,
   itemId: number
 ): Promise<{ remainingQuantity: number }> => {
