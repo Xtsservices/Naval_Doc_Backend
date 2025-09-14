@@ -38,6 +38,7 @@ export const getTotalItemsPlacedOnDate = async (
 
   const orderDateUnix = moment(orderDate, "DD-MM-YYYY").unix();
 
+  console.log("itemId:", itemId);
   // Count total items placed on the given date
   const totalItems = await OrderItem.count({
     where: {
