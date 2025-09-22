@@ -44,24 +44,51 @@ export const getTotalItemsPlacedOnDate = async (
     throw new Error("Invalid date format. Expected DD-MM-YYYY");
   }
 
-  const totalItems = await OrderItem.count({
-    where: {
-      itemId: itemId, // Match with the specific itemId
+  // const totalItems = await OrderItem.count({
+  //   where: {
+  //     itemId: itemId, // Match with the specific itemId
     
+  //   },
+  //   include: [
+  //     {
+  //       model: Order,
+  //       as: "order",
+  //       where: {
+  //         status: {
+  //           [Op.in]: ["placed", "completed"],
+  //         },
+  //         orderDate: orderDateUnix // Added date check at Order level
+  //       },
+  //     },
+  //   ],
+  // });
+
+
+// Find all order IDs that match the date and status criteria
+const matchingOrders = await Order.findAll({
+  where: {
+    status: {
+      [Op.in]: ['placed', 'completed'],
     },
-    include: [
-      {
-        model: Order,
-        as: "order",
-        where: {
-          status: {
-            [Op.in]: ["placed", "completed"],
-          },
-          orderDate: orderDateUnix // Added date check at Order level
-        },
-      },
-    ],
-  });
+    orderDate: orderDateUnix,
+  },
+  attributes: ['id'],
+});
+
+const matchingOrderIds = matchingOrders.map((order: any) => order.id);
+
+const totalItems = (await OrderItem.sum('quantity', {
+  where: {
+    itemId: itemId,
+    orderId: {
+      [Op.in]: matchingOrderIds.length > 0 ? matchingOrderIds : [0], // [0] ensures no match if empty
+    },
+  },
+})) || 0; // fallback to 0 if null
+
+
+
+
 
   // Fetch the quantity from the Item table for the given itemId
   const item = await Item.findOne({
