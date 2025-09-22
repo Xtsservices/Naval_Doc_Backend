@@ -269,6 +269,247 @@ export const addToCart = async (
   }
 };
 
+export const addToCartForIOS = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const transaction = await sequelize.transaction({
+    isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED,
+  });
+
+  try {
+    const { userId: userIdString } = req.user as unknown as { userId: string };
+    const userId = Number(userIdString);
+    const { items, canteenId, orderDate } = req.body;
+    console.log(canteenId, "canteenId--");
+
+
+    if (!userId || !canteenId || !items || !Array.isArray(items) || items.length === 0 || !orderDate) {
+    console.log(canteenId, "canteenId--2");
+
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage("validation.validationError"),
+        errors: [
+          "userId, items (array), canteenId, and orderDate are required",
+        ],
+      });
+    }
+    console.log(orderDate, "orderDate--3");
+    // Validate orderDate format
+    const formattedOrderDate = moment(orderDate, "DD-MM-YYYY");
+    console.log(formattedOrderDate, "formattedOrderDate--");
+    if (!formattedOrderDate.isValid()) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage("validation.invalidOrderDate"),
+        errors: ["Invalid order date format. Expected format: DD-MM-YYYY"],
+      });
+    }
+    const orderDateUnix = formattedOrderDate.unix();
+
+    // Check for existing orders on the same date and menu configuration for any item
+    console.log("step4");
+    // Check for existing orders on the same date and menu configuration for any item
+    const existingOrderResults = await Promise.all(
+      items.map(async (item) => {
+        const { menuConfigurationId } = item;
+        const existingOrder = await checkexistingorder(
+          orderDate,
+          userId,
+          menuConfigurationId,
+          transaction,
+          res
+        );
+        return existingOrder === false;
+      })
+    );
+
+    const existingOrderError = existingOrderResults.some((result) => result);
+ 
+    if (existingOrderError) {
+      await transaction.rollback();
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: "Order already exists for this date, menu configuration",
+        errors: [
+          "You already have an order placed or completed for this menu and date.",
+        ],
+      });
+    }
+    console.log("step5");
+
+    // Get or create the user's cart
+    let [cart, created] = await Cart.findOrCreate({
+      where: { userId, status: "active" },
+      defaults: {
+        userId,
+        status: "active",
+        totalAmount: 0,
+        orderDate: orderDateUnix,
+        canteenId
+        // canteenId, menuConfigurationId, menuId will be set per item if needed
+      },
+      transaction,
+    });
+
+    let totalAmount = 0;
+    console.log("step6",items);
+
+    for (const item of items) {
+      const { itemId, menuId, menuConfigurationId, quantity } = item;
+    console.log("step6.1 loop--", itemId, menuId, menuConfigurationId, quantity);
+
+
+      if (!itemId || !menuId || !menuConfigurationId || !quantity) {
+        console.log("step6.2 loop--");
+        await transaction.rollback();
+        return res.status(statusCodes.BAD_REQUEST).json({
+          message: getMessage("validation.validationError"),
+          errors: [
+            "Each item must have itemId, menuId, menuConfigurationId, and quantity",
+          ],
+        });
+      }
+
+      console.log("step6.3 loop--");
+      // Check stock
+      const { remainingQuantity } = await getTotalItemsPlacedOnDate(
+        orderDate,
+        itemId
+      );
+        console.log("step6.4 loop--");
+      if (remainingQuantity < quantity) {
+        await transaction.rollback();
+        return res.status(statusCodes.BAD_REQUEST).json({
+          message: "Stock completed for this item. No quantity left.",
+          errors: [
+            `Only ${remainingQuantity} items are remaining for itemId ${itemId} on the selected date`,
+          ],
+        });
+      }
+  console.log("step6.5 loop--");
+      // Find menuItem and check min/max quantity
+      const menuItem: any = await MenuItem.findOne({
+        where: { itemId, menuId },
+        include: [
+          {
+            model: Item,
+            as: "menuItemItem",
+            include: [
+              {
+                model: Pricing,
+                as: "itemPricing",
+              },
+            ],
+          },
+        ],
+        transaction,
+      });
+
+        console.log("step6.6 loop--");
+
+      if (!menuItem) {
+        await transaction.rollback();
+        return res.status(statusCodes.NOT_FOUND).json({
+          message: getMessage("menu.itemNotFound"),
+        });
+      }
+
+        console.log("step6.7 loop--");
+
+      if (quantity < menuItem.minQuantity) {
+        await transaction.rollback();
+        return res.status(statusCodes.BAD_REQUEST).json({
+          message: getMessage("menu.itemBelowMinQuantity"),
+          errors: [`Minimum quantity for this item is ${menuItem.minQuantity}`],
+        });
+      }
+  console.log("step6.8 loop--");
+      if (quantity > menuItem.maxQuantity) {
+        await transaction.rollback();
+        return res.status(statusCodes.BAD_REQUEST).json({
+          message: getMessage("menu.itemAboveMaxQuantity"),
+          errors: [`Maximum quantity for this item is ${menuItem.maxQuantity}`],
+        });
+      }
+
+        console.log("step6.9 loop--");
+
+      // Calculate item price
+      const price = menuItem.menuItemItem?.itemPricing?.price || 0;
+      const itemTotal = price * quantity;
+      totalAmount += itemTotal;
+
+      // Check if the item already exists in the cart
+      const existingCartItem: any = await CartItem.findOne({
+        where: { cartId: cart.id, itemId, menuId },
+        transaction,
+      });
+
+      if (existingCartItem) {
+
+          console.log("step6.10 loop--");
+        existingCartItem.quantity += quantity;
+        if (existingCartItem.quantity > menuItem.maxQuantity) {
+          await transaction.rollback();
+          return res.status(statusCodes.BAD_REQUEST).json({
+            message: getMessage("menu.itemAboveMaxQuantity"),
+            errors: [`Maximum quantity for this item is ${menuItem.maxQuantity}`],
+          });
+        }
+        existingCartItem.total = existingCartItem.quantity * price;
+        existingCartItem.orderDate = orderDateUnix;
+        await existingCartItem.save({ transaction });
+      } else {
+
+          console.log("step6.11 loop--");
+        await CartItem.create(
+          {
+            cartId: cart.id,
+            itemId,
+            menuId,
+            quantity,
+            canteenId,
+            price,
+            total: itemTotal,
+            menuConfigurationId: menuConfigurationId,
+            orderDate: orderDateUnix,
+          },
+          { transaction }
+        );
+      }
+    }
+    console.log("step7");
+
+
+    // Update cart total
+    const cartItems = await CartItem.findAll({
+      where: { cartId: cart.id },
+      transaction,
+    });
+    cart.menuConfigurationId = items[0]?.menuConfigurationId; // Set to the first item's menuConfigurationId
+    cart.menuId = items[0]?.menuId; // Set to the first item's menuId
+    cart.totalAmount = cartItems.reduce((sum, item) => sum + item.total, 0);
+    await cart.save({ transaction });
+
+    await transaction.commit();
+console.log("cart--", cart);
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage("cart.itemAdded"),
+      data: cart,
+    });
+  } catch (error: unknown) {
+    console.log("Error adding items to cart:", error);
+    await transaction.rollback();
+    logger.error(
+      `Error adding items to cart (iOS): ${
+        error instanceof Error ? error.message : error
+      }`
+    );
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage("error.internalServerError"),
+    });
+  }
+};
+
 /**
  * Update cart item quantity with transaction support
  */

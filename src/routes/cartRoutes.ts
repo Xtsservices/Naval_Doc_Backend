@@ -4,7 +4,8 @@ import {
   updateCartItem,
   removeCartItem,
   getCart,
-  clearCart,createCart,placeOrderWithMobile
+  clearCart,createCart,placeOrderWithMobile,
+  addToCartForIOS
 } from '../controllers/cartController';
 import authenticateToken from '../middlewares/authMiddleware'; // Import the authentication middleware
 
@@ -12,6 +13,9 @@ const router = express.Router();
 
 // Cart routes
 router.post('/add', authenticateToken, addToCart);
+
+router.post('/addToCartForIOS', authenticateToken, addToCartForIOS);
+
 
 router.get('/getCart', authenticateToken, getCart);
 

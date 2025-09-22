@@ -5,7 +5,11 @@ import authenticateToken from '../middlewares/authMiddleware'; // Import the aut
 const router = Router();
 
 router.get('/getAllCanteens',authenticateToken, getAllCanteens);
+router.get('/getAllCanteensForIOS', getAllCanteens);
+
 router.get('/getAllUsers',authenticateToken, getAllUsers);
+
+
 
 
 export default router;

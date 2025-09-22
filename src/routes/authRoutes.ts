@@ -1,5 +1,5 @@
 import express from 'express';
-import { loginWithMobile,verifyOtp,resendOtp,getProfile,updateProfile,logout } from '../controllers/authController';
+import { loginWithMobile,verifyOtp,resendOtp,getProfile,updateProfile,logout ,deleteAccount} from '../controllers/authController';
 import authenticateToken from '../middlewares/authMiddleware';
 
 const router = express.Router();
@@ -20,6 +20,8 @@ router.get('/getProfile', authenticateToken, getProfile);
 
 // Route to update user profile
 router.put('/updateProfile', authenticateToken, asyncHandler(updateProfile));
+
+router.delete('/deleteAccount', authenticateToken, asyncHandler(deleteAccount));
 
 // Route to logout user
 // router.post('/logout', asyncHandler(logout));

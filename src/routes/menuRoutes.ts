@@ -14,7 +14,12 @@ router.get('/getAllMenus', authenticateToken, getAllMenus);
 
 router.get('/getMenusForNextTwoDaysGroupedByDateAndConfiguration', authenticateToken, getMenusForNextTwoDaysGroupedByDateAndConfiguration);
 
+
+router.get('/getMenusForNextTwoDaysGroupedByDateAndConfigurationForIOS', getMenusForNextTwoDaysGroupedByDateAndConfiguration);
+
 router.get('/getMenuById', authenticateToken, getMenuById);
+
+router.get('/getMenuByIdForIOS', getMenuById);
 
 router.get('/getMenuByIdforwhatsapp',  getMenuByIdforwhatsapp);
 

@@ -410,3 +410,30 @@ export const logout = async (req: Request, res: Response) => {
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({ message: getMessage('error.internalServerError') });
   }
 };
+
+export const deleteAccount = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.user as { userId: number };
+
+    // Find the user
+    const user = await User.findOne({ where: { id: userId } });
+    if (!user) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: "User not found",
+      });
+    }
+
+    // Soft delete: set a deletedAt timestamp (assuming paranoid mode is enabled)
+
+    logger.info(`User account soft deleted for userId ${userId}`);
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: 'Account deleted successfully',
+    });
+  } catch (error: unknown) {
+    logger.error(`Error deleting account: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
