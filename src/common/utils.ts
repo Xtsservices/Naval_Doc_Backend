@@ -420,3 +420,40 @@ console.log("paymentresponse===================lool",response)
     return new Response("Failed to create payment link", { status: 500 });
   }
 };
+
+
+
+export const getPaymentsByOrderId = async (orderId: string) => {
+  try {
+    const clientId = process.env.pgAppID;
+    const clientSecret = process.env.pgSecreteKey;
+    const CASHFREE_BASE_URL =
+      process.env.CASHFREE_BASE_URL || "https://sandbox.cashfree.com/pg";
+
+    if (!orderId) {
+      throw new Error("Order ID is required");
+    }
+
+    console.log(clientId, clientSecret, CASHFREE_BASE_URL, "envdata");
+
+    const response = await axios.get(
+      `${CASHFREE_BASE_URL}/orders/${orderId}/payments`,
+      {
+        headers: {
+          "x-client-id": clientId,
+          "x-client-secret": clientSecret,
+          "x-api-version": "2023-08-01",
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return response.data[0]; // ✅ return the data
+  } catch (error: any) {
+    console.error("Cashfree API Error:", error.response?.data || error.message);
+
+    throw new Error(
+      error.response?.data?.message || "Something went wrong while fetching payments"
+    );
+  }
+};

@@ -6,7 +6,7 @@ import Order from "../models/order";
 import OrderItem from "../models/orderItem";
 import Payment from "../models/payment";
 import logger from "../common/logger";
-import { getMessage, sendOrderSMS } from "../common/utils";
+import { getMessage, getPaymentsByOrderId, sendOrderSMS } from "../common/utils";
 import { statusCodes } from "../common/statusCodes";
 import { Transaction } from "sequelize";
 import QRCode from "qrcode"; // Import QRCode library
@@ -43,27 +43,43 @@ export const placeOrder = async (
 
   try {
     const { userId } = req.user as unknown as { userId: string };
-    console.log("1" ,req.body); // Debug log to check userId
+    console.log("placeOrderbody" ,req.body); // Debug log to check userId
     const {
       paymentMethod,
       transactionId,
       currency = "INR",
       platform,
+      orderId,
     } = req.body;
     console.log("Request Body:", userId, paymentMethod); // Debug log to check request body
 
-    if (!userId || !paymentMethod) {
+    if (!userId || !paymentMethod || !orderId) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage("validation.validationError"),
-        errors: ["userId and paymentMethod are required"],
+        errors: ["userId, paymentMethod, and orderId are required"],
       });
     }
     console.log("Request Body after validation:", userId, paymentMethod); // Debug log to check request body after validation
 
+    // here we need to validate the orderId is valid or not
+    const isThisOrderValid = await getPaymentsByOrderId(orderId);
+    console.log("isThisOrderValid 1", isThisOrderValid);
+    console.log("isThisOrderValid 2", isThisOrderValid.payment_status);
+    console.log("isThisOrderValid 3", isThisOrderValid.payment_status !== 'SUCCESS');
+
+
+    if(!isThisOrderValid || isThisOrderValid.payment_status !== 'SUCCESS'){
+      console.log("Invalid OrderId");
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage("validation.validationError"),
+        errors: ["Invalid OrderId"],
+      });
+    }
+
     // Ensure userId is a string
     const userIdString = String(userId);
 
-    console.log("User ID (string):", userIdString);
+    // console.log("User ID (string):", userIdString);
 
     const cart: any = await Cart.findOne({
       where: { userId: userIdString, status: "active" },
